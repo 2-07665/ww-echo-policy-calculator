@@ -30,7 +30,7 @@ def ensure_pil_image(image: ImageInput) -> Image.Image:
             if array.dtype != np.uint8:
                 array = array.astype(np.uint8)
             if array.shape[2] == 3:
-                return Image.fromarray(array[:, :, ::-1], mode="RGB")
+                return Image.fromarray(array, mode="RGB")
             if array.shape[2] >= 4:
                 return Image.fromarray(array[:, :, :4], mode="RGBA").convert("RGB")
     raise TypeError(f"Unsupported image input type: {type(image)!r}")

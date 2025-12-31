@@ -26,6 +26,7 @@ class WindowNotFoundError(RuntimeError):
 class WindowCaptureConfig:
     title: str
     restore_window: bool = True
+    restore_delay: float = 0.1
 
 
 def _apply_crop(bbox: tuple[int, int, int, int], crop: CropRegion | None) -> tuple[int, int, int, int]:
@@ -88,6 +89,8 @@ class WindowCapture:
         hwnd = _find_window(self.config.title)
         if restore if restore is not None else self.config.restore_window:
             _ensure_window_visible(hwnd)
+            if self.config.restore_delay > 0:
+                time.sleep(self.config.restore_delay)
         bbox = _window_bbox(hwnd)
         left, top, right, bottom = _apply_crop(bbox, crop)
         with mss.mss() as capturer:

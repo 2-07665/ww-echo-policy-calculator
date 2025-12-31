@@ -38,3 +38,6 @@ pnpm-debug.log*
 build
 dist
 .spec
+
+#
+captures/

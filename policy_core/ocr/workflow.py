@@ -6,16 +6,15 @@ import unicodedata
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence, Tuple, cast
+from typing import Dict, Iterable, List, Sequence, Tuple
 
 import numpy as np
 from PIL import Image
-from rapidocr_onnxruntime import RapidOCR
 
 from policy_core.data import BUFF_LABELS, BUFF_TYPE_COUNTS, BUFF_TYPES
 
 from .common import ImageInput
-from .engine import get_ocr_engine
+from .engine import get_ocr_engine, run_ocr
 
 _LOCK_PATTERN = re.compile(r"强化至\+?(\d+)\s*可[调調][谐諧]")
 _PENDING_PATTERN = re.compile(r"待[调調][谐諧]")
@@ -70,23 +69,25 @@ class BuffWorkflowResult:
         return {"buff_names": self.buff_types, "buff_values": self.buff_values}
 
 
-def _image_to_bgr(image: ImageInput) -> tuple[np.ndarray, tuple[int, int]]:
+def _image_to_rgb(image: ImageInput) -> tuple[np.ndarray, tuple[int, int]]:
     if isinstance(image, Image.Image):
         rgb = image.convert("RGB")
         width, height = rgb.size
-        return np.array(rgb)[:, :, ::-1], (width, height)
+        return np.array(rgb), (width, height)
     if isinstance(image, (str, Path)):
         with Image.open(image) as loaded:
             rgb = loaded.convert("RGB")
             width, height = rgb.size
-            return np.array(rgb)[:, :, ::-1], (width, height)
+            return np.array(rgb), (width, height)
     if isinstance(image, (bytes, bytearray)):
         with Image.open(io.BytesIO(image)) as loaded:
             rgb = loaded.convert("RGB")
             width, height = rgb.size
-            return np.array(rgb)[:, :, ::-1], (width, height)
+            return np.array(rgb), (width, height)
     if isinstance(image, np.ndarray):
         array = np.asarray(image)
+        if array.ndim == 2:
+            array = np.stack([array, array, array], axis=-1)
         if array.ndim != 3 or array.shape[2] < 3:
             raise ValueError("NumPy image input must be HxWxC with at least 3 channels.")
         if array.shape[2] > 3:
@@ -232,13 +233,11 @@ class BuffWorkflow:
     def __init__(
         self,
         *,
-        engine: RapidOCR | None = None,
+        engine: object | None = None,
         max_slots: int = 5,
         row_tolerance_ratio: float = 0.035,
     ) -> None:
         self.engine = engine or get_ocr_engine()
-        if not isinstance(self.engine, RapidOCR):
-            raise TypeError("BuffWorkflow currently supports RapidOCR engines only.")
         self.max_slots = max(1, max_slots)
         self.row_tolerance_ratio = max(0.0, row_tolerance_ratio)
 
@@ -248,6 +247,7 @@ class BuffWorkflow:
             self._register_alias(definition.label, (definition.type_name,))
             self._register_alias(_cleanup_buff_type(definition.label), (definition.type_name,))
 
+        # Handle ambiguous UI labels missing 百分比.
         self._register_alias("攻击", ("Attack", "Attack_Flat"))
         self._register_alias("防御", ("Defence", "Defence_Flat"))
         self._register_alias("生命", ("HP", "HP_Flat"))
@@ -281,8 +281,8 @@ class BuffWorkflow:
         self._label_alias_map[key] = tuple(existing.values())
 
     def process_image(self, image: ImageInput) -> BuffWorkflowResult:
-        bgr, (_, height) = _image_to_bgr(image)
-        ocr_result, _ = cast(RapidOCR, self.engine)(bgr)
+        rgb, (_, height) = _image_to_rgb(image)
+        ocr_result, _ = run_ocr(rgb, engine=self.engine)
         detections = _detections_from_result(ocr_result or [])
         if not detections:
             return BuffWorkflowResult(slots=[], buff_types=[], buff_values=[])
@@ -336,11 +336,11 @@ class BuffWorkflow:
                 )
                 buff_types.append(None)
                 buff_values.append(None)
-                continue
+                break
 
-            locked_match = _LOCK_PATTERN.search(status_key)
-            if locked_match:
-                requirement = int(locked_match.group(1))
+            lock_match = _LOCK_PATTERN.search(status_key)
+            if lock_match:
+                requirement = int(lock_match.group(1))
                 slots.append(
                     BuffSlotResult(
                         index=index,
@@ -358,27 +358,25 @@ class BuffWorkflow:
                 )
                 buff_types.append(None)
                 buff_values.append(None)
-                continue
+                break
 
-            value_tokens = row[1:]
-            value_text = " ".join(token.text for token in value_tokens)
-            cleaned_value_text = _cleanup_value_token(value_text)
-            candidates = _value_candidate_list(value_text)
-
-            definition, normalized_value, matched_text = self._resolve_definition(raw_type_text, candidates)
+            value_text = "".join(det.text for det in row[1:]) if len(row) > 1 else ""
+            value_candidates = _value_candidate_list(value_text)
+            cleaned_value_text = value_candidates[0][0] if value_candidates else _cleanup_value_token(value_text)
+            definition, matched_value, matched_text = self._resolve_definition(raw_type_text, value_candidates)
 
             type_valid = definition is not None
-            value_valid = normalized_value is not None
+            value_valid = matched_value is not None and type_valid
 
             slot = BuffSlotResult(
                 index=index,
-                status="parsed" if type_valid and value_valid else "unmatched",
-                buff_type=definition.type_name if definition else None,
+                status="buff" if type_valid and value_valid else "unknown",
+                buff_type=definition.type_name if definition and value_valid else None,
                 buff_label=definition.label if definition else None,
-                normalized_value=normalized_value,
-                raw_type_text=raw_type_text,
-                raw_value_text=value_text.strip() or None,
-                cleaned_value_text=matched_text,
+                normalized_value=matched_value if value_valid else None,
+                raw_type_text=raw_type_text or None,
+                raw_value_text=value_text or None,
+                cleaned_value_text=matched_text or cleaned_value_text or None,
                 type_valid=type_valid,
                 value_valid=value_valid,
             )

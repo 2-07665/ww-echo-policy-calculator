@@ -1,0 +1,7 @@
+streamlit
+pywebview
+
+mss
+Pillow
+pywin32;
+onnxocr
