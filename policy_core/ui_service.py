@@ -171,7 +171,7 @@ class PolicyUIService:
         self._user_counts_path = Path(user_counts_path) if user_counts_path else USER_COUNTS_JSON_PATH
 
         self._ocr_enabled = bool(enable_ocr and HAVE_OCR_DEPS)
-        self._ocr_lock = threading.Lock()
+        self._ocr_lock = threading.RLock()
         self._ocr_service: EchoUpgradeOCRService | None = None
         self._ocr_logo: Image.Image | None = None  # type: ignore[assignment]
 
@@ -284,10 +284,12 @@ class PolicyUIService:
         if not self._ocr_enabled:
             status = serialize_ocr_status(None)
             status["detection_interval"] = None
+            status["detailed_interval"] = None
             return {"supported": False, "status": status}
 
         service = self._ensure_ocr_service()
         interval = None
+        detailed_interval = None
         if payload:
             raw_interval = payload.get("detection_interval")
             if raw_interval is not None:
@@ -295,10 +297,19 @@ class PolicyUIService:
                     interval = float(raw_interval)
                 except (TypeError, ValueError) as exc:
                     raise ValueError("detection_interval must be numeric.") from exc
+            raw_detailed = payload.get("detailed_interval")
+            if raw_detailed is not None:
+                try:
+                    detailed_interval = float(raw_detailed)
+                except (TypeError, ValueError) as exc:
+                    raise ValueError("detailed_interval must be numeric.") from exc
 
+        if detailed_interval is not None:
+            service.detailed_capture_delay = max(0.0, detailed_interval)
         service.start(detection_interval=interval)
         status = serialize_ocr_status(service.status())
         status["detection_interval"] = service.detection_interval
+        status["detailed_interval"] = service.detailed_capture_delay
         return {"supported": True, "status": status}
 
     def stop_ocr(self, _payload: Mapping[str, Any] | None = None) -> dict[str, Any]:
@@ -307,12 +318,14 @@ class PolicyUIService:
         if not self._ocr_enabled:
             status = serialize_ocr_status(None)
             status["detection_interval"] = None
+            status["detailed_interval"] = None
             return {"supported": False, "status": status}
 
         service = self._ensure_ocr_service()
         service.stop()
         status = serialize_ocr_status(service.status())
         status["detection_interval"] = service.detection_interval
+        status["detailed_interval"] = service.detailed_capture_delay
         return {"supported": True, "status": status}
 
     def poll_ocr_status(self, _payload: Mapping[str, Any] | None = None) -> dict[str, Any]:
@@ -321,6 +334,7 @@ class PolicyUIService:
         if not self._ocr_enabled:
             status = serialize_ocr_status(None)
             status["detection_interval"] = None
+            status["detailed_interval"] = None
             return {"supported": False, "status": status}
 
         with self._ocr_lock:
@@ -328,13 +342,13 @@ class PolicyUIService:
 
         if service is None:
             default_status = serialize_ocr_status(None)
-            default_status["detection_interval"] = float(
-                os.environ.get("OCR_DETECTION_INTERVAL", "15.0")
-            )
+            default_status["detection_interval"] = 2.0
+            default_status["detailed_interval"] = 0.2
             return {"supported": True, "status": default_status}
 
         status = serialize_ocr_status(service.status())
         status["detection_interval"] = service.detection_interval
+        status["detailed_interval"] = service.detailed_capture_delay
         return {"supported": True, "status": status}
 
     # ---- Platform info ---------------------------------------------------------
@@ -354,8 +368,8 @@ class PolicyUIService:
         with self._ocr_lock:
             if self._ocr_service is None:
                 window_title = os.environ.get("OCR_WINDOW_TITLE", "鸣潮  ")
-                detection_interval = float(os.environ.get("OCR_DETECTION_INTERVAL", "15.0"))
-                detailed_interval = float(os.environ.get("OCR_DETAILED_INTERVAL", "0.1"))
+                detection_interval = 2.0
+                detailed_interval = 0.2
                 logo = self._load_upgrade_logo()
                 self._ocr_service = EchoUpgradeOCRService(
                     window_title=window_title,

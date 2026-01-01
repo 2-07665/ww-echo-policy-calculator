@@ -3,22 +3,36 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import os
 import platform
 import shutil
 import subprocess
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ENTRY_POINT = REPO_ROOT / "webview_UI" / "app.py"
+ENTRY_POINT_OCR = REPO_ROOT / "webview_UI" / "app_ocr.py"
 ASSETS_DIR = REPO_ROOT / "webview_UI" / "assets"
 ASSET_BUNDLE_TARGET = "webview_assets"
 OPTIONAL_RESOURCE_FILES: tuple[tuple[Path, str], ...] = (
     (REPO_ROOT / "webview_UI" / "character_preset.json", "."),
     (REPO_ROOT / "webview_UI" / "user_counts_data.json", "."),
 )
+OCR_RESOURCE_FILES: tuple[tuple[Path, str], ...] = (
+    (REPO_ROOT / "policy_core" / "ocr" / "upgrade_page_logo.png", "policy_core/ocr"),
+)
+
+
+@dataclass(frozen=True)
+class BuildVariant:
+    name: str
+    entry_point: Path
+    extra_args: list[str] = field(default_factory=list)
+    extra_data: tuple[tuple[Path, str], ...] = ()
 
 
 def format_add_data(source: Path, destination: str) -> str:
@@ -58,15 +72,45 @@ def resolve_pyinstaller_command() -> list[str]:
     raise SystemExit("PyInstaller is not available. Install it with 'pip install pyinstaller' first.")
 
 
+def collect_onnxocr_data() -> tuple[tuple[Path, str], ...]:
+    """Locate non-Python data files bundled with the onnxocr package."""
+
+    try:
+        spec = importlib.util.find_spec("onnxocr")
+    except Exception:
+        return ()
+    if not spec or not spec.origin:
+        return ()
+    package_dir = Path(spec.origin).resolve().parent
+    if not package_dir.exists():
+        return ()
+
+    data_files: list[tuple[Path, str]] = []
+    for path in package_dir.rglob("*"):
+        if path.is_dir():
+            continue
+        if path.suffix in {".py", ".pyc", ".pyo"}:
+            continue
+        relative = path.relative_to(package_dir)
+        dest = "onnxocr"
+        if relative.parent.as_posix() != ".":
+            dest = f"{dest}/{relative.parent.as_posix()}"
+        data_files.append((path, dest))
+    return tuple(data_files)
+
+
 def build_command(
     base_cmd: list[str],
     args: argparse.Namespace,
     *,
     name: str,
+    entry_point: Path,
+    extra_args: Iterable[str] = (),
+    extra_data: Iterable[tuple[Path, str]] = (),
 ) -> tuple[list[str], dict[str, str]]:
     """Construct the PyInstaller command and accompanying environment."""
 
-    command = base_cmd + [str(ENTRY_POINT), "--name", name, "--noconfirm"]
+    command = base_cmd + [str(entry_point), "--name", name, "--noconfirm"]
 
     if args.clean:
         command.append("--clean")
@@ -82,10 +126,17 @@ def build_command(
                 print(f"Warning: requested bundle for missing resource {source}")
                 continue
             command.extend(["--add-data", format_add_data(source, destination)])
+    for source, destination in extra_data:
+        if not source.exists():
+            print(f"Warning: requested bundle for missing resource {source}")
+            continue
+        command.extend(["--add-data", format_add_data(source, destination)])
 
     env = os.environ.copy()
 
     for extra in args.pyinstaller_args:
+        command.append(extra)
+    for extra in extra_args:
         command.append(extra)
 
     return command, env
@@ -153,13 +204,30 @@ def resolve_target(value: str | None) -> str:
     return "linux"
 
 
-def determine_variant_names(args: argparse.Namespace, target: str) -> list[str]:
-    """Return the list of build artifact names to generate."""
+def determine_variants(args: argparse.Namespace, target: str) -> list[BuildVariant]:
+    """Return the list of build variants to generate."""
 
     base_name = args.name
     if args.target:
-        return [f"{base_name}-{target}"]
-    return [base_name]
+        base_name = f"{base_name}-{target}"
+
+    onnxocr_data = collect_onnxocr_data()
+
+    variants = [
+        BuildVariant(
+            name=base_name,
+            entry_point=ENTRY_POINT,
+            extra_args=["--exclude-module", "onnxocr"],
+            extra_data=(),
+        ),
+        BuildVariant(
+            name=f"{base_name}_ocr",
+            entry_point=ENTRY_POINT_OCR,
+            extra_args=[],
+            extra_data=OCR_RESOURCE_FILES + onnxocr_data,
+        ),
+    ]
+    return variants
 
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
@@ -208,6 +276,8 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
 def main(argv: Iterable[str] | None = None) -> None:
     if not ENTRY_POINT.exists():
         raise FileNotFoundError(f"Cannot find webview_UI entry point at {ENTRY_POINT!s}")
+    if not ENTRY_POINT_OCR.exists():
+        raise FileNotFoundError(f"Cannot find webview_UI entry point at {ENTRY_POINT_OCR!s}")
     if not ASSETS_DIR.exists():
         raise FileNotFoundError(f"Cannot locate webview_UI assets at {ASSETS_DIR!s}")
     args = parse_args(argv)
@@ -224,17 +294,20 @@ def main(argv: Iterable[str] | None = None) -> None:
             )
 
     target = resolve_target(args.target)
-    variant_names = determine_variant_names(args, target)
+    variants = determine_variants(args, target)
     base_cmd = resolve_pyinstaller_command()
-    for variant_name in variant_names:
+    for variant in variants:
         command, env = build_command(
             base_cmd,
             args,
-            name=variant_name,
+            name=variant.name,
+            entry_point=variant.entry_point,
+            extra_args=variant.extra_args,
+            extra_data=variant.extra_data,
         )
-        cleanup_previous_outputs(variant_name, args.onefile)
+        cleanup_previous_outputs(variant.name, args.onefile)
 
-        print(f"Building PyWebview app ({variant_name}) with command:")
+        print(f"Building PyWebview app ({variant.name}) with command:")
         print("  " + " ".join(command))
 
         try:
@@ -242,7 +315,7 @@ def main(argv: Iterable[str] | None = None) -> None:
         except subprocess.CalledProcessError as exc:
             raise SystemExit(exc.returncode) from exc
 
-        output_dir = REPO_ROOT / "dist" / variant_name
+        output_dir = REPO_ROOT / "dist" / variant.name
         if args.onefile:
             output_dir = REPO_ROOT / "dist"
         if output_dir.exists():

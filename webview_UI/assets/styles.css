@@ -600,6 +600,69 @@ input[type='number'] {
   padding: 0.8rem 0;
 }
 
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: rgba(148, 163, 184, 0.2);
+  color: #475569;
+}
+
+.status-pill.active {
+  background: rgba(34, 197, 94, 0.18);
+  color: #166534;
+}
+
+.status-pill.warning {
+  background: rgba(250, 204, 21, 0.2);
+  color: #92400e;
+}
+
+.status-pill.error {
+  background: rgba(248, 113, 113, 0.18);
+  color: #b91c1c;
+}
+
+.ocr-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.6rem 1rem;
+}
+
+.ocr-status-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  background: rgba(226, 232, 240, 0.55);
+}
+
+.ocr-status-label {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.ocr-error {
+  margin-top: 0.8rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(248, 113, 113, 0.14);
+  color: #b91c1c;
+  font-size: 0.9rem;
+  display: none;
+}
+
+#ocr-unavailable:empty {
+  display: none;
+}
+
 @media (max-width: 768px) {
   #app {
     padding: 1.8rem 1.1rem 2.4rem;

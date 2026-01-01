@@ -121,7 +121,7 @@ class EchoUpgradeOCRService:
                 detection_frame = self.capture.grab(crop=self.detection_crop)
                 if not is_upgrade_page(detection_frame, self.upgrade_logo, self.page_match):
                     debug.on_upgrade_page = False
-                    debug.last_error = "已找到窗口，但未检测到升级界面。"
+                    debug.last_error = None
                     debug.last_ocr_duration = None
                     self._record(debug, None, None)
                     self._wait_remaining(start_time)

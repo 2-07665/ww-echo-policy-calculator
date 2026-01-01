@@ -7,18 +7,21 @@ from pathlib import Path
 import webview as pywebview
 
 if __package__ in {None, ""}:
+    # Ensure project root is on sys.path when launched as `python webview_UI/app_ocr.py`.
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from webview_UI.api import WebviewApi  # type: ignore[import-self]
 else:
     from .api import WebviewApi
 
-
 def resolve_assets_dir() -> Path:
+    """Locate the UI assets, handling both local and PyInstaller contexts."""
+
     frozen_base = getattr(sys, "_MEIPASS", None)
     if frozen_base:
         candidate = Path(frozen_base) / "webview_assets"
         if candidate.exists():
             return candidate
+
     return Path(__file__).resolve().parent / "assets"
 
 
@@ -27,7 +30,9 @@ INDEX_FILE = ASSETS_DIR / "index.html"
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Launch the PyWebview Echo Policy Calculator UI.")
+    parser = argparse.ArgumentParser(
+        description="Launch the PyWebview Echo Policy Calculator UI (OCR enabled)."
+    )
     parser.add_argument(
         "--debug",
         action="store_true",
@@ -42,7 +47,7 @@ def main() -> None:
     if not INDEX_FILE.exists():
         raise FileNotFoundError(f"Unable to locate UI assets at {INDEX_FILE!s}")
 
-    api = WebviewApi(enable_ocr=False)
+    api = WebviewApi()
     pywebview.create_window(
         "声骸强化策略计算器",
         str(INDEX_FILE),

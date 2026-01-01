@@ -48,12 +48,13 @@ def resource_path(filename: str) -> Path:
 class WebviewApi:
     """Bridge exposed to the JavaScript layer within the PyWebview UI."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, enable_ocr: bool = True) -> None:
         preset_path = resource_path("character_preset.json")
         user_counts_path = resource_path("user_counts_data.json")
         self._service = PolicyUIService(
             preset_path=preset_path,
             user_counts_path=user_counts_path,
+            enable_ocr=enable_ocr,
         )
 
     # ---- Policy operations -------------------------------------------------
@@ -69,6 +70,20 @@ class WebviewApi:
 
     def policy_suggestion(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         return self._service.policy_suggestion(payload)
+
+    # ---- OCR operations -----------------------------------------------------
+
+    def ocr_capabilities(self, payload: Mapping[str, Any] | None = None) -> dict[str, Any]:
+        return self._service.ocr_capabilities(payload)
+
+    def start_ocr(self, payload: Mapping[str, Any] | None = None) -> dict[str, Any]:
+        return self._service.start_ocr(payload)
+
+    def stop_ocr(self, payload: Mapping[str, Any] | None = None) -> dict[str, Any]:
+        return self._service.stop_ocr(payload)
+
+    def poll_ocr_status(self, payload: Mapping[str, Any] | None = None) -> dict[str, Any]:
+        return self._service.poll_ocr_status(payload)
 
     # ---- Platform info -----------------------------------------------------
 

@@ -237,7 +237,7 @@ class BuffWorkflow:
         max_slots: int = 5,
         row_tolerance_ratio: float = 0.035,
     ) -> None:
-        self.engine = engine or get_ocr_engine()
+        self.engine = engine
         self.max_slots = max(1, max_slots)
         self.row_tolerance_ratio = max(0.0, row_tolerance_ratio)
 
@@ -281,6 +281,8 @@ class BuffWorkflow:
         self._label_alias_map[key] = tuple(existing.values())
 
     def process_image(self, image: ImageInput) -> BuffWorkflowResult:
+        if self.engine is None:
+            self.engine = get_ocr_engine()
         rgb, (_, height) = _image_to_rgb(image)
         ocr_result, _ = run_ocr(rgb, engine=self.engine)
         detections = _detections_from_result(ocr_result or [])

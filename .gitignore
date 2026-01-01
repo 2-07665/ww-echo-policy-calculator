@@ -35,9 +35,9 @@ pnpm-debug.log*
 .idea/
 .vscode/
 
-build
-dist
-.spec
+build/
+dist/
+*.spec
 
 #
 captures/

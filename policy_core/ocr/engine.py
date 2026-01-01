@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import contextlib
+import sys
 import threading
+import warnings
 from time import perf_counter
 from typing import Iterable, Sequence
 
@@ -12,6 +15,52 @@ from .common import ImageInput, ensure_pil_image
 _ENGINE_LOCK = threading.Lock()
 _ENGINE: ONNXPaddleOcr | None = None
 _LAST_DURATION = 0.0
+_NOISE_PATTERNS = (
+    "CUDAExecutionProvider",
+    "angle classifier is not initialized",
+)
+
+
+class _FilteredStream:
+    def __init__(self, stream: object, patterns: tuple[str, ...]) -> None:
+        self._stream = stream
+        self._patterns = patterns
+        self._buffer = ""
+
+    def write(self, data: str) -> int:
+        if not data:
+            return 0
+        text = str(data)
+        self._buffer += text
+        total = len(text)
+        lines = self._buffer.splitlines(keepends=True)
+        if lines and not lines[-1].endswith(("\n", "\r")):
+            self._buffer = lines.pop()
+        else:
+            self._buffer = ""
+        for line in lines:
+            if any(pattern in line for pattern in self._patterns):
+                continue
+            self._stream.write(line)  # type: ignore[call-arg]
+        return total
+
+    def flush(self) -> None:
+        if self._buffer:
+            if not any(pattern in self._buffer for pattern in self._patterns):
+                self._stream.write(self._buffer)  # type: ignore[call-arg]
+            self._buffer = ""
+        return self._stream.flush()  # type: ignore[call-arg]
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._stream, name)
+
+
+@contextlib.contextmanager
+def _suppress_ocr_noise() -> Iterable[None]:
+    stdout = _FilteredStream(sys.stdout, _NOISE_PATTERNS)
+    stderr = _FilteredStream(sys.stderr, _NOISE_PATTERNS)
+    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+        yield
 
 
 def _to_ocr_array(image: ImageInput) -> np.ndarray:
@@ -36,15 +85,35 @@ def get_ocr_engine() -> ONNXPaddleOcr:
     global _ENGINE
     with _ENGINE_LOCK:
         if _ENGINE is None:
-            _ENGINE = ONNXPaddleOcr()
+            warnings.filterwarnings(
+                "ignore",
+                message=r"Specified provider 'CUDAExecutionProvider' is not in available provider names\..*",
+                category=UserWarning,
+                module=r"onnxruntime\..*",
+            )
+            with _suppress_ocr_noise():
+                try:
+                    _ENGINE = ONNXPaddleOcr(
+                        use_angle_cls=False,
+                        providers=["CPUExecutionProvider"],
+                    )
+                except TypeError:
+                    try:
+                        _ENGINE = ONNXPaddleOcr(use_angle_cls=False)
+                    except TypeError:
+                        try:
+                            _ENGINE = ONNXPaddleOcr(providers=["CPUExecutionProvider"])
+                        except TypeError:
+                            _ENGINE = ONNXPaddleOcr()
         return _ENGINE
 
 
 def _call_engine(engine: object, image: np.ndarray) -> object:
-    if hasattr(engine, "ocr") and callable(getattr(engine, "ocr")):
-        return engine.ocr(image)  # type: ignore[no-any-return]
-    if callable(engine):
-        return engine(image)  # type: ignore[no-any-return]
+    with _suppress_ocr_noise():
+        if hasattr(engine, "ocr") and callable(getattr(engine, "ocr")):
+            return engine.ocr(image)  # type: ignore[no-any-return]
+        if callable(engine):
+            return engine(image)  # type: ignore[no-any-return]
     raise TypeError("onnxocr engine is not callable and has no .ocr method.")
 
 

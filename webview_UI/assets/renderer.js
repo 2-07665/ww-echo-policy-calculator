@@ -36,11 +36,16 @@
     includeUserCounts: false,
     userCountsAvailable: false,
     userCountsPath: '',
+    ocrSupported: false,
+    ocrActive: false,
+    ocrLastTimestamp: null,
+    ocrDetectionInterval: 2.0,
   };
 
   const elements = {};
   const weightInputRefs = new Map();
   let suggestionRequestToken = 0;
+  let ocrPollHandle = null;
 
   function getPywebviewApi() {
     if (window.pywebview && window.pywebview.api) {
@@ -89,6 +94,7 @@
       computeContributions();
       renderBuffSlots();
       renderTotalScoreCard();
+      await initOcr();
       updateComputeButtonState();
       renderResults();
     } catch (error) {
@@ -117,6 +123,16 @@
     elements.simulationSeedInput = document.getElementById('simulation-seed-input');
     elements.computeButton = document.getElementById('compute-button');
     elements.resultsSection = document.getElementById('results-section');
+    elements.ocrCard = document.getElementById('ocr-card');
+    elements.ocrStatusPill = document.getElementById('ocr-status-pill');
+    elements.ocrUnavailable = document.getElementById('ocr-unavailable');
+    elements.ocrControls = document.getElementById('ocr-controls');
+    elements.ocrToggleButton = document.getElementById('ocr-toggle');
+    elements.ocrRefreshButton = document.getElementById('ocr-refresh');
+    elements.ocrIntervalInput = document.getElementById('ocr-interval-input');
+    elements.ocrWindowStatus = document.getElementById('ocr-window-status');
+    elements.ocrPageStatus = document.getElementById('ocr-page-status');
+    elements.ocrError = document.getElementById('ocr-error');
   }
 
   async function resolvePlatform() {
@@ -387,6 +403,279 @@
       handleCompute();
     });
 
+    if (elements.ocrToggleButton) {
+      elements.ocrToggleButton.addEventListener('click', () => {
+        if (state.ocrActive) {
+          stopOcr();
+        } else {
+          startOcr();
+        }
+      });
+    }
+
+    if (elements.ocrRefreshButton) {
+      elements.ocrRefreshButton.addEventListener('click', () => {
+        refreshOcrStatus({ applyResult: true, showErrors: true });
+      });
+    }
+  }
+
+  async function initOcr() {
+    if (!elements.ocrCard) {
+      return;
+    }
+    if (!window.api || typeof window.api.ocrCapabilities !== 'function') {
+      hideOcrCard();
+      return;
+    }
+
+    try {
+      const response = await window.api.ocrCapabilities();
+      state.ocrSupported = Boolean(response.supported);
+    } catch (error) {
+      console.error('Failed to fetch OCR capabilities', error);
+      hideOcrCard();
+      return;
+    }
+
+    if (!state.ocrSupported) {
+      hideOcrCard();
+      return;
+    }
+
+    elements.ocrControls.style.display = '';
+    elements.ocrUnavailable.textContent = '';
+    elements.ocrUnavailable.style.display = 'none';
+    elements.ocrIntervalInput.value = state.ocrDetectionInterval;
+    setOcrStatusPill('未启用', 'warning');
+    setOcrToggleButton(false);
+
+    await refreshOcrStatus({ applyResult: false, showErrors: false });
+  }
+
+  function hideOcrCard() {
+    if (elements.ocrCard) {
+      elements.ocrCard.style.display = 'none';
+    }
+  }
+
+  function setOcrStatusPill(text, tone) {
+    if (!elements.ocrStatusPill) {
+      return;
+    }
+    elements.ocrStatusPill.textContent = text;
+    elements.ocrStatusPill.classList.remove('active', 'warning', 'error');
+    if (tone) {
+      elements.ocrStatusPill.classList.add(tone);
+    }
+  }
+
+  function setOcrToggleButton(active) {
+    if (!elements.ocrToggleButton) {
+      return;
+    }
+    elements.ocrToggleButton.textContent = active ? '停用 OCR' : '启用 OCR';
+    elements.ocrToggleButton.classList.toggle('primary-button', !active);
+    elements.ocrToggleButton.classList.toggle('secondary-button', active);
+    elements.ocrToggleButton.disabled = false;
+  }
+
+  function startOcrPolling() {
+    if (ocrPollHandle) {
+      return;
+    }
+    ocrPollHandle = setInterval(() => {
+      refreshOcrStatus({ applyResult: true, showErrors: false });
+    }, 1000);
+  }
+
+  function stopOcrPolling() {
+    if (!ocrPollHandle) {
+      return;
+    }
+    clearInterval(ocrPollHandle);
+    ocrPollHandle = null;
+  }
+
+  async function startOcr() {
+    if (!state.ocrSupported) {
+      return;
+    }
+    if (!window.api || typeof window.api.startOcr !== 'function') {
+      showOcrError('OCR 接口未准备好，请稍后再试。');
+      return;
+    }
+    const detectionInterval = clampNumber(
+      Number(elements.ocrIntervalInput.value),
+      1.0,
+      60.0,
+      state.ocrDetectionInterval,
+    );
+    const detailedInterval = 0.2;
+    elements.ocrIntervalInput.value = detectionInterval.toFixed(1);
+    state.ocrDetectionInterval = detectionInterval;
+
+    elements.ocrToggleButton.disabled = true;
+    elements.ocrToggleButton.textContent = '启动中...';
+    try {
+      const response = await window.api.startOcr({
+        detection_interval: detectionInterval,
+        detailed_interval: detailedInterval,
+      });
+      if (!response.supported) {
+        showOcrError('当前版本未启用 OCR。');
+        setOcrStatusPill('不可用', 'error');
+        setOcrToggleButton(false);
+        return;
+      }
+      state.ocrActive = Boolean(response.status?.active);
+      updateOcrStatus(response.status);
+      setOcrStatusPill('运行中', 'active');
+      setOcrToggleButton(true);
+      startOcrPolling();
+    } catch (error) {
+      console.error('Failed to start OCR', error);
+      showOcrError(`启动 OCR 失败：${error.message || error}`);
+      setOcrStatusPill('启动失败', 'error');
+      setOcrToggleButton(false);
+    } finally {
+      elements.ocrToggleButton.disabled = false;
+    }
+  }
+
+  async function stopOcr() {
+    if (!state.ocrSupported) {
+      return;
+    }
+    if (!window.api || typeof window.api.stopOcr !== 'function') {
+      showOcrError('OCR 接口未准备好，请稍后再试。');
+      return;
+    }
+    elements.ocrToggleButton.disabled = true;
+    elements.ocrToggleButton.textContent = '停止中...';
+    try {
+      const response = await window.api.stopOcr();
+      state.ocrActive = false;
+      updateOcrStatus(response.status);
+      setOcrStatusPill('已停用', 'warning');
+      setOcrToggleButton(false);
+    } catch (error) {
+      console.error('Failed to stop OCR', error);
+      showOcrError(`停止 OCR 失败：${error.message || error}`);
+    } finally {
+      stopOcrPolling();
+      elements.ocrToggleButton.disabled = false;
+    }
+  }
+
+  async function refreshOcrStatus({ applyResult, showErrors }) {
+    if (!state.ocrSupported || !window.api || typeof window.api.pollOcrStatus !== 'function') {
+      return;
+    }
+    try {
+      const response = await window.api.pollOcrStatus();
+      if (!response.supported) {
+        return;
+      }
+      updateOcrStatus(response.status);
+      if (response.status?.active) {
+        setOcrStatusPill('运行中', 'active');
+        state.ocrActive = true;
+        setOcrToggleButton(true);
+        startOcrPolling();
+      } else {
+        setOcrStatusPill('已停用', 'warning');
+        state.ocrActive = false;
+        setOcrToggleButton(false);
+        stopOcrPolling();
+      }
+      if (applyResult) {
+        applyOcrResult(response.status);
+      }
+    } catch (error) {
+      if (showErrors) {
+        showOcrError(`获取 OCR 状态失败：${error.message || error}`);
+      }
+    }
+  }
+
+  function updateOcrStatus(status) {
+    if (!status || !elements.ocrWindowStatus) {
+      return;
+    }
+    if (status.detection_interval != null && elements.ocrIntervalInput) {
+      state.ocrDetectionInterval = Number(status.detection_interval);
+      elements.ocrIntervalInput.value = state.ocrDetectionInterval.toFixed(1);
+    }
+    const debug = status.debug || {};
+    elements.ocrWindowStatus.textContent = debug.window_found ? '已找到' : '未找到';
+    elements.ocrPageStatus.textContent = debug.on_upgrade_page ? '是' : '否';
+    if (debug.last_error) {
+      if (debug.last_error.includes('未检测到升级界面')) {
+        hideOcrError();
+      } else {
+        showOcrError(debug.last_error);
+      }
+    } else {
+      hideOcrError();
+    }
+  }
+
+  function applyOcrResult(status) {
+    if (!status || !status.active) {
+      return;
+    }
+    if (!status.debug || !status.debug.on_upgrade_page) {
+      return;
+    }
+    if (!status.result || !Array.isArray(status.result.buff_names)) {
+      return;
+    }
+    if (status.result_timestamp && status.result_timestamp === state.ocrLastTimestamp) {
+      return;
+    }
+    state.ocrLastTimestamp = status.result_timestamp ?? null;
+
+    const names = status.result.buff_names;
+    const values = Array.isArray(status.result.buff_values) ? status.result.buff_values : [];
+
+    for (let idx = 0; idx < state.maxSelectedTypes; idx += 1) {
+      const name = names[idx] || null;
+      if (!name || !state.buffTypes.includes(name)) {
+        state.buffSelections[idx] = null;
+        state.buffValues[idx] = null;
+        continue;
+      }
+      state.buffSelections[idx] = name;
+      const rawValue = values[idx];
+      const numericValue = rawValue != null ? Number(rawValue) : null;
+      const options = state.buffValueOptions.get(name) ?? [];
+      state.buffValues[idx] = options.includes(numericValue) ? numericValue : null;
+    }
+
+    computeContributions();
+    renderBuffSlots();
+    renderTotalScoreCard();
+    updateComputeButtonState();
+    if (state.resultId) {
+      updateSuggestion();
+    }
+  }
+
+  function showOcrError(message) {
+    if (!elements.ocrError) {
+      return;
+    }
+    elements.ocrError.textContent = message;
+    elements.ocrError.style.display = 'block';
+  }
+
+  function hideOcrError() {
+    if (!elements.ocrError) {
+      return;
+    }
+    elements.ocrError.textContent = '';
+    elements.ocrError.style.display = 'none';
   }
 
   function clampNumber(value, min, max, fallback) {

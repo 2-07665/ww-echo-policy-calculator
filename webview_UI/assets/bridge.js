@@ -55,6 +55,18 @@
     async policySuggestion(payload) {
       return callPyApi('policy_suggestion', payload);
     },
+    async ocrCapabilities() {
+      return callPyApi('ocr_capabilities');
+    },
+    async startOcr(payload) {
+      return callPyApi('start_ocr', payload);
+    },
+    async stopOcr(payload) {
+      return callPyApi('stop_ocr');
+    },
+    async pollOcrStatus() {
+      return callPyApi('poll_ocr_status');
+    },
   };
 
   window.api = bridge;

@@ -20,7 +20,34 @@
         <div id="weight-inputs" class="weight-grid"></div>
       </section>
 
-      <hr class="divider" />
+      <section class="card" id="ocr-card">
+        <div class="card-title row">
+          <span>OCR 自动识别</span>
+          <span id="ocr-status-pill" class="status-pill">未启用</span>
+        </div>
+        <p id="ocr-unavailable" class="hint-text warning"></p>
+        <div id="ocr-controls">
+          <div class="field-group inline">
+            <button type="button" id="ocr-toggle" class="primary-button">启用 OCR</button>
+            <button type="button" id="ocr-refresh" class="secondary-button">立即刷新</button>
+          </div>
+          <div class="field-group">
+            <label for="ocr-interval-input">检测间隔 (秒)</label>
+            <input id="ocr-interval-input" type="number" min="1" step="0.5" />
+          </div>
+          <div class="ocr-status-grid">
+            <div class="ocr-status-item">
+              <span class="ocr-status-label">窗口</span>
+              <span id="ocr-window-status">-</span>
+            </div>
+            <div class="ocr-status-item">
+              <span class="ocr-status-label">升级界面</span>
+              <span id="ocr-page-status">-</span>
+            </div>
+          </div>
+          <div id="ocr-error" class="ocr-error"></div>
+        </div>
+      </section>
 
       <section class="card" id="buff-slots-card">
         <div class="card-title row">
