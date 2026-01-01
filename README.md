@@ -11,20 +11,19 @@
   - OCR 模块：仅 Windows（依赖 Win32 API）
 
 ## 安装
-建议使用虚拟环境：
+求解器本身无需依赖即可使用。
+
+可按需安装前端依赖：
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-```
 
-按需安装前端依赖：
-```bash
 pip install pywebview
-
+#或
 pip install streamlit
 ```
 
-可选：安装 OCR 依赖（Windows 实验性）
+可选：安装 OCR 依赖（仅支持Windows平台与PyWebview）
 ```bash
 pip install -r requirements_ocr.txt
 ```
@@ -33,6 +32,10 @@ pip install -r requirements_ocr.txt
 ### PyWebview
 ```bash
 python webview_UI/app.py
+```
+启动支持OCR的前端
+```bash
+python webview_UI/app_ocr.py
 ```
 
 ### Streamlit
@@ -59,9 +62,6 @@ python scripts/build_webview.py
 ```
 
 输出位于 `dist/` 目录。
-
-## OCR（实验性）
-自动截取升级界面并识别副词条。当前前端未内置完整 OCR 操作面板；如需编程控制，可参考 `test/ocr_test`。
 
 ## 致谢（Acknowledgements）
 
