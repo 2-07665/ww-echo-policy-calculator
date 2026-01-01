@@ -63,5 +63,14 @@ python scripts/build_webview.py
 ## OCR（实验性）
 自动截取升级界面并识别副词条。当前前端未内置完整 OCR 操作面板；如需编程控制，可参考 `test/ocr_test`。
 
-## 词条统计数据
-- Bilibili [@IceHe何瀚清](https://space.bilibili.com/13378662)
+## 致谢（Acknowledgements）
+
+### 赞助
+特别感谢 Bilibili **[@冬葳蕤](https://space.bilibili.com/58999432)** 自发组织的库洛游戏二创激励计划为本项目提供的赞助。
+
+### 词条统计数据来源
+本项目使用的副词条产出统计数据来自：
+- Bilibili **[@IceHe何瀚清](https://space.bilibili.com/13378662)**
+
+### 讨论与交流
+- Bilibili **[@冰封_](https://space.bilibili.com/88548986)**
