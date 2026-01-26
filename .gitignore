@@ -41,3 +41,6 @@ dist/
 
 #
 captures/
+
+# rust
+target/
