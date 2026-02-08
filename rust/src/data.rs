@@ -1,17 +1,16 @@
-pub const TOTAL_BUFF_TYPES: usize = 13;
-pub const MAX_SELECTED_TYPES: usize = 5;
+pub const NUM_BUFFS: usize = 13;
+pub const NUM_ECHO_SLOTS: usize = 5;
 
 pub type Histogram = &'static [(u16, u32)];
 
-pub struct BuffTypeData {
-    // Percentage stats use a fixed scale (e.g., 6.3% stored as 63 in 0.1% units); flat stats store raw values.
+pub struct BuffData {
     #[allow(dead_code)]
     pub name: &'static str,
-    pub max_value: u16,
     pub histogram: Histogram,
 }
 
 // Source: Bilibili @IceHe何瀚清 (https://space.bilibili.com/13378662)
+// Percentage stats use a fixed scale (e.g., 6.3% stored as 63 in 0.1% units); flat stats store raw values.
 pub const HIST_CRIT_RATE: Histogram = &[
     (63, 1036),
     (69, 964),
@@ -125,70 +124,61 @@ pub const HIST_ULT_DAMAGE: Histogram = &[
     (116, 144),
 ];
 
-pub const BUFF_TYPES: [BuffTypeData; TOTAL_BUFF_TYPES] = [
-    BuffTypeData {
+pub const BUFF_MAX_VALUES: [f64; NUM_BUFFS] = [
+    105.0, 210.0, 116.0, 147.0, 116.0, 60.0, 70.0, 580.0, 124.0, 116.0, 116.0, 116.0, 116.0,
+];
+
+pub static BUFF_TYPES: [BuffData; NUM_BUFFS] = [
+    BuffData {
         name: "Crit. Rate",
-        max_value: 105,
         histogram: HIST_CRIT_RATE,
     },
-    BuffTypeData {
+    BuffData {
         name: "Crit. DMG",
-        max_value: 210,
         histogram: HIST_CRIT_DAMAGE,
     },
-    BuffTypeData {
+    BuffData {
         name: "ATK%",
-        max_value: 116,
         histogram: HIST_ATTACK,
     },
-    BuffTypeData {
+    BuffData {
         name: "DEF%",
-        max_value: 147,
         histogram: HIST_DEFENSE,
     },
-    BuffTypeData {
+    BuffData {
         name: "HP%",
-        max_value: 116,
         histogram: HIST_HP,
     },
-    BuffTypeData {
+    BuffData {
         name: "ATK",
-        max_value: 60,
         histogram: HIST_ATTACK_FLAT,
     },
-    BuffTypeData {
+    BuffData {
         name: "DEF",
-        max_value: 70,
         histogram: HIST_DEFENSE_FLAT,
     },
-    BuffTypeData {
+    BuffData {
         name: "HP",
-        max_value: 580,
         histogram: HIST_HP_FLAT,
     },
-    BuffTypeData {
+    BuffData {
         name: "Energy Regen",
-        max_value: 124,
         histogram: HIST_ER,
     },
-    BuffTypeData {
+    BuffData {
         name: "Basic Attack DMG Bonus",
-        max_value: 116,
         histogram: HIST_BASIC_ATTACK_DAMAGE,
     },
-    BuffTypeData {
+    BuffData {
         name: "Heavy Attack DMG Bonus",
-        max_value: 116,
         histogram: HIST_HEAVY_ATTACK_DAMAGE,
     },
-    BuffTypeData {
+    BuffData {
         name: "Resonance Skill DMG Bonus",
-        max_value: 116,
         histogram: HIST_SKILL_DAMAGE,
     },
-    BuffTypeData {
+    BuffData {
         name: "Resonance Liberation DMG Bonus",
-        max_value: 116,
         histogram: HIST_ULT_DAMAGE,
     },
 ];
