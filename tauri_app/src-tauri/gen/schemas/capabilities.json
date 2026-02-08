@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default capability for the Echo desktop app","local":true,"windows":["main"],"permissions":["core:default"]}}

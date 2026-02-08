@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capability for the Echo desktop app",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

@@ -1,0 +1,13 @@
+[package]
+name = "echo_calculator_app"
+version = "0.1.0"
+description = "Rust desktop app layer for Echo Calculator"
+edition = "2024"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+tauri = { version = "2", features = [] }
+ww_echo_policy = { path = "../../rust" }
