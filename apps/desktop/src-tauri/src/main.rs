@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
 use tauri::State;
-use ww_echo_policy::{
+use echo_policy::{
     bits_to_mask, mask_to_bits, CostModel, FixedScorer, LinearScorer, RerollPolicySolver, Scorer,
     UpgradePolicySolver, SCORE_MULTIPLIER,
 };

@@ -639,12 +639,19 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
 name = "echo_calculator_app"
-version = "0.1.0"
+version = "2.0.0"
 dependencies = [
+ "echo_policy",
  "serde",
  "tauri",
  "tauri-build",
- "ww_echo_policy",
+]
+
+[[package]]
+name = "echo_policy"
+version = "0.1.0"
+dependencies = [
+ "rayon",
 ]
 
 [[package]]
@@ -4524,13 +4531,6 @@ dependencies = [
  "windows-core 0.61.2",
  "windows-version",
  "x11-dl",
-]
-
-[[package]]
-name = "ww_echo_policy"
-version = "0.1.0"
-dependencies = [
- "rayon",
 ]
 
 [[package]]

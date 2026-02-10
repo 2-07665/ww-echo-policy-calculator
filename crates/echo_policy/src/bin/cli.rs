@@ -1,9 +1,9 @@
 #[allow(dead_code)]
-fn policy_exmaple() {
+fn policy_example() {
     use std::time::Instant;
 
-    use ww_echo_policy::{CostModel, LinearScorer, Scorer, UpgradePolicySolver};
-    use ww_echo_policy::{bits_to_mask, mask_to_bits};
+    use echo_policy::{CostModel, LinearScorer, Scorer, UpgradePolicySolver};
+    use echo_policy::{bits_to_mask, mask_to_bits};
 
     const BUFF_WEIGHTS: [f64; 13] = [
         388.0,  // Crit. Rate
@@ -79,11 +79,11 @@ fn policy_exmaple() {
     )
 }
 
-fn reroll_exmaple() {
+fn reroll_example() {
     use std::time::Instant;
 
-    use ww_echo_policy::RerollPolicySolver;
-    use ww_echo_policy::{bits_to_mask, mask_to_bits};
+    use echo_policy::RerollPolicySolver;
+    use echo_policy::{bits_to_mask, mask_to_bits};
 
     const BUFF_WEIGHTS: [f64; 13] = [
         3.0, // Crit. Rate
@@ -136,7 +136,7 @@ fn reroll_exmaple() {
 }
 
 fn main() {
-    // policy_exmaple();
+    // policy_example();
 
-    reroll_exmaple();
+    reroll_example();
 }

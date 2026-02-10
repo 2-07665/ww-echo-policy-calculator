@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Echo Calculator",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "identifier": "com.echo.calculator",
   "build": {
     "frontendDist": "../ui"
@@ -11,7 +11,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "鸣潮声骸强化策略计算器",
+        "title": "声骸强化策略计算器",
         "width": 940,
         "height": 880,
         "minWidth": 940,
@@ -24,8 +24,11 @@
     }
   },
   "bundle": {
-    "active": true,
-    "targets": ["app"],
-    "icon": []
+    "active": false,
+    "icon": [
+      "icons/icon.ico",
+      "icons/icon.png",
+      "icons/icon.icns"
+    ]
   }
 }

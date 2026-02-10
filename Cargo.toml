@@ -1,0 +1,4 @@
+[workspace]
+members = ["crates/echo_policy", "apps/desktop/src-tauri"]
+resolver = "2"
+

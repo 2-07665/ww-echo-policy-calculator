@@ -1,5 +1,5 @@
 [package]
-name = "ww_echo_policy"
+name = "echo_policy"
 version = "0.1.0"
 edition = "2024"
 
