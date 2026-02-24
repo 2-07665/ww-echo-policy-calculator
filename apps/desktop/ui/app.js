@@ -610,12 +610,33 @@
       label.textContent = state.buffLabels[buffName] ?? buffName;
 
       const input = document.createElement('input');
-      input.type = 'number';
-      input.step = fixedMode ? '1' : '0.1';
-      input.min = '0';
+      input.type = fixedMode ? 'number' : 'text';
+      if (fixedMode) {
+        input.step = '1';
+        input.min = '0';
+      } else {
+        input.inputMode = 'decimal';
+      }
       input.value = fixedMode
         ? String(Math.max(0, Math.round(numberOr(weightMap[buffName], 0))))
         : String(numberOr(weightMap[buffName], 0));
+
+      if (!fixedMode) {
+        input.addEventListener('input', () => {
+          let sanitized = input.value
+            .replace(/[，。,]/g, '.')
+            .replace(/[^\d.]/g, '');
+          const firstDot = sanitized.indexOf('.');
+          if (firstDot !== -1) {
+            sanitized =
+              sanitized.slice(0, firstDot + 1) + sanitized.slice(firstDot + 1).replace(/\./g, '');
+          }
+          if (sanitized.startsWith('.')) {
+            sanitized = `0${sanitized}`;
+          }
+          input.value = sanitized;
+        });
+      }
 
       input.addEventListener('change', async () => {
         if (fixedMode) {
@@ -626,9 +647,8 @@
           weightMap[buffName] = nextValue;
           input.value = String(nextValue);
         } else {
-          const nextValue = Math.max(0, numberOr(input.valueAsNumber, 0));
+          const nextValue = Math.max(0, numberOr(Number(input.value), 0));
           weightMap[buffName] = nextValue;
-          input.value = String(nextValue);
         }
         await onWeightsUpdated();
       });
