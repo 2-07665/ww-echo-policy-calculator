@@ -1,0 +1,61 @@
+{
+  "presets": [
+    {
+      "presetName": "爱弥斯 4C 暴击/暴击伤害",
+      "weights": {
+        "Crit_Rate": 2.0,
+        "Crit_Damage": 1.0,
+        "Attack": 1.1,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.1,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 0.2,
+        "Basic_Attack_Damage": 0.0,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.0,
+        "Ult_Damage": 0.91
+      },
+      "mainBuffScore": 14.75
+    },
+    {
+      "presetName": "爱弥斯 3C 热熔/攻击",
+      "weights": {
+        "Crit_Rate": 2.0,
+        "Crit_Damage": 1.0,
+        "Attack": 1.1,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.1,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 0.2,
+        "Basic_Attack_Damage": 0.0,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.0,
+        "Ult_Damage": 0.91
+      },
+      "mainBuffScore": 10.75
+    },
+    {
+      "presetName": "爱弥斯 1C 攻击",
+      "weights": {
+        "Crit_Rate": 2.0,
+        "Crit_Damage": 1.0,
+        "Attack": 1.1,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.1,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 0.2,
+        "Basic_Attack_Damage": 0.0,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.0,
+        "Ult_Damage": 0.91
+      },
+      "mainBuffScore": 7.2
+    }
+  ]
+}

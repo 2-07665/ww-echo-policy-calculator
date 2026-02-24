@@ -1,0 +1,274 @@
+{
+  "presets": [
+    {
+      "presetName": "爱弥斯",
+      "weights": {
+        "Crit_Rate": 0.9,
+        "Crit_Damage": 1.0,
+        "Attack": 0.75,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.38,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 0.25,
+        "Basic_Attack_Damage": 0.0,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.0,
+        "Ult_Damage": 0.59
+      }
+    },
+    {
+      "presetName": "莫宁",
+      "weights": {
+        "Crit_Rate": 0.37,
+        "Crit_Damage": 1.0,
+        "Attack": 0.17,
+        "Defence": 1.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.12,
+        "Defence_Flat": 0.35,
+        "HP_Flat": 0.0,
+        "ER": 0.66,
+        "Basic_Attack_Damage": 0.0,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.0,
+        "Ult_Damage": 0.55
+      }
+    },
+    {
+      "presetName": "琳奈",
+      "weights": {
+        "Crit_Rate": 0.92,
+        "Crit_Damage": 1.0,
+        "Attack": 0.75,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.4,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 0.25,
+        "Basic_Attack_Damage": 0.57,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.0,
+        "Ult_Damage": 0.0
+      }
+    },
+    {
+      "presetName": "嘉贝莉娜",
+      "weights": {
+        "Crit_Rate": 1.0,
+        "Crit_Damage": 0.9,
+        "Attack": 0.7,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.34,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 0.25,
+        "Basic_Attack_Damage": 0.0,
+        "Heavy_Attack_Damage": 0.55,
+        "Skill_Damage": 0.0,
+        "Ult_Damage": 0.0
+      }
+    },
+    {
+      "presetName": "尤诺",
+      "weights": {
+        "Crit_Rate": 0.9,
+        "Crit_Damage": 1.0,
+        "Attack": 0.75,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.41,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 0.25,
+        "Basic_Attack_Damage": 0.0,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.14,
+        "Ult_Damage": 0.55
+      }
+    },
+    {
+      "presetName": "奥古斯塔",
+      "weights": {
+        "Crit_Rate": 0.95,
+        "Crit_Damage": 1.0,
+        "Attack": 0.7,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.32,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 0.25,
+        "Basic_Attack_Damage": 0.0,
+        "Heavy_Attack_Damage": 0.75,
+        "Skill_Damage": 0.15,
+        "Ult_Damage": 0.0
+      }
+    },
+    {
+      "presetName": "弗洛洛",
+      "weights": {
+        "Crit_Rate": 0.7,
+        "Crit_Damage": 1.0,
+        "Attack": 0.75,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.38,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 0.0,
+        "Basic_Attack_Damage": 0.0,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.6,
+        "Ult_Damage": 0.0
+      }
+    },
+    {
+      "presetName": "卡提希娅",
+      "weights": {
+        "Crit_Rate": 1.0,
+        "Crit_Damage": 0.9,
+        "Attack": 0.0,
+        "Defence": 0.0,
+        "HP": 0.7,
+        "Attack_Flat": 0.0,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.3,
+        "ER": 0.25,
+        "Basic_Attack_Damage": 0.4,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.12,
+        "Ult_Damage": 0.32
+      }
+    },
+    {
+      "presetName": "夏空",
+      "weights": {
+        "Crit_Rate": 0.9,
+        "Crit_Damage": 1.0,
+        "Attack": 0.75,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.44,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 0.25,
+        "Basic_Attack_Damage": 0.18,
+        "Heavy_Attack_Damage": 0.26,
+        "Skill_Damage": 0.6,
+        "Ult_Damage": 0.35
+      }
+    },
+    {
+      "presetName": "坎特蕾拉",
+      "weights": {
+        "Crit_Rate": 1.0,
+        "Crit_Damage": 0.9,
+        "Attack": 0.7,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.41,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 0.25,
+        "Basic_Attack_Damage": 0.45,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.0,
+        "Ult_Damage": 0.0
+      }
+    },
+    {
+      "presetName": "珂莱塔",
+      "weights": {
+        "Crit_Rate": 1.0,
+        "Crit_Damage": 0.9,
+        "Attack": 0.7,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.37,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 0.25,
+        "Basic_Attack_Damage": 0.15,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.6,
+        "Ult_Damage": 0.0
+      }
+    },
+    {
+      "presetName": "椿",
+      "weights": {
+        "Crit_Rate": 1.0,
+        "Crit_Damage": 0.9,
+        "Attack": 0.7,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.35,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 0.25,
+        "Basic_Attack_Damage": 0.58,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.0,
+        "Ult_Damage": 0.3
+      }
+    },
+    {
+      "presetName": "守岸人",
+      "weights": {
+        "Crit_Rate": 0.0,
+        "Crit_Damage": 0.45,
+        "Attack": 0.0,
+        "Defence": 0.3,
+        "HP": 1.0,
+        "Attack_Flat": 0.0,
+        "Defence_Flat": 0.15,
+        "HP_Flat": 0.35,
+        "ER": 0.65,
+        "Basic_Attack_Damage": 0.0,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.0,
+        "Ult_Damage": 0.4
+      }
+    },
+    {
+      "presetName": "长离",
+      "weights": {
+        "Crit_Rate": 1.0,
+        "Crit_Damage": 0.9,
+        "Attack": 0.7,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.34,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 0.25,
+        "Basic_Attack_Damage": 0.14,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.5,
+        "Ult_Damage": 0.27
+      }
+    },
+    {
+      "presetName": "今汐",
+      "weights": {
+        "Crit_Rate": 0.9,
+        "Crit_Damage": 1.0,
+        "Attack": 0.7,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 0.36,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 0.25,
+        "Basic_Attack_Damage": 0.0,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.53,
+        "Ult_Damage": 0.28
+      }
+    }
+  ]
+}

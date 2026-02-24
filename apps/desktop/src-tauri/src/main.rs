@@ -1,6 +1,9 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 
 use std::collections::{BTreeMap, HashMap};
+use std::fs;
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -9,7 +12,7 @@ use echo_policy::{
     UpgradePolicySolver, bits_to_mask, mask_to_bits,
 };
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{Manager, State};
 
 const NUM_BUFFS: usize = 13;
 const MAX_SELECTED_TYPES: usize = 5;
@@ -22,11 +25,19 @@ const SCORER_TYPE_LINEAR_DEFAULT: &str = "linear_default";
 const SCORER_TYPE_MC_BOOST_ASSISTANT: &str = "mc_boost_assistant";
 const SCORER_TYPE_QQ_BOT: &str = "qq_bot";
 const SCORER_TYPE_FIXED: &str = "fixed";
+const SCORER_PRESET_DIR: &str = "scorer-presets";
+const SCORER_PRESET_NAME_CUSTOM: &str = "自定义";
+const DEFAULT_LINEAR_PRESETS_JSON: &str = include_str!("../default-presets/linear_default.json");
+const DEFAULT_MC_BOOST_ASSISTANT_PRESETS_JSON: &str =
+    include_str!("../default-presets/mc_boost_assistant.json");
+const DEFAULT_QQ_BOT_PRESETS_JSON: &str = include_str!("../default-presets/qq_bot.json");
+const DEFAULT_FIXED_PRESETS_JSON: &str = include_str!("../default-presets/fixed.json");
 
 const DEFAULT_LINEAR_MAIN_BUFF_SCORE: f64 = 0.0;
 const DEFAULT_LINEAR_NORMALIZED_MAX_SCORE: f64 = 100.0;
 const DEFAULT_QQ_BOT_MAIN_BUFF_SCORE: f64 = 0.0;
 const DEFAULT_QQ_BOT_NORMALIZED_MAX_SCORE: f64 = 50.0;
+const MIN_NORMALIZED_MAX_SCORE: f64 = 0.01;
 
 const BUFF_TYPES: [&str; NUM_BUFFS] = [
     "Crit_Rate",
@@ -65,15 +76,15 @@ const BUFF_TYPE_MAX_VALUES: [f64; NUM_BUFFS] = [
 ];
 
 const DEFAULT_LINEAR_BUFF_WEIGHTS: [f64; NUM_BUFFS] = [
-    100.0, 100.0, 70.0, 0.0, 0.0, 30.0, 0.0, 0.0, 30.0, 40.0, 0.0, 0.0, 0.0,
+    100.0, 100.0, 70.0, 0.0, 0.0, 36.0, 0.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0,
 ];
 
 const DEFAULT_MC_BOOST_ASSISTANT_BUFF_WEIGHTS: [f64; NUM_BUFFS] = [
-    1.0, 0.9, 0.0, 0.0, 0.7, 0.0, 0.0, 0.3, 0.25, 0.4, 0.0, 0.12, 0.32,
+    1.0, 1.0, 0.7, 0.0, 0.0, 0.36, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0,
 ];
 
 const DEFAULT_QQ_BOT_BUFF_WEIGHTS: [f64; NUM_BUFFS] = [
-    2.0, 1.0, 1.1, 0.0, 0.0, 0.1, 0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.91,
+    2.0, 1.0, 1.1, 0.0, 0.0, 0.1, 0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0,
 ];
 
 const DEFAULT_FIXED_BUFF_WEIGHTS: [u16; NUM_BUFFS] = [3, 3, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0];
@@ -194,6 +205,91 @@ struct QueryRerollRecommendationRequest {
     candidate_buff_names: Vec<String>,
     #[serde(default = "default_reroll_top_k")]
     top_k: usize,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LoadScorerPresetsRequest {
+    #[serde(default = "default_scorer_type")]
+    scorer_type: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SaveScorerPresetRequest {
+    #[serde(default = "default_scorer_type")]
+    scorer_type: String,
+    preset_name: String,
+    #[serde(default)]
+    weights: HashMap<String, f64>,
+    #[serde(default)]
+    main_buff_score: Option<f64>,
+    #[serde(default)]
+    normalized_max_score: Option<f64>,
+    #[serde(default)]
+    preset_intro: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DeleteScorerPresetRequest {
+    #[serde(default = "default_scorer_type")]
+    scorer_type: String,
+    preset_name: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ScorerPresetResponseItem {
+    preset_name: String,
+    weights: BTreeMap<String, f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    main_buff_score: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    normalized_max_score: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    preset_intro: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LoadScorerPresetsResponse {
+    presets: Vec<ScorerPresetResponseItem>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SaveScorerPresetResponse {
+    saved_preset_name: String,
+    presets: Vec<ScorerPresetResponseItem>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DeleteScorerPresetResponse {
+    deleted_preset_name: String,
+    presets: Vec<ScorerPresetResponseItem>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct ScorerPresetFile {
+    #[serde(default)]
+    presets: Vec<ScorerPresetFileItem>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ScorerPresetFileItem {
+    preset_name: String,
+    #[serde(default)]
+    weights: BTreeMap<String, f64>,
+    #[serde(default)]
+    main_buff_score: Option<f64>,
+    #[serde(default)]
+    normalized_max_score: Option<f64>,
+    #[serde(default)]
+    preset_intro: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -378,6 +474,260 @@ fn parse_scorer_type(raw: &str) -> Result<&'static str, String> {
             raw
         )),
     }
+}
+
+fn scorer_preset_file_name(scorer_type: &str) -> &'static str {
+    match scorer_type {
+        SCORER_TYPE_LINEAR_DEFAULT => "linear_default.json",
+        SCORER_TYPE_MC_BOOST_ASSISTANT => "mc_boost_assistant.json",
+        SCORER_TYPE_QQ_BOT => "qq_bot.json",
+        SCORER_TYPE_FIXED => "fixed.json",
+        _ => unreachable!(),
+    }
+}
+
+fn built_in_preset_source_name(scorer_type: &str) -> &'static str {
+    match scorer_type {
+        SCORER_TYPE_LINEAR_DEFAULT => "default-presets/linear_default.json",
+        SCORER_TYPE_MC_BOOST_ASSISTANT => "default-presets/mc_boost_assistant.json",
+        SCORER_TYPE_QQ_BOT => "default-presets/qq_bot.json",
+        SCORER_TYPE_FIXED => "default-presets/fixed.json",
+        _ => unreachable!(),
+    }
+}
+
+fn built_in_preset_json(scorer_type: &str) -> &'static str {
+    match scorer_type {
+        SCORER_TYPE_LINEAR_DEFAULT => DEFAULT_LINEAR_PRESETS_JSON,
+        SCORER_TYPE_MC_BOOST_ASSISTANT => DEFAULT_MC_BOOST_ASSISTANT_PRESETS_JSON,
+        SCORER_TYPE_QQ_BOT => DEFAULT_QQ_BOT_PRESETS_JSON,
+        SCORER_TYPE_FIXED => DEFAULT_FIXED_PRESETS_JSON,
+        _ => unreachable!(),
+    }
+}
+
+fn scorer_preset_file_path(app: &tauri::AppHandle, scorer_type: &str) -> Result<PathBuf, String> {
+    let dir = app
+        .path()
+        .app_config_dir()
+        .map_err(|err| format!("Failed to resolve app config directory: {err}"))?
+        .join(SCORER_PRESET_DIR);
+    fs::create_dir_all(&dir)
+        .map_err(|err| format!("Failed to create preset directory '{}': {err}", dir.display()))?;
+    Ok(dir.join(scorer_preset_file_name(scorer_type)))
+}
+
+fn read_scorer_preset_file(path: &Path) -> Result<ScorerPresetFile, String> {
+    match fs::read_to_string(path) {
+        Ok(content) => serde_json::from_str(&content)
+            .map_err(|err| format!("Failed to parse preset file '{}': {err}", path.display())),
+        Err(err) if err.kind() == ErrorKind::NotFound => Ok(ScorerPresetFile::default()),
+        Err(err) => Err(format!(
+            "Failed to read preset file '{}': {err}",
+            path.display()
+        )),
+    }
+}
+
+fn read_built_in_scorer_presets(scorer_type: &str) -> Result<Vec<ScorerPresetFileItem>, String> {
+    let source_name = built_in_preset_source_name(scorer_type);
+    let content = built_in_preset_json(scorer_type);
+    let file: ScorerPresetFile = serde_json::from_str(content)
+        .map_err(|err| format!("Failed to parse bundled presets '{source_name}': {err}"))?;
+    Ok(normalize_loaded_preset_items(scorer_type, file.presets))
+}
+
+fn write_scorer_preset_file(path: &Path, file: &ScorerPresetFile) -> Result<(), String> {
+    let content = serde_json::to_string_pretty(file)
+        .map_err(|err| format!("Failed to serialize presets: {err}"))?;
+    fs::write(path, content)
+        .map_err(|err| format!("Failed to write preset file '{}': {err}", path.display()))
+}
+
+fn default_fixed_weights_f64() -> [f64; NUM_BUFFS] {
+    let mut out = [0.0; NUM_BUFFS];
+    for index in 0..NUM_BUFFS {
+        out[index] = f64::from(DEFAULT_FIXED_BUFF_WEIGHTS[index]);
+    }
+    out
+}
+
+fn default_weights_for_scorer_f64(scorer_type: &str) -> [f64; NUM_BUFFS] {
+    match scorer_type {
+        SCORER_TYPE_LINEAR_DEFAULT => DEFAULT_LINEAR_BUFF_WEIGHTS,
+        SCORER_TYPE_MC_BOOST_ASSISTANT => DEFAULT_MC_BOOST_ASSISTANT_BUFF_WEIGHTS,
+        SCORER_TYPE_QQ_BOT => DEFAULT_QQ_BOT_BUFF_WEIGHTS,
+        SCORER_TYPE_FIXED => default_fixed_weights_f64(),
+        _ => unreachable!(),
+    }
+}
+
+fn normalized_main_buff_score(value: Option<f64>, default_value: f64) -> Result<f64, String> {
+    let raw = value.unwrap_or(default_value);
+    if !raw.is_finite() {
+        return Err("mainBuffScore must be a finite number".to_string());
+    }
+    Ok(raw.max(0.0))
+}
+
+fn normalized_max_score(value: Option<f64>, default_value: f64) -> Result<f64, String> {
+    let raw = value.unwrap_or(default_value);
+    if !raw.is_finite() {
+        return Err("normalizedMaxScore must be a finite number".to_string());
+    }
+    Ok(raw.max(MIN_NORMALIZED_MAX_SCORE))
+}
+
+fn normalize_fixed_weight(value: f64, buff_name: &str) -> Result<f64, String> {
+    if !value.is_finite() || value < 0.0 {
+        return Err(format!("Invalid fixed scorer weight for {buff_name}: {value}"));
+    }
+    if value > u16::MAX as f64 {
+        return Err(format!(
+            "Fixed scorer weight for {buff_name} must be <= {}",
+            u16::MAX
+        ));
+    }
+    Ok(value.round())
+}
+
+fn normalize_preset_name(raw_name: &str) -> Result<String, String> {
+    let trimmed = raw_name.trim();
+    if trimmed.is_empty() {
+        return Err("presetName cannot be empty".to_string());
+    }
+    if trimmed == SCORER_PRESET_NAME_CUSTOM {
+        return Err(format!(
+            "'{}' is reserved for built-in defaults",
+            SCORER_PRESET_NAME_CUSTOM
+        ));
+    }
+    Ok(trimmed.to_string())
+}
+
+fn normalize_preset_intro(raw_intro: Option<String>) -> Option<String> {
+    raw_intro.and_then(|intro| {
+        let trimmed = intro.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
+}
+
+fn normalize_preset_item_for_scorer(
+    scorer_type: &str,
+    preset_name: &str,
+    raw_weights: &HashMap<String, f64>,
+    raw_main_buff_score: Option<f64>,
+    raw_normalized_max_score: Option<f64>,
+    raw_preset_intro: Option<String>,
+) -> Result<ScorerPresetFileItem, String> {
+    let preset_name = normalize_preset_name(preset_name)?;
+    let mut weights = build_weight_array_f64(raw_weights, default_weights_for_scorer_f64(scorer_type))?;
+
+    if scorer_type == SCORER_TYPE_FIXED {
+        for (index, buff_name) in BUFF_TYPES.iter().enumerate() {
+            weights[index] = normalize_fixed_weight(weights[index], buff_name)?;
+        }
+    }
+
+    let (main_buff_score, normalized_max_score) = match scorer_type {
+        SCORER_TYPE_LINEAR_DEFAULT => (
+            Some(normalized_main_buff_score(
+                raw_main_buff_score,
+                DEFAULT_LINEAR_MAIN_BUFF_SCORE,
+            )?),
+            Some(normalized_max_score(
+                raw_normalized_max_score,
+                DEFAULT_LINEAR_NORMALIZED_MAX_SCORE,
+            )?),
+        ),
+        SCORER_TYPE_MC_BOOST_ASSISTANT => (None, None),
+        SCORER_TYPE_QQ_BOT => (
+            Some(normalized_main_buff_score(
+                raw_main_buff_score,
+                DEFAULT_QQ_BOT_MAIN_BUFF_SCORE,
+            )?),
+            None,
+        ),
+        SCORER_TYPE_FIXED => (None, None),
+        _ => unreachable!(),
+    };
+
+    Ok(ScorerPresetFileItem {
+        preset_name,
+        weights: build_default_weight_map_f64(&weights),
+        main_buff_score,
+        normalized_max_score,
+        preset_intro: normalize_preset_intro(raw_preset_intro),
+    })
+}
+
+fn normalize_loaded_preset_items(
+    scorer_type: &str,
+    items: Vec<ScorerPresetFileItem>,
+) -> Vec<ScorerPresetFileItem> {
+    let mut out = Vec::new();
+
+    for item in items {
+        let raw_weights: HashMap<String, f64> = item
+            .weights
+            .iter()
+            .map(|(name, value)| (name.clone(), *value))
+            .collect();
+        match normalize_preset_item_for_scorer(
+            scorer_type,
+            &item.preset_name,
+            &raw_weights,
+            item.main_buff_score,
+            item.normalized_max_score,
+            item.preset_intro,
+        ) {
+            Ok(normalized) => {
+                if !out
+                    .iter()
+                    .any(|existing: &ScorerPresetFileItem| existing.preset_name == normalized.preset_name)
+                {
+                    out.push(normalized);
+                }
+            }
+            Err(err) => {
+                eprintln!("Skipping invalid preset '{}': {err}", item.preset_name);
+            }
+        }
+    }
+
+    out
+}
+
+fn preset_item_to_response(item: ScorerPresetFileItem) -> ScorerPresetResponseItem {
+    ScorerPresetResponseItem {
+        preset_name: item.preset_name,
+        weights: item.weights,
+        main_buff_score: item.main_buff_score,
+        normalized_max_score: item.normalized_max_score,
+        preset_intro: item.preset_intro,
+    }
+}
+
+fn merge_preset_items(
+    built_in_items: Vec<ScorerPresetFileItem>,
+    user_items: Vec<ScorerPresetFileItem>,
+) -> Vec<ScorerPresetFileItem> {
+    let mut merged = built_in_items;
+    for item in user_items {
+        if let Some(existing_index) = merged
+            .iter()
+            .position(|existing| existing.preset_name == item.preset_name)
+        {
+            merged[existing_index] = item;
+        } else {
+            merged.push(item);
+        }
+    }
+    merged
 }
 
 fn f64_bits_equal(left: f64, right: f64) -> bool {
@@ -884,6 +1234,121 @@ fn bootstrap() -> BootstrapResponse {
 }
 
 #[tauri::command]
+fn load_scorer_presets(
+    app: tauri::AppHandle,
+    payload: LoadScorerPresetsRequest,
+) -> Result<LoadScorerPresetsResponse, String> {
+    let scorer_type = parse_scorer_type(&payload.scorer_type)?;
+    let file_path = scorer_preset_file_path(&app, scorer_type)?;
+    let built_in_items = read_built_in_scorer_presets(scorer_type)?;
+    let file = read_scorer_preset_file(&file_path)?;
+    let user_items = normalize_loaded_preset_items(scorer_type, file.presets);
+    let presets = merge_preset_items(built_in_items, user_items)
+        .into_iter()
+        .map(preset_item_to_response)
+        .collect();
+    Ok(LoadScorerPresetsResponse { presets })
+}
+
+#[tauri::command]
+fn save_scorer_preset(
+    app: tauri::AppHandle,
+    payload: SaveScorerPresetRequest,
+) -> Result<SaveScorerPresetResponse, String> {
+    let scorer_type = parse_scorer_type(&payload.scorer_type)?;
+    let file_path = scorer_preset_file_path(&app, scorer_type)?;
+    let built_in_items = read_built_in_scorer_presets(scorer_type)?;
+    let file = read_scorer_preset_file(&file_path)?;
+    let mut user_items = normalize_loaded_preset_items(scorer_type, file.presets);
+
+    let mut normalized = normalize_preset_item_for_scorer(
+        scorer_type,
+        &payload.preset_name,
+        &payload.weights,
+        payload.main_buff_score,
+        payload.normalized_max_score,
+        payload.preset_intro,
+    )?;
+
+    if let Some(existing_index) = user_items
+        .iter()
+        .position(|item| item.preset_name == normalized.preset_name)
+    {
+        if normalized.preset_intro.is_none() {
+            normalized.preset_intro = user_items[existing_index].preset_intro.clone();
+        }
+        user_items[existing_index] = normalized.clone();
+    } else {
+        if normalized.preset_intro.is_none() {
+            normalized.preset_intro = built_in_items
+                .iter()
+                .find(|item| item.preset_name == normalized.preset_name)
+                .and_then(|item| item.preset_intro.clone());
+        }
+        user_items.push(normalized.clone());
+    }
+
+    write_scorer_preset_file(
+        &file_path,
+        &ScorerPresetFile {
+            presets: user_items.clone(),
+        },
+    )?;
+
+    let presets = merge_preset_items(built_in_items, user_items)
+        .into_iter()
+        .map(preset_item_to_response)
+        .collect();
+    Ok(SaveScorerPresetResponse {
+        saved_preset_name: normalized.preset_name,
+        presets,
+    })
+}
+
+#[tauri::command]
+fn delete_scorer_preset(
+    app: tauri::AppHandle,
+    payload: DeleteScorerPresetRequest,
+) -> Result<DeleteScorerPresetResponse, String> {
+    let scorer_type = parse_scorer_type(&payload.scorer_type)?;
+    let preset_name = normalize_preset_name(&payload.preset_name)?;
+    let file_path = scorer_preset_file_path(&app, scorer_type)?;
+    let built_in_items = read_built_in_scorer_presets(scorer_type)?;
+    let file = read_scorer_preset_file(&file_path)?;
+    let mut user_items = normalize_loaded_preset_items(scorer_type, file.presets);
+
+    let Some(existing_index) = user_items
+        .iter()
+        .position(|item| item.preset_name == preset_name)
+    else {
+        if built_in_items
+            .iter()
+            .any(|item| item.preset_name == preset_name)
+        {
+            return Err(format!("Bundled preset '{preset_name}' cannot be deleted"));
+        }
+        return Err(format!("Preset '{preset_name}' does not exist"));
+    };
+
+    user_items.remove(existing_index);
+    write_scorer_preset_file(
+        &file_path,
+        &ScorerPresetFile {
+            presets: user_items.clone(),
+        },
+    )?;
+
+    let presets = merge_preset_items(built_in_items, user_items)
+        .into_iter()
+        .map(preset_item_to_response)
+        .collect();
+    Ok(DeleteScorerPresetResponse {
+        deleted_preset_name: preset_name,
+        presets,
+    })
+}
+
+#[tauri::command]
 fn compute_policy(
     state: State<'_, AppState>,
     payload: ComputePolicyRequest,
@@ -1183,6 +1648,9 @@ fn main() {
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
             bootstrap,
+            load_scorer_presets,
+            save_scorer_preset,
+            delete_scorer_preset,
             preview_upgrade_score,
             compute_policy,
             policy_suggestion,

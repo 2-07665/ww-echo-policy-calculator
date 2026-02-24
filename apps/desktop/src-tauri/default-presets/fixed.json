@@ -1,0 +1,22 @@
+{
+  "presets": [
+    {
+      "presetName": "示例",
+      "weights": {
+        "Crit_Rate": 3,
+        "Crit_Damage": 3,
+        "Attack": 1,
+        "Defence": 0,
+        "HP": 0,
+        "Attack_Flat": 0,
+        "Defence_Flat": 0,
+        "HP_Flat": 0,
+        "ER": 1,
+        "Basic_Attack_Damage": 1,
+        "Heavy_Attack_Damage": 0,
+        "Skill_Damage": 0,
+        "Ult_Damage": 0
+      }
+    }
+  ]
+}

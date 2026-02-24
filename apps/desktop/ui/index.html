@@ -29,6 +29,19 @@
             <option value="qq_bot">WutheringWavesUID评分（QQ机器人）</option>
             <option value="fixed">固定评分</option>
           </select>
+          <div id="scorer-config-hint" class="scorer-hint-box"></div>
+        </div>
+
+        <div class="field-group">
+          <label for="scorer-preset-select">评分预设</label>
+          <div class="preset-row">
+            <select id="scorer-preset-select" class="styled-select"></select>
+            <input id="scorer-preset-name-input" type="text" placeholder="输入预设名称" />
+            <button type="button" id="scorer-preset-save-button" class="secondary-button">保存</button>
+            <button type="button" id="scorer-preset-delete-button" class="secondary-button">删除</button>
+          </div>
+          <div id="scorer-preset-hint" class="scorer-hint-box" hidden></div>
+          <div id="scorer-preset-status" class="hint-text"></div>
         </div>
 
         <div id="linear-params" class="field-group scorer-params">
@@ -43,7 +56,6 @@
             </div>
           </div>
         </div>
-        <div id="scorer-config-hint" class="scorer-hint-box"></div>
 
         <div id="weight-inputs" class="weight-grid"></div>
       </section>

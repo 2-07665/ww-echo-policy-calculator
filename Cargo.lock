@@ -643,6 +643,7 @@ version = "2.0.0"
 dependencies = [
  "echo_policy",
  "serde",
+ "serde_json",
  "tauri",
  "tauri-build",
 ]

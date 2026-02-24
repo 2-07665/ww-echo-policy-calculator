@@ -7,6 +7,7 @@
   const SCORER_MC_BOOST_ASSISTANT = 'mc_boost_assistant';
   const SCORER_QQ_BOT = 'qq_bot';
   const SCORER_FIXED = 'fixed';
+  const SCORER_PRESET_CUSTOM = '自定义';
   const DEFAULT_MC_BOOST_ASSISTANT_TARGET_SCORE = 95.0;
   const DEFAULT_QQ_BOT_TARGET_SCORE = 35.0;
   const MC_BOOST_ASSISTANT_LOCKED_MAIN_BUFF_SCORE = 0.0;
@@ -42,6 +43,40 @@
         weights: {},
       },
     },
+    defaultScorerConfigs: {
+      [SCORER_LINEAR_DEFAULT]: {
+        mainBuffScore: 0,
+        normalizedMaxScore: 100,
+        weights: {},
+      },
+      [SCORER_MC_BOOST_ASSISTANT]: {
+        mainBuffScore: MC_BOOST_ASSISTANT_LOCKED_MAIN_BUFF_SCORE,
+        normalizedMaxScore: MC_BOOST_ASSISTANT_LOCKED_NORMALIZED_MAX_SCORE,
+        weights: {},
+      },
+      [SCORER_QQ_BOT]: {
+        mainBuffScore: 0,
+        normalizedMaxScore: QQ_BOT_LOCKED_NORMALIZED_MAX_SCORE,
+        weights: {},
+      },
+      [SCORER_FIXED]: {
+        weights: {},
+      },
+    },
+    scorerPresets: {
+      [SCORER_LINEAR_DEFAULT]: [],
+      [SCORER_MC_BOOST_ASSISTANT]: [],
+      [SCORER_QQ_BOT]: [],
+      [SCORER_FIXED]: [],
+    },
+    activePresetNames: {
+      [SCORER_LINEAR_DEFAULT]: SCORER_PRESET_CUSTOM,
+      [SCORER_MC_BOOST_ASSISTANT]: SCORER_PRESET_CUSTOM,
+      [SCORER_QQ_BOT]: SCORER_PRESET_CUSTOM,
+      [SCORER_FIXED]: SCORER_PRESET_CUSTOM,
+    },
+    scorerPresetStatus: '',
+    scorerPresetStatusError: false,
 
     buffSelections: [],
     buffValues: [],
@@ -208,6 +243,12 @@
     elements.clearBuffsButton = document.getElementById('clear-buffs');
     elements.scoreCard = document.getElementById('score-card');
     elements.scorerTypeSelect = document.getElementById('scorer-type-select');
+    elements.scorerPresetSelect = document.getElementById('scorer-preset-select');
+    elements.scorerPresetNameInput = document.getElementById('scorer-preset-name-input');
+    elements.scorerPresetSaveButton = document.getElementById('scorer-preset-save-button');
+    elements.scorerPresetDeleteButton = document.getElementById('scorer-preset-delete-button');
+    elements.scorerPresetHint = document.getElementById('scorer-preset-hint');
+    elements.scorerPresetStatus = document.getElementById('scorer-preset-status');
     elements.linearParams = document.getElementById('linear-params');
     elements.linearParamsFields = document.getElementById('linear-params-fields');
     elements.mainBuffScoreInput = document.getElementById('main-buff-score-input');
@@ -235,6 +276,326 @@
       out[name] = numberOr(src?.[name], 0);
     });
     return out;
+  }
+
+  function copyScorerConfig(src) {
+    const out = {
+      weights: copyWeightMap(src?.weights),
+    };
+    if (Object.prototype.hasOwnProperty.call(src || {}, 'mainBuffScore')) {
+      out.mainBuffScore = numberOr(src.mainBuffScore, 0);
+    }
+    if (Object.prototype.hasOwnProperty.call(src || {}, 'normalizedMaxScore')) {
+      out.normalizedMaxScore = numberOr(src.normalizedMaxScore, TARGET_SCORE_STEP);
+    }
+    return out;
+  }
+
+  function normalizePresetEntry(raw) {
+    const presetName = String(raw?.presetName || '').trim();
+    if (!presetName || presetName === SCORER_PRESET_CUSTOM) {
+      return null;
+    }
+
+    const next = {
+      presetName,
+      weights: copyWeightMap(raw?.weights),
+    };
+    if (raw?.mainBuffScore != null) {
+      next.mainBuffScore = Math.max(0, numberOr(raw.mainBuffScore, 0));
+    }
+    if (raw?.normalizedMaxScore != null) {
+      next.normalizedMaxScore = Math.max(
+        TARGET_SCORE_STEP,
+        numberOr(raw.normalizedMaxScore, TARGET_SCORE_STEP),
+      );
+    }
+    const presetIntro = String(raw?.presetIntro || '').trim();
+    if (presetIntro) {
+      next.presetIntro = presetIntro;
+    }
+    return next;
+  }
+
+  function applyPresetList(type, rawPresets) {
+    const normalized = Array.isArray(rawPresets)
+      ? rawPresets.map(normalizePresetEntry).filter(Boolean)
+      : [];
+    state.scorerPresets[type] = normalized;
+
+    const activeName = state.activePresetNames[type];
+    if (
+      activeName !== SCORER_PRESET_CUSTOM &&
+      !normalized.some((preset) => preset.presetName === activeName)
+    ) {
+      state.activePresetNames[type] = SCORER_PRESET_CUSTOM;
+    }
+  }
+
+  function setPresetStatus(message, { error = false } = {}) {
+    state.scorerPresetStatus = message || '';
+    state.scorerPresetStatusError = Boolean(error);
+    renderPresetStatus();
+  }
+
+  function renderPresetStatus() {
+    if (!elements.scorerPresetStatus) {
+      return;
+    }
+    elements.scorerPresetStatus.textContent = state.scorerPresetStatus || '';
+    elements.scorerPresetStatus.classList.toggle('error', state.scorerPresetStatusError);
+  }
+
+  function renderPresetHint(selectedPresetName) {
+    const hintBox = elements.scorerPresetHint;
+    if (!hintBox) {
+      return;
+    }
+
+    const activeName = String(selectedPresetName || SCORER_PRESET_CUSTOM);
+    if (activeName === SCORER_PRESET_CUSTOM) {
+      hintBox.hidden = true;
+      hintBox.textContent = '';
+      return;
+    }
+
+    const preset = findPresetByName(state.scorerType, activeName);
+    const intro = String(preset?.presetIntro || '').trim();
+    if (!intro) {
+      hintBox.hidden = true;
+      hintBox.textContent = '';
+      return;
+    }
+
+    hintBox.textContent = intro;
+    hintBox.hidden = false;
+  }
+
+  function findPresetByName(type, presetName) {
+    return (state.scorerPresets[type] || []).find((item) => item.presetName === presetName) || null;
+  }
+
+  function applyBuiltinCustomPresetForScorer(type) {
+    state.scorerConfigs[type] = copyScorerConfig(state.defaultScorerConfigs[type]);
+  }
+
+  function applyPresetConfigForScorer(type, preset) {
+    const next = copyScorerConfig(state.defaultScorerConfigs[type]);
+    next.weights = copyWeightMap(preset?.weights);
+
+    if (type === SCORER_LINEAR_DEFAULT || type === SCORER_QQ_BOT) {
+      next.mainBuffScore = Math.max(
+        0,
+        numberOr(preset?.mainBuffScore, numberOr(next.mainBuffScore, 0)),
+      );
+    }
+    if (type === SCORER_LINEAR_DEFAULT) {
+      next.normalizedMaxScore = Math.max(
+        TARGET_SCORE_STEP,
+        numberOr(preset?.normalizedMaxScore, numberOr(next.normalizedMaxScore, TARGET_SCORE_STEP)),
+      );
+    }
+
+    state.scorerConfigs[type] = next;
+  }
+
+  function renderPresetControls() {
+    const currentType = state.scorerType;
+    const presets = state.scorerPresets[currentType] || [];
+    const select = elements.scorerPresetSelect;
+    const nameInput = elements.scorerPresetNameInput;
+
+    select.innerHTML = '';
+    const defaultOption = document.createElement('option');
+    defaultOption.value = SCORER_PRESET_CUSTOM;
+    defaultOption.textContent = SCORER_PRESET_CUSTOM;
+    select.appendChild(defaultOption);
+
+    presets.forEach((preset) => {
+      const option = document.createElement('option');
+      option.value = preset.presetName;
+      option.textContent = preset.presetName;
+      select.appendChild(option);
+    });
+
+    const activeName = state.activePresetNames[currentType];
+    const activeExists =
+      activeName === SCORER_PRESET_CUSTOM ||
+      presets.some((preset) => preset.presetName === activeName);
+    select.value = activeExists ? activeName : SCORER_PRESET_CUSTOM;
+    if (!activeExists) {
+      state.activePresetNames[currentType] = SCORER_PRESET_CUSTOM;
+    }
+
+    if (document.activeElement !== nameInput) {
+      nameInput.value = select.value === SCORER_PRESET_CUSTOM ? '' : select.value;
+    }
+    if (elements.scorerPresetDeleteButton) {
+      elements.scorerPresetDeleteButton.disabled = select.value === SCORER_PRESET_CUSTOM;
+    }
+
+    renderPresetHint(select.value);
+    renderPresetStatus();
+  }
+
+  function markCurrentScorerPresetAsCustom() {
+    state.activePresetNames[state.scorerType] = SCORER_PRESET_CUSTOM;
+    renderPresetControls();
+    setPresetStatus('');
+  }
+
+  async function loadScorerPresetsForType(type = state.scorerType) {
+    try {
+      const response = await invoke('load_scorer_presets', {
+        payload: { scorerType: type },
+      });
+      applyPresetList(type, response?.presets || []);
+      if (type === state.scorerType) {
+        renderPresetControls();
+        setPresetStatus('');
+      }
+    } catch (error) {
+      applyPresetList(type, []);
+      state.activePresetNames[type] = SCORER_PRESET_CUSTOM;
+      if (type === state.scorerType) {
+        renderPresetControls();
+        setPresetStatus(`读取预设失败：${error?.message || error}`, { error: true });
+      }
+    }
+  }
+
+  async function applySelectedScorerPreset(presetName) {
+    const type = state.scorerType;
+    const selectedName = String(presetName || SCORER_PRESET_CUSTOM);
+
+    if (selectedName === SCORER_PRESET_CUSTOM) {
+      applyBuiltinCustomPresetForScorer(type);
+      state.activePresetNames[type] = SCORER_PRESET_CUSTOM;
+    } else {
+      const preset = findPresetByName(type, selectedName);
+      if (!preset) {
+        state.activePresetNames[type] = SCORER_PRESET_CUSTOM;
+        renderPresetControls();
+        setPresetStatus(`未找到预设：${selectedName}`, { error: true });
+        return;
+      }
+      applyPresetConfigForScorer(type, preset);
+      state.activePresetNames[type] = preset.presetName;
+    }
+
+    renderScorerConfig();
+    renderWeightInputs();
+    renderPresetControls();
+    setPresetStatus('');
+    await onWeightsUpdated();
+  }
+
+  function buildPresetSavePayload(presetName) {
+    const config = getScorerConfig();
+    const payload = {
+      scorerType: state.scorerType,
+      presetName,
+      weights: buildUpgradePayloadWeights(),
+    };
+
+    if (!isFixedScorer() && !isMcBoostAssistantScorer()) {
+      payload.mainBuffScore = Math.max(0, numberOr(config.mainBuffScore, 0));
+    }
+    if (!isFixedScorer() && !isMcBoostAssistantScorer() && !isQqBotScorer()) {
+      payload.normalizedMaxScore = Math.max(
+        TARGET_SCORE_STEP,
+        numberOr(config.normalizedMaxScore, TARGET_SCORE_STEP),
+      );
+    }
+
+    return payload;
+  }
+
+  async function handleSaveCurrentPreset() {
+    const presetName = String(elements.scorerPresetNameInput.value || '').trim();
+    if (!presetName) {
+      setPresetStatus('请输入预设名称后再保存。', { error: true });
+      return;
+    }
+    if (presetName === SCORER_PRESET_CUSTOM) {
+      setPresetStatus(`“${SCORER_PRESET_CUSTOM}”为默认项名称，不能保存为预设。`, { error: true });
+      return;
+    }
+    if (elements.scorerPresetSaveButton.dataset.loading === 'true') {
+      return;
+    }
+
+    elements.scorerPresetSaveButton.dataset.loading = 'true';
+    elements.scorerPresetSaveButton.disabled = true;
+    const originalText = elements.scorerPresetSaveButton.textContent;
+    elements.scorerPresetSaveButton.textContent = '保存中…';
+
+    try {
+      const response = await invoke('save_scorer_preset', {
+        payload: buildPresetSavePayload(presetName),
+      });
+
+      const currentType = state.scorerType;
+      applyPresetList(currentType, response?.presets || []);
+      state.activePresetNames[currentType] = String(response?.savedPresetName || presetName);
+      renderPresetControls();
+      elements.scorerPresetNameInput.value = state.activePresetNames[currentType];
+      setPresetStatus(`已保存预设：${state.activePresetNames[currentType]}`);
+    } catch (error) {
+      setPresetStatus(`保存失败：${error?.message || error}`, { error: true });
+    } finally {
+      elements.scorerPresetSaveButton.dataset.loading = 'false';
+      elements.scorerPresetSaveButton.disabled = false;
+      elements.scorerPresetSaveButton.textContent = originalText;
+    }
+  }
+
+  async function handleDeleteCurrentPreset() {
+    const presetName = String(elements.scorerPresetSelect.value || '').trim();
+    if (!presetName || presetName === SCORER_PRESET_CUSTOM) {
+      setPresetStatus('请选择要删除的预设。', { error: true });
+      return;
+    }
+    if (elements.scorerPresetDeleteButton.dataset.loading === 'true') {
+      return;
+    }
+
+    elements.scorerPresetDeleteButton.dataset.loading = 'true';
+    elements.scorerPresetDeleteButton.disabled = true;
+    const originalText = elements.scorerPresetDeleteButton.textContent;
+    elements.scorerPresetDeleteButton.textContent = '删除中…';
+
+    try {
+      const response = await invoke('delete_scorer_preset', {
+        payload: {
+          scorerType: state.scorerType,
+          presetName,
+        },
+      });
+
+      const currentType = state.scorerType;
+      applyPresetList(currentType, response?.presets || []);
+      const fallbackPreset = findPresetByName(currentType, presetName);
+      if (fallbackPreset) {
+        state.activePresetNames[currentType] = presetName;
+        applyPresetConfigForScorer(currentType, fallbackPreset);
+      } else {
+        state.activePresetNames[currentType] = SCORER_PRESET_CUSTOM;
+        applyBuiltinCustomPresetForScorer(currentType);
+      }
+      renderScorerConfig();
+      renderWeightInputs();
+      renderPresetControls();
+      setPresetStatus(`已删除预设：${String(response?.deletedPresetName || presetName)}`);
+      await onWeightsUpdated();
+    } catch (error) {
+      setPresetStatus(`删除失败：${error?.message || error}`, { error: true });
+      renderPresetControls();
+    } finally {
+      elements.scorerPresetDeleteButton.dataset.loading = 'false';
+      elements.scorerPresetDeleteButton.textContent = originalText;
+      renderPresetControls();
+    }
   }
 
   function initialiseState(data) {
@@ -276,6 +637,24 @@
       MC_BOOST_ASSISTANT_LOCKED_MAIN_BUFF_SCORE;
     state.scorerConfigs[SCORER_MC_BOOST_ASSISTANT].normalizedMaxScore =
       MC_BOOST_ASSISTANT_LOCKED_NORMALIZED_MAX_SCORE;
+    state.defaultScorerConfigs[SCORER_LINEAR_DEFAULT] = copyScorerConfig(
+      state.scorerConfigs[SCORER_LINEAR_DEFAULT],
+    );
+    state.defaultScorerConfigs[SCORER_MC_BOOST_ASSISTANT] = copyScorerConfig(
+      state.scorerConfigs[SCORER_MC_BOOST_ASSISTANT],
+    );
+    state.defaultScorerConfigs[SCORER_QQ_BOT] = copyScorerConfig(state.scorerConfigs[SCORER_QQ_BOT]);
+    state.defaultScorerConfigs[SCORER_FIXED] = copyScorerConfig(state.scorerConfigs[SCORER_FIXED]);
+    state.scorerPresets[SCORER_LINEAR_DEFAULT] = [];
+    state.scorerPresets[SCORER_MC_BOOST_ASSISTANT] = [];
+    state.scorerPresets[SCORER_QQ_BOT] = [];
+    state.scorerPresets[SCORER_FIXED] = [];
+    state.activePresetNames[SCORER_LINEAR_DEFAULT] = SCORER_PRESET_CUSTOM;
+    state.activePresetNames[SCORER_MC_BOOST_ASSISTANT] = SCORER_PRESET_CUSTOM;
+    state.activePresetNames[SCORER_QQ_BOT] = SCORER_PRESET_CUSTOM;
+    state.activePresetNames[SCORER_FIXED] = SCORER_PRESET_CUSTOM;
+    state.scorerPresetStatus = '';
+    state.scorerPresetStatusError = false;
 
     state.scorerType = normalizeScorerType(data.defaultScorerType);
     if (isFixedScorer()) {
@@ -441,6 +820,8 @@
     state.scorerType = normalizeScorerType(nextScorerType);
     renderScorerConfig();
     renderWeightInputs();
+    renderPresetControls();
+    await loadScorerPresetsForType(state.scorerType);
     updateTargetScoreUI({ setRecommended: setRecommendedTarget });
     resetPolicyResult();
 
@@ -500,7 +881,7 @@
         'WutheringWavesUID （QQ机器人）按线性规则评分，归一化总分 50.00。请使用“ww(角色名)权重”查看角色权重。\n主词条原始分数填写对应Cost声骸两个主词条的权重与数值乘积之和。\n注意，该来源的评分权重与实际词条价值存在相当偏差。';
     } else {
       elements.scorerConfigHint.textContent =
-        '自定义线性评分模式下，按词条数值占该词条最大值比例线性计分。词条权重对应词条最大值的原始分数。\n可设置声骸主词条的原始分数与归一化总分。权重与分数支持小数。\n建议配合拉表计算得到的权重结果使用。';
+        '自定义线性评分模式下，按词条数值占该词条最大数值的比例线性计分。词条权重对应词条最大数值的原始分数。\n可设置声骸主词条的原始分数与归一化总分。权重与分数支持小数。\n建议配合拉表计算得到的词条权重使用。';
     }
   }
 
@@ -650,6 +1031,7 @@
           const nextValue = Math.max(0, numberOr(Number(input.value), 0));
           weightMap[buffName] = nextValue;
         }
+        markCurrentScorerPresetAsCustom();
         await onWeightsUpdated();
       });
 
@@ -1346,6 +1728,26 @@
       await applyScorerType(elements.scorerTypeSelect.value, { setRecommendedTarget: true });
     });
 
+    elements.scorerPresetSelect.addEventListener('change', async () => {
+      await applySelectedScorerPreset(elements.scorerPresetSelect.value);
+    });
+
+    elements.scorerPresetSaveButton.addEventListener('click', async () => {
+      await handleSaveCurrentPreset();
+    });
+
+    elements.scorerPresetDeleteButton.addEventListener('click', async () => {
+      await handleDeleteCurrentPreset();
+    });
+
+    elements.scorerPresetNameInput.addEventListener('keydown', async (event) => {
+      if (event.key !== 'Enter') {
+        return;
+      }
+      event.preventDefault();
+      await handleSaveCurrentPreset();
+    });
+
     elements.mainBuffScoreInput.addEventListener('change', async () => {
       if (isFixedScorer() || isMcBoostAssistantScorer()) {
         return;
@@ -1353,6 +1755,7 @@
       const config = getScorerConfig();
       config.mainBuffScore = Math.max(0, numberOr(elements.mainBuffScoreInput.valueAsNumber, config.mainBuffScore));
       elements.mainBuffScoreInput.value = config.mainBuffScore.toFixed(TARGET_SCORE_DIGITS);
+      markCurrentScorerPresetAsCustom();
       await onScorerParamsUpdated();
     });
 
@@ -1366,6 +1769,7 @@
         numberOr(elements.normalizedMaxScoreInput.valueAsNumber, config.normalizedMaxScore),
       );
       elements.normalizedMaxScoreInput.value = config.normalizedMaxScore.toFixed(TARGET_SCORE_DIGITS);
+      markCurrentScorerPresetAsCustom();
       await onScorerParamsUpdated();
     });
 
@@ -1624,7 +2028,9 @@
 
       renderScorerConfig();
       renderWeightInputs();
+      renderPresetControls();
       setupEventHandlers();
+      await loadScorerPresetsForType(state.scorerType);
 
       updateTargetScoreUI();
       updateRerollTargetScoreUI();
