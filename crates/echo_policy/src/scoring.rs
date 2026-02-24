@@ -243,6 +243,17 @@ impl LinearScorer {
         }
         Self::new(weights, main_buff_score, 50.0)
     }
+
+    pub fn mc_boost_assistant_scorer(weights: [f64; NUM_BUFFS]) -> Result<Self, ScorerError> {
+        validate_weights(&weights)?;
+        let unnormalized_max_score = 12.0 / 7.0 * top_weights_sum(&weights);
+        Ok(Self{
+            weights,
+            unnormalized_max_score,
+            normalized_main_buff_score: 50.0,
+            normalized_max_score: 120.0,
+        })
+    }
 }
 
 impl LinearScorer {
