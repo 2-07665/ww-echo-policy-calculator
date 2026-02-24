@@ -4,7 +4,7 @@ use crate::mask::{
     MASK_ALL, NUM_PARTIAL_MASKS, PARTIAL_MASKS, calculate_num_filled_slots,
     is_valid_external_full_mask, is_valid_external_partial_mask, partial_mask_to_index,
 };
-use crate::scoring::{SCORE_MULTIPLIER, Scorer};
+use crate::scoring::{InternalScorer, convert_display_to_internal};
 
 const DP_VALUE_MULTIPLIER: f64 = 1000.0;
 
@@ -308,13 +308,13 @@ impl UpgradePolicySolver {
 }
 
 impl UpgradePolicySolver {
-    pub fn new<S: Scorer>(
+    pub fn new<S: InternalScorer>(
         scorer: &S,
         blend_data: bool,
-        target_score_raw: f64,
+        target_score_display: f64,
         cost_model: CostModel,
     ) -> Result<Self, UpgradePolicySolverError> {
-        if target_score_raw.is_nan() || target_score_raw.is_infinite() {
+        if target_score_display.is_nan() || target_score_display.is_infinite() {
             return Err(UpgradePolicySolverError::InvalidScore);
         }
 
@@ -381,10 +381,10 @@ impl UpgradePolicySolver {
         }
 
         let max_possible_score = best_case_remaining_score(0u16, &buff_max_score);
-        let target_score = if target_score_raw <= 0.0 {
+        let target_score = if target_score_display <= 0.0 {
             0
         } else {
-            (target_score_raw * SCORE_MULTIPLIER).round() as u16
+            convert_display_to_internal(target_score_display)
         };
         if target_score > max_possible_score {
             return Err(UpgradePolicySolverError::TargetScoreImpossible {
@@ -433,15 +433,15 @@ impl UpgradePolicySolver {
 
     pub fn update_target_score(
         &mut self,
-        new_target_score_raw: f64,
+        new_target_score_display: f64,
     ) -> Result<(), UpgradePolicySolverError> {
-        if new_target_score_raw.is_nan() | new_target_score_raw.is_infinite() {
+        if new_target_score_display.is_nan() | new_target_score_display.is_infinite() {
             return Err(UpgradePolicySolverError::InvalidScore);
         }
-        let new_target_score = if new_target_score_raw <= 0.0 {
+        let new_target_score = if new_target_score_display <= 0.0 {
             0
         } else {
-            (new_target_score_raw * SCORE_MULTIPLIER).round() as u16
+            convert_display_to_internal(new_target_score_display)
         };
         if new_target_score > self.max_possible_score {
             return Err(UpgradePolicySolverError::TargetScoreImpossible {

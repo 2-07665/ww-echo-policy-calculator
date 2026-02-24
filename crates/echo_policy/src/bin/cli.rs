@@ -1,8 +1,8 @@
 #[allow(dead_code)]
-fn policy_example() {
+fn upgrade_example() {
     use std::time::Instant;
 
-    use echo_policy::{CostModel, LinearScorer, Scorer, UpgradePolicySolver};
+    use echo_policy::{CostModel, InternalScorer, LinearScorer, UpgradePolicySolver};
     use echo_policy::{bits_to_mask, mask_to_bits};
 
     const BUFF_WEIGHTS: [f64; 13] = [
@@ -20,21 +20,21 @@ fn policy_example() {
         48.0,   // Resonance Skill DMG Bonus
         1000.0, // Resonance Liberation DMG Bonus
     ];
-    let scorer = LinearScorer::new(BUFF_WEIGHTS).unwrap();
+    let scorer = LinearScorer::new(BUFF_WEIGHTS, 0.0, 100.0).unwrap();
     let score_pmfs = scorer.build_score_pmfs(false);
     for score_pmf in score_pmfs.iter() {
         println!("{:?}\n", score_pmf);
     }
     let cost_model = CostModel::tuner_only();
-    let target_score_raw = 50.89;
+    let target_score_display = 50.89;
     let mut solver =
-        UpgradePolicySolver::new(&scorer, false, target_score_raw, cost_model).unwrap();
+        UpgradePolicySolver::new(&scorer, false, target_score_display, cost_model).unwrap();
 
     let start = Instant::now();
     let lambda = solver.lambda_search(1e-6, 100).unwrap();
     let elapsed = start.elapsed();
 
-    println!("target_score={:.2}", target_score_raw);
+    println!("target_score={:.2}", target_score_display);
     println!(
         "lambda search completed in {:.3} milliseconds",
         elapsed.as_secs_f64() * 1000.0
@@ -79,30 +79,31 @@ fn policy_example() {
     )
 }
 
+#[allow(dead_code)]
 fn reroll_example() {
     use std::time::Instant;
 
     use echo_policy::RerollPolicySolver;
     use echo_policy::{bits_to_mask, mask_to_bits};
 
-    const BUFF_WEIGHTS: [f64; 13] = [
-        3.0, // Crit. Rate
-        3.0, // Crit. DMG
-        1.0, // ATK%
-        0.0, // DEF%
-        0.0, // HP%
-        0.0, // ATK
-        0.0, // DEF
-        0.0, // HP
-        1.0, // Energy Regen
-        1.0, // Basic Attack DMG Bonus
-        0.0, // Heavy Attack DMG Bonus
-        0.0, // Resonance Skill DMG Bonus
-        0.0, // Resonance Liberation DMG Bonus
+    const BUFF_WEIGHTS: [u16; 13] = [
+        3, // Crit. Rate
+        3, // Crit. DMG
+        1, // ATK%
+        0, // DEF%
+        0, // HP%
+        0, // ATK
+        0, // DEF
+        0, // HP
+        1, // Energy Regen
+        1, // Basic Attack DMG Bonus
+        0, // Heavy Attack DMG Bonus
+        0, // Resonance Skill DMG Bonus
+        0, // Resonance Liberation DMG Bonus
     ];
 
     let mut solver = RerollPolicySolver::new(BUFF_WEIGHTS).unwrap();
-    let target_score = 7.0;
+    let target_score = 7;
     solver.set_target(target_score).unwrap();
     let start = Instant::now();
     solver.derive_policy(1e-5, 100).unwrap();
@@ -136,7 +137,7 @@ fn reroll_example() {
 }
 
 fn main() {
-    // policy_example();
+    upgrade_example();
 
-    reroll_example();
+    //reroll_example();
 }

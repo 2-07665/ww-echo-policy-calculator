@@ -124,9 +124,11 @@ pub const HIST_ULT_DAMAGE: Histogram = &[
     (116, 144),
 ];
 
-pub const BUFF_MAX_VALUES: [f64; NUM_BUFFS] = [
-    105.0, 210.0, 116.0, 147.0, 116.0, 60.0, 70.0, 580.0, 124.0, 116.0, 116.0, 116.0, 116.0,
+pub const BUFF_MAX_VALUES: [u16; NUM_BUFFS] = [
+    105, 210, 116, 147, 116, 60, 70, 580, 124, 116, 116, 116, 116,
 ];
+
+pub const BUFF_FIXED_VALUE_INDEX: [usize; 3] = [5, 6, 7];
 
 pub static BUFF_TYPES: [BuffData; NUM_BUFFS] = [
     BuffData {

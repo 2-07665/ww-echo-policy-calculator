@@ -5,7 +5,7 @@ use crate::mask::{
     FULL_MASK_SPACE, FULL_MASKS, NUM_FULL_MASKS, calculate_num_filled_slots, full_mask_to_index,
     is_valid_external_full_mask,
 };
-use crate::{FixedScorer, Scorer, ScorerError};
+use crate::{FixedScorer, InternalScorer, ScorerError};
 
 const MAX_LOCK_SIZE: usize = NUM_ECHO_SLOTS - 1;
 
@@ -23,16 +23,23 @@ fn lock_cost(k: usize) -> f64 {
 pub enum RerollPolicySolverError {
     PolicyNotDerived,
     FailedtoConvergeWithinMaxIter,
-    InvalidWeights,
+    AllWeightsZero,
+    TopWeightsTooLarge { sum: u32 },
     InvalidMask { mask: u16 },
     InvalidTolerance { tolerance: f64 },
-    TargetScoreImpossible { target_score: f64, max_score: f64 },
+    TargetScoreImpossible { target_score: u16, max_score: u16 },
     TargetNotSet,
 }
 
 impl From<ScorerError> for RerollPolicySolverError {
-    fn from(_: ScorerError) -> Self {
-        RerollPolicySolverError::InvalidWeights
+    fn from(err: ScorerError) -> Self {
+        match err {
+            ScorerError::AllWeightsZero => RerollPolicySolverError::AllWeightsZero,
+            ScorerError::FixedScorerTopWeightsTooLarge { sum } => {
+                RerollPolicySolverError::TopWeightsTooLarge { sum }
+            }
+            _ => unreachable!("Only the above errors could appear when creating a FixedScorer"),
+        }
     }
 }
 
@@ -45,12 +52,12 @@ pub struct LockChoice {
 }
 
 pub struct RerollPolicySolver {
-    scores: [f64; NUM_FULL_MASKS],
-    max_score: f64,
+    scores: [u16; NUM_FULL_MASKS],
+    max_score: u16,
     lock_sets: Vec<Vec<u16>>,
     transitions: Vec<Vec<usize>>,
 
-    target_score: Option<f64>,
+    target_score: Option<u16>,
     success: [bool; NUM_FULL_MASKS],
     success_count: usize,
     policy_derived: bool,
@@ -165,31 +172,30 @@ impl RerollPolicySolver {
 }
 
 impl RerollPolicySolver {
-    pub fn new(weights: [f64; NUM_BUFFS]) -> Result<Self, RerollPolicySolverError> {
+    pub fn new(weights: [u16; NUM_BUFFS]) -> Result<Self, RerollPolicySolverError> {
         let scorer = FixedScorer::new(weights)?;
-        let mut scores = [0.0f64; NUM_FULL_MASKS];
-        let mut max_score: f64 = 0.0;
+        let mut scores = [0u16; NUM_FULL_MASKS];
+        let max_score = scorer.max_score();
 
         let mut lock_sets = Vec::with_capacity(NUM_FULL_MASKS);
         let mut transitions = vec![Vec::new(); FULL_MASK_SPACE + 1];
         let mut positive_weight_mask: u16 = 0;
         for (buff_index, &weight) in weights.iter().enumerate() {
-            if weight > 0.0 {
+            if weight > 0 {
                 positive_weight_mask |= 1u16 << buff_index;
             }
         }
 
         for (index, &mask) in FULL_MASKS.iter().enumerate() {
-            let mut sum: f64 = 0.0;
+            let mut sum: u16 = 0;
             for buff_index in 0..NUM_BUFFS {
                 if (mask & (1u16 << buff_index)) != 0 {
-                    sum += scorer.buff_score(buff_index, 0.0);
+                    sum += scorer
+                        .buff_score_internal(buff_index, 0)
+                        .expect("built in buff entries should always be valid");
                 }
             }
             scores[index] = sum;
-            if sum > max_score {
-                max_score = sum;
-            }
 
             let mut subsets = Vec::<u16>::with_capacity(1 << NUM_ECHO_SLOTS);
             let mut sub = mask;
@@ -225,20 +231,15 @@ impl RerollPolicySolver {
         })
     }
 
-    pub fn set_target(&mut self, target_score: f64) -> Result<(), RerollPolicySolverError> {
-        if target_score.is_nan() || target_score > self.max_score {
+    pub fn set_target(&mut self, target_score: u16) -> Result<(), RerollPolicySolverError> {
+        if target_score > self.max_score {
             return Err(RerollPolicySolverError::TargetScoreImpossible {
                 target_score,
                 max_score: self.max_score,
             });
         }
         self.target_score = Some(target_score);
-        self.policy_derived = false;
-        self.best_lock_cache = [None; NUM_FULL_MASKS];
-        for choices in self.action_cache.iter_mut() {
-            choices.clear();
-        }
-        self.lock_success_probability_cache.fill(0.0);
+        self.reset_policy_cache();
 
         self.success = [false; NUM_FULL_MASKS];
         let mut success_count: usize = 0;
@@ -325,6 +326,15 @@ impl RerollPolicySolver {
         self.best_lock_cache = best_lock_cache;
     }
 
+    fn reset_policy_cache(&mut self) {
+        self.policy_derived = false;
+        self.best_lock_cache = [None; NUM_FULL_MASKS];
+        for choices in self.action_cache.iter_mut() {
+            choices.clear();
+        }
+        self.lock_success_probability_cache.fill(0.0);
+    }
+
     pub fn derive_policy(
         &mut self,
         tol: f64,
@@ -336,12 +346,7 @@ impl RerollPolicySolver {
         if tol.is_nan() || tol.is_infinite() || tol <= 0.0 {
             return Err(RerollPolicySolverError::InvalidTolerance { tolerance: tol });
         }
-        self.policy_derived = false;
-        self.best_lock_cache = [None; NUM_FULL_MASKS];
-        for choices in self.action_cache.iter_mut() {
-            choices.clear();
-        }
-        self.lock_success_probability_cache.fill(0.0);
+        self.reset_policy_cache();
 
         let p_success_all: f64 = self.success_count as f64 / NUM_FULL_MASKS as f64;
         let init_value = lock_cost(0) / p_success_all;
