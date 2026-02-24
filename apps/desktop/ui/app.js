@@ -1,30 +1,74 @@
 (() => {
   const PLACEHOLDER_LABEL = '选择词条';
+  const TARGET_SCORE_STEP = 0.01;
+  const TARGET_SCORE_DIGITS = 2;
+
+  const SCORER_LINEAR_DEFAULT = 'linear_default';
+  const SCORER_MC_BOOST_ASSISTANT = 'mc_boost_assistant';
+  const SCORER_QQ_BOT = 'qq_bot';
+  const SCORER_FIXED = 'fixed';
+  const DEFAULT_MC_BOOST_ASSISTANT_TARGET_SCORE = 95.0;
+  const DEFAULT_QQ_BOT_TARGET_SCORE = 35.0;
+  const MC_BOOST_ASSISTANT_LOCKED_MAIN_BUFF_SCORE = 0.0;
+  const MC_BOOST_ASSISTANT_LOCKED_NORMALIZED_MAX_SCORE = 120.0;
+  const QQ_BOT_LOCKED_NORMALIZED_MAX_SCORE = 50.0;
 
   const state = {
     buffTypes: [],
     buffLabels: {},
     buffTypeMaxValues: [],
     maxSelectedTypes: 5,
-    defaultBuffWeights: {},
     buffValueOptions: new Map(),
+    percentBuffs: new Set(),
+
+    scorerType: SCORER_LINEAR_DEFAULT,
+    scorerConfigs: {
+      [SCORER_LINEAR_DEFAULT]: {
+        mainBuffScore: 0,
+        normalizedMaxScore: 100,
+        weights: {},
+      },
+      [SCORER_MC_BOOST_ASSISTANT]: {
+        mainBuffScore: MC_BOOST_ASSISTANT_LOCKED_MAIN_BUFF_SCORE,
+        normalizedMaxScore: MC_BOOST_ASSISTANT_LOCKED_NORMALIZED_MAX_SCORE,
+        weights: {},
+      },
+      [SCORER_QQ_BOT]: {
+        mainBuffScore: 0,
+        normalizedMaxScore: QQ_BOT_LOCKED_NORMALIZED_MAX_SCORE,
+        weights: {},
+      },
+      [SCORER_FIXED]: {
+        weights: {},
+      },
+    },
+
     buffSelections: [],
     buffValues: [],
     contributions: [],
-    percentBuffs: new Set(),
+    mainContribution: 0,
     topWeightsSum: 0,
     totalScore: 0,
+    displayMaxScore: 0,
+
     policySummary: null,
     policyError: null,
     policyReady: false,
     suggestion: null,
-    weightMap: {},
+
     defaultTargetScore: 60,
+    defaultFixedTargetScore: 60,
+    defaultMcBoostAssistantTargetScore: DEFAULT_MC_BOOST_ASSISTANT_TARGET_SCORE,
+    defaultQqBotTargetScore: DEFAULT_QQ_BOT_TARGET_SCORE,
     targetScore: 60,
+
     expRefundRatio: 0.66,
-    scorerType: 'linear',
+    blendData: false,
     costWeights: { wEcho: 0.0, wTuner: 1.0, wExp: 0.0 },
+
     activeTab: 'upgrade',
+    scorerBeforeReroll: null,
+
     reroll: {
       targetScore: 60,
       policyReady: false,
@@ -38,6 +82,7 @@
   const elements = {};
   let suggestionRequestToken = 0;
   let rerollRecommendationToken = 0;
+  let scorePreviewRequestToken = 0;
 
   function escapeHtml(value) {
     return String(value)
@@ -66,6 +111,93 @@
     return Number.isFinite(num) ? num.toFixed(digits) : fallback;
   }
 
+  function normalizeScorerType(value) {
+    const lowered = String(value || '').toLowerCase();
+    if (lowered === 'linear') {
+      return SCORER_LINEAR_DEFAULT;
+    }
+    if (lowered === SCORER_MC_BOOST_ASSISTANT) {
+      return SCORER_MC_BOOST_ASSISTANT;
+    }
+    if (lowered === SCORER_QQ_BOT) {
+      return SCORER_QQ_BOT;
+    }
+    if (lowered === SCORER_FIXED) {
+      return SCORER_FIXED;
+    }
+    return SCORER_LINEAR_DEFAULT;
+  }
+
+  function isFixedScorer(type = state.scorerType) {
+    return type === SCORER_FIXED;
+  }
+
+  function isQqBotScorer(type = state.scorerType) {
+    return type === SCORER_QQ_BOT;
+  }
+
+  function isMcBoostAssistantScorer(type = state.scorerType) {
+    return type === SCORER_MC_BOOST_ASSISTANT;
+  }
+
+  function getScorerConfig(type = state.scorerType) {
+    return state.scorerConfigs[type];
+  }
+
+  function getWeightMap(type = state.scorerType) {
+    return getScorerConfig(type).weights;
+  }
+
+  function getMainBuffScore(type = state.scorerType) {
+    if (isFixedScorer(type)) {
+      return 0;
+    }
+    if (isMcBoostAssistantScorer(type)) {
+      return MC_BOOST_ASSISTANT_LOCKED_MAIN_BUFF_SCORE;
+    }
+    return Math.max(0, numberOr(getScorerConfig(type).mainBuffScore, 0));
+  }
+
+  function getNormalizedMaxScore(type = state.scorerType) {
+    if (isFixedScorer(type)) {
+      return 0;
+    }
+    if (isMcBoostAssistantScorer(type)) {
+      return MC_BOOST_ASSISTANT_LOCKED_NORMALIZED_MAX_SCORE;
+    }
+    if (isQqBotScorer(type)) {
+      return QQ_BOT_LOCKED_NORMALIZED_MAX_SCORE;
+    }
+    return Math.max(TARGET_SCORE_STEP, numberOr(getScorerConfig(type).normalizedMaxScore, 0));
+  }
+
+  function effectiveWeightForBuff(buffName, type = state.scorerType) {
+    const rawWeight = Math.max(0, Number(getWeightMap(type)[buffName] ?? 0));
+    if (!isQqBotScorer(type)) {
+      return rawWeight;
+    }
+
+    const buffIndex = state.buffTypes.indexOf(buffName);
+    if (buffIndex < 0) {
+      return 0;
+    }
+    const buffMaxValue = Number(state.buffTypeMaxValues[buffIndex] ?? 0);
+    if (buffMaxValue <= 0) {
+      return 0;
+    }
+    const isFlatBuff = buffName.endsWith('_Flat');
+    const qqFactor = isFlatBuff ? 1.0 : 0.1;
+    return rawWeight * qqFactor * buffMaxValue;
+  }
+
+  function formatScoreForScorer(value, type = state.scorerType) {
+    const numeric = numberOr(value, 0);
+    if (isFixedScorer(type)) {
+      return String(Math.round(numeric));
+    }
+    return numeric.toFixed(TARGET_SCORE_DIGITS);
+  }
+
   function cacheElements() {
     elements.weightInputsContainer = document.getElementById('weight-inputs');
     elements.tabUpgrade = document.getElementById('tab-upgrade');
@@ -76,12 +208,17 @@
     elements.clearBuffsButton = document.getElementById('clear-buffs');
     elements.scoreCard = document.getElementById('score-card');
     elements.scorerTypeSelect = document.getElementById('scorer-type-select');
+    elements.linearParams = document.getElementById('linear-params');
+    elements.linearParamsFields = document.getElementById('linear-params-fields');
+    elements.mainBuffScoreInput = document.getElementById('main-buff-score-input');
+    elements.normalizedMaxScoreInput = document.getElementById('normalized-max-score-input');
+    elements.scorerConfigHint = document.getElementById('scorer-config-hint');
     elements.targetScoreInput = document.getElementById('target-score-input');
+    elements.blendDataSelect = document.getElementById('blend-data-select');
     elements.costWEchoInput = document.getElementById('cost-w-echo');
     elements.costWTunerInput = document.getElementById('cost-w-tuner');
     elements.costWExpInput = document.getElementById('cost-w-exp');
-    elements.expRefundSlider = document.getElementById('exp-refund-slider');
-    elements.expRefundValue = document.getElementById('exp-refund-value');
+    elements.expRefundInput = document.getElementById('exp-refund-input');
     elements.computeButton = document.getElementById('compute-button');
     elements.resultsSection = document.getElementById('results-section');
     elements.rerollTargetScoreInput = document.getElementById('reroll-target-score-input');
@@ -92,17 +229,70 @@
     elements.rerollOutput = document.getElementById('reroll-output');
   }
 
+  function copyWeightMap(src) {
+    const out = {};
+    state.buffTypes.forEach((name) => {
+      out[name] = numberOr(src?.[name], 0);
+    });
+    return out;
+  }
+
   function initialiseState(data) {
     state.buffTypes = data.buffTypes || [];
     state.buffLabels = data.buffLabels || {};
     state.buffTypeMaxValues = (data.buffTypeMaxValues || []).map(Number);
     state.maxSelectedTypes = Number(data.maxSelectedTypes || 5);
-    state.defaultBuffWeights = data.defaultBuffWeights || {};
-    state.defaultTargetScore = Number(data.defaultTargetScore || 60);
-    state.targetScore = state.defaultTargetScore;
-    state.expRefundRatio = Number(data.defaultExpRefundRatio || 0.66);
-    state.scorerType = String(data.defaultScorerType || 'linear').toLowerCase();
 
+    state.defaultTargetScore = Number(data.defaultTargetScore || 60);
+    state.defaultFixedTargetScore = Number(data.defaultFixedTargetScore || Math.round(state.defaultTargetScore));
+    state.defaultMcBoostAssistantTargetScore = DEFAULT_MC_BOOST_ASSISTANT_TARGET_SCORE;
+    state.defaultQqBotTargetScore = DEFAULT_QQ_BOT_TARGET_SCORE;
+
+    const defaultLinearWeights = data.defaultLinearBuffWeights || data.defaultBuffWeights || {};
+    const defaultMcBoostAssistantWeights =
+      data.defaultMcBoostAssistantBuffWeights || defaultLinearWeights;
+    const defaultQQWeights = data.defaultQqBotBuffWeights || {};
+    const defaultFixedWeights = data.defaultFixedBuffWeights || {};
+
+    state.scorerConfigs[SCORER_LINEAR_DEFAULT].weights = copyWeightMap(defaultLinearWeights);
+    state.scorerConfigs[SCORER_MC_BOOST_ASSISTANT].weights = copyWeightMap(defaultMcBoostAssistantWeights);
+    state.scorerConfigs[SCORER_QQ_BOT].weights = copyWeightMap(defaultQQWeights);
+    state.scorerConfigs[SCORER_FIXED].weights = copyWeightMap(defaultFixedWeights);
+
+    state.scorerConfigs[SCORER_LINEAR_DEFAULT].mainBuffScore = Number(
+      data.defaultLinearMainBuffScore ?? 0,
+    );
+    state.scorerConfigs[SCORER_LINEAR_DEFAULT].normalizedMaxScore = Number(
+      data.defaultLinearNormalizedMaxScore ?? 100,
+    );
+
+    state.scorerConfigs[SCORER_QQ_BOT].mainBuffScore = Number(
+      data.defaultQqBotMainBuffScore ?? 0,
+    );
+    state.scorerConfigs[SCORER_QQ_BOT].normalizedMaxScore = Number(
+      data.defaultQqBotNormalizedMaxScore ?? 50,
+    );
+    state.scorerConfigs[SCORER_MC_BOOST_ASSISTANT].mainBuffScore =
+      MC_BOOST_ASSISTANT_LOCKED_MAIN_BUFF_SCORE;
+    state.scorerConfigs[SCORER_MC_BOOST_ASSISTANT].normalizedMaxScore =
+      MC_BOOST_ASSISTANT_LOCKED_NORMALIZED_MAX_SCORE;
+
+    state.scorerType = normalizeScorerType(data.defaultScorerType);
+    if (isFixedScorer()) {
+      state.targetScore = state.defaultFixedTargetScore;
+    } else if (state.scorerType === SCORER_MC_BOOST_ASSISTANT) {
+      state.targetScore = state.defaultMcBoostAssistantTargetScore;
+    } else if (state.scorerType === SCORER_QQ_BOT) {
+      state.targetScore = state.defaultQqBotTargetScore;
+    } else {
+      state.targetScore = state.defaultTargetScore;
+    }
+    state.displayMaxScore = isFixedScorer()
+      ? computeTopWeightsSumForType(SCORER_FIXED)
+      : getNormalizedMaxScore(state.scorerType);
+
+    state.expRefundRatio = Number(data.defaultExpRefundRatio || 0.66);
+    state.blendData = false;
     state.costWeights = {
       wEcho: Number(data.defaultCostWeights?.wEcho || 0),
       wTuner: Number(data.defaultCostWeights?.wTuner || 1),
@@ -119,21 +309,19 @@
 
     state.percentBuffs = new Set(state.buffTypes.filter((name) => !name.endsWith('_Flat')));
 
-    state.weightMap = {};
-    state.buffTypes.forEach((name) => {
-      state.weightMap[name] = Number(state.defaultBuffWeights[name] ?? 0);
-    });
-
     state.buffSelections = Array(state.maxSelectedTypes).fill(null);
     state.buffValues = Array(state.maxSelectedTypes).fill(null);
     state.contributions = Array(state.maxSelectedTypes).fill(0);
+    state.mainContribution = 0;
     state.totalScore = 0;
+
     state.policySummary = null;
     state.policyError = null;
     state.policyReady = false;
     state.suggestion = null;
+
     state.reroll = {
-      targetScore: state.defaultTargetScore,
+      targetScore: state.defaultFixedTargetScore,
       policyReady: false,
       baselineSelections: Array(state.maxSelectedTypes).fill(null),
       candidateSelections: Array(state.maxSelectedTypes).fill(null),
@@ -141,59 +329,107 @@
       error: null,
     };
 
-    elements.targetScoreInput.value = state.targetScore.toFixed(1);
-    elements.scorerTypeSelect.value = state.scorerType === 'fixed' ? 'fixed' : 'linear';
+    elements.scorerTypeSelect.value = state.scorerType;
     elements.costWEchoInput.value = state.costWeights.wEcho.toFixed(1);
     elements.costWTunerInput.value = state.costWeights.wTuner.toFixed(1);
     elements.costWExpInput.value = state.costWeights.wExp.toFixed(1);
-    elements.expRefundSlider.value = state.expRefundRatio.toFixed(2);
-    elements.expRefundValue.textContent = state.expRefundRatio.toFixed(2);
-    elements.rerollTargetScoreInput.value = state.reroll.targetScore.toFixed(1);
+    elements.blendDataSelect.value = state.blendData ? 'true' : 'false';
+    elements.expRefundInput.value = state.expRefundRatio.toFixed(2);
   }
 
-  function roundToStep(value, step = 0.1) {
+  function roundToStep(value, step = TARGET_SCORE_STEP) {
     if (!Number.isFinite(value)) {
       return 0;
     }
     return Math.round(value / step) * step;
   }
 
-  function recommendedTargetForCurrentScorer() {
-    if (state.scorerType === 'fixed') {
-      const maxScore = computeTopWeightsSum();
+  function computeTopWeightsSumForType(type = state.scorerType) {
+    const weights = state.buffTypes
+      .map((name) => effectiveWeightForBuff(name, type))
+      .sort((a, b) => b - a)
+      .slice(0, state.maxSelectedTypes);
+    return weights.reduce((sum, weight) => sum + weight, 0);
+  }
+
+  function recommendedTargetForScorer(type = state.scorerType) {
+    if (isFixedScorer(type)) {
+      const maxScore = computeTopWeightsSumForType(type);
+      const defaultFixedTarget = Math.max(0, Math.round(numberOr(state.defaultFixedTargetScore, 0)));
       if (maxScore <= 0) {
-        return 0;
+        return defaultFixedTarget;
       }
-      return roundToStep(maxScore * 0.7, 0.1);
+      return Math.min(defaultFixedTarget, Math.round(maxScore));
+    }
+    if (type === SCORER_MC_BOOST_ASSISTANT) {
+      return state.defaultMcBoostAssistantTargetScore;
+    }
+    if (type === SCORER_QQ_BOT) {
+      return state.defaultQqBotTargetScore;
     }
     return state.defaultTargetScore;
   }
 
   function updateTargetScoreUI({ setRecommended = false } = {}) {
-    if (state.scorerType === 'fixed') {
-      const maxScore = computeTopWeightsSum();
-      const recommended = recommendedTargetForCurrentScorer();
-      elements.targetScoreInput.removeAttribute('max');
-
+    if (isFixedScorer()) {
+      const maxScore = computeTopWeightsSumForType(SCORER_FIXED);
       if (setRecommended) {
-        state.targetScore = recommended;
+        state.targetScore = recommendedTargetForScorer(SCORER_FIXED);
       } else if (maxScore > 0 && state.targetScore > maxScore) {
         state.targetScore = maxScore;
       }
-    } else {
-      elements.targetScoreInput.max = '100';
-      if (setRecommended) {
-        state.targetScore = state.defaultTargetScore;
-      }
+
+      state.targetScore = Math.max(0, Math.round(numberOr(state.targetScore, 0)));
+      elements.targetScoreInput.step = '1';
+      elements.targetScoreInput.removeAttribute('max');
+      elements.targetScoreInput.value = String(state.targetScore);
+      return;
     }
 
-    state.targetScore = Math.max(0, roundToStep(state.targetScore, 0.1));
-    elements.targetScoreInput.value = state.targetScore.toFixed(1);
+    const normalizedMax = getNormalizedMaxScore();
+    if (setRecommended) {
+      state.targetScore = recommendedTargetForScorer(state.scorerType);
+    }
+
+    state.targetScore = Math.max(0, roundToStep(numberOr(state.targetScore, 0), TARGET_SCORE_STEP));
+    elements.targetScoreInput.step = String(TARGET_SCORE_STEP);
+    elements.targetScoreInput.max = normalizedMax.toFixed(TARGET_SCORE_DIGITS);
+    elements.targetScoreInput.value = state.targetScore.toFixed(TARGET_SCORE_DIGITS);
   }
 
-  function setActiveTab(tab) {
+  function updateRerollTargetScoreUI({ setRecommended = false } = {}) {
+    const maxScore = computeTopWeightsSumForType(SCORER_FIXED);
+    if (setRecommended) {
+      state.reroll.targetScore = recommendedTargetForScorer(SCORER_FIXED);
+    } else if (maxScore > 0 && state.reroll.targetScore > maxScore) {
+      state.reroll.targetScore = maxScore;
+    }
+
+    state.reroll.targetScore = Math.max(0, Math.round(numberOr(state.reroll.targetScore, 0)));
+    elements.rerollTargetScoreInput.value = String(state.reroll.targetScore);
+  }
+
+  async function setActiveTab(tab) {
     state.activeTab = tab === 'reroll' ? 'reroll' : 'upgrade';
     const upgradeActive = state.activeTab === 'upgrade';
+
+    if (!upgradeActive) {
+      if (state.scorerType !== SCORER_FIXED) {
+        state.scorerBeforeReroll = state.scorerType;
+        await applyScorerType(SCORER_FIXED, { setRecommendedTarget: true });
+      }
+      elements.scorerTypeSelect.disabled = true;
+    } else {
+      elements.scorerTypeSelect.disabled = false;
+      if (state.scorerBeforeReroll && state.scorerType === SCORER_FIXED) {
+        const restoreScorer = state.scorerBeforeReroll;
+        state.scorerBeforeReroll = null;
+        await applyScorerType(restoreScorer, { setRecommendedTarget: false });
+      } else {
+        state.scorerBeforeReroll = null;
+        renderScorerConfig();
+      }
+    }
 
     elements.upgradeTab.hidden = !upgradeActive;
     elements.rerollTab.hidden = upgradeActive;
@@ -201,53 +437,133 @@
     elements.tabReroll.classList.toggle('active', !upgradeActive);
   }
 
-  function computeTopWeightsSum() {
-    const weights = state.buffTypes
-      .map((name) => Number(state.weightMap[name] ?? 0))
-      .sort((a, b) => b - a)
-      .slice(0, state.maxSelectedTypes);
-    return weights.reduce((sum, weight) => sum + weight, 0);
-  }
+  async function applyScorerType(nextScorerType, { setRecommendedTarget = true } = {}) {
+    state.scorerType = normalizeScorerType(nextScorerType);
+    renderScorerConfig();
+    renderWeightInputs();
+    updateTargetScoreUI({ setRecommended: setRecommendedTarget });
+    resetPolicyResult();
 
-  function computeContributions() {
-    const sum = computeTopWeightsSum();
-    state.topWeightsSum = sum;
-
-    for (let i = 0; i < state.maxSelectedTypes; i += 1) {
-      const buffName = state.buffSelections[i];
-      const rawValue = state.buffValues[i];
-
-      if (!buffName || rawValue == null) {
-        state.contributions[i] = 0;
-        continue;
-      }
-
-      const buffIndex = state.buffTypes.indexOf(buffName);
-      if (buffIndex < 0) {
-        state.contributions[i] = 0;
-        continue;
-      }
-
-      const weight = Number(state.weightMap[buffName] ?? 0);
-      if (state.scorerType === 'fixed') {
-        state.contributions[i] = weight;
-      } else {
-        if (sum <= 0) {
-          state.contributions[i] = 0;
-          continue;
-        }
-        const maxValue = Number(state.buffTypeMaxValues[buffIndex] ?? 1);
-        const ratio = Math.max(0, Math.min(1, Number(rawValue) / maxValue));
-        state.contributions[i] = (100.0 * weight * ratio) / sum;
-      }
+    if (state.scorerType === SCORER_FIXED) {
+      updateRerollTargetScoreUI();
+      invalidateRerollPolicy();
+    } else {
+      renderRerollSlots();
+      updateRerollComputeButtonState();
     }
 
-    state.totalScore = state.contributions.reduce((acc, value) => acc + value, 0);
+    await computeContributions();
   }
 
-  function formatBuffLabel(buffName) {
+  function renderScorerConfig() {
+    elements.scorerTypeSelect.value = state.scorerType;
+
+    if (isFixedScorer()) {
+      elements.linearParams.hidden = true;
+      elements.linearParams.style.display = 'none';
+      elements.mainBuffScoreInput.disabled = true;
+      elements.normalizedMaxScoreInput.disabled = true;
+      elements.scorerConfigHint.textContent =
+        '固定评分模式下，每个词条直接按设置的权重计分，不受词条数值高低影响。\n权重和目标分数只能为整数。\n此评分模式主要用于只关注词条数目的场景。';
+      return;
+    }
+
+    const config = getScorerConfig();
+    elements.linearParams.hidden = false;
+    elements.linearParams.style.display = '';
+
+    config.mainBuffScore = Math.max(0, numberOr(config.mainBuffScore, 0));
+    config.normalizedMaxScore = Math.max(TARGET_SCORE_STEP, numberOr(config.normalizedMaxScore, 0));
+
+    if (isMcBoostAssistantScorer()) {
+      config.mainBuffScore = MC_BOOST_ASSISTANT_LOCKED_MAIN_BUFF_SCORE;
+      config.normalizedMaxScore = MC_BOOST_ASSISTANT_LOCKED_NORMALIZED_MAX_SCORE;
+      elements.mainBuffScoreInput.disabled = true;
+      elements.normalizedMaxScoreInput.disabled = true;
+    } else if (isQqBotScorer()) {
+      config.normalizedMaxScore = QQ_BOT_LOCKED_NORMALIZED_MAX_SCORE;
+      elements.mainBuffScoreInput.disabled = false;
+      elements.normalizedMaxScoreInput.disabled = true;
+    } else {
+      elements.mainBuffScoreInput.disabled = false;
+      elements.normalizedMaxScoreInput.disabled = false;
+    }
+
+    elements.mainBuffScoreInput.value = config.mainBuffScore.toFixed(TARGET_SCORE_DIGITS);
+    elements.normalizedMaxScoreInput.value = config.normalizedMaxScore.toFixed(TARGET_SCORE_DIGITS);
+
+    if (state.scorerType === SCORER_MC_BOOST_ASSISTANT) {
+      elements.scorerConfigHint.textContent =
+        '漂泊者强化助手按线性规则评分。归一化总分 120.00，其中主词条固定贡献 50.00。请在小程序中查看词条权重。\n这里的单词条分数为小程序内显示的0.7倍，且未计入对无效生存词条的“安慰分数”。\n注意，该来源的评分权重由词条对期望伤害的提升计算得到，但考虑的是词条对0+1角色与对6+5角色的提升平均值。';
+    } else if (state.scorerType === SCORER_QQ_BOT) {
+      elements.scorerConfigHint.textContent =
+        'WutheringWavesUID （QQ机器人）按线性规则评分，归一化总分 50.00。请使用“ww(角色名)权重”查看角色权重。\n主词条原始分数填写对应Cost声骸两个主词条的权重与数值乘积之和。\n注意，该来源的评分权重与实际词条价值存在相当偏差。';
+    } else {
+      elements.scorerConfigHint.textContent =
+        '自定义线性评分模式下，按词条数值占该词条最大值比例线性计分。词条权重对应词条最大值的原始分数。\n可设置声骸主词条的原始分数与归一化总分。权重与分数支持小数。\n建议配合拉表计算得到的权重结果使用。';
+    }
+  }
+
+  async function computeContributions() {
+    const scorerType = state.scorerType;
+    state.topWeightsSum = computeTopWeightsSumForType(scorerType);
+
+    const { names, values, slotIndices } = selectedBuffStateWithSlots();
+    const token = ++scorePreviewRequestToken;
+    const config = getScorerConfig(scorerType);
+
+    try {
+      const response = await invoke('preview_upgrade_score', {
+        payload: {
+          buffWeights: buildUpgradePayloadWeights(),
+          scorerType,
+          mainBuffScore: isFixedScorer(scorerType)
+            ? undefined
+            : Math.max(0, numberOr(config.mainBuffScore, 0)),
+          normalizedMaxScore: isFixedScorer(scorerType)
+            ? undefined
+            : Math.max(TARGET_SCORE_STEP, numberOr(config.normalizedMaxScore, 0)),
+          buffNames: names,
+          buffValues: values,
+        },
+      });
+
+      if (token !== scorePreviewRequestToken) {
+        return;
+      }
+
+      const nextContributions = Array(state.maxSelectedTypes).fill(0);
+      const responseContributions = Array.isArray(response?.contributions)
+        ? response.contributions
+        : [];
+      slotIndices.forEach((slotIndex, idx) => {
+        nextContributions[slotIndex] = Math.max(0, numberOr(responseContributions[idx], 0));
+      });
+
+      state.contributions = nextContributions;
+      state.mainContribution = Math.max(0, numberOr(response?.mainContribution, 0));
+      state.totalScore = Math.max(0, numberOr(response?.totalScore, 0));
+      state.displayMaxScore = Math.max(0, numberOr(response?.maxScore, 0));
+    } catch (_error) {
+      if (token !== scorePreviewRequestToken) {
+        return;
+      }
+      state.contributions = Array(state.maxSelectedTypes).fill(0);
+      state.mainContribution = 0;
+      state.totalScore = 0;
+      state.displayMaxScore = isFixedScorer(scorerType)
+        ? Math.max(0, Math.round(computeTopWeightsSumForType(SCORER_FIXED)))
+        : getNormalizedMaxScore(scorerType);
+    }
+
+    renderBuffSlots();
+    renderTotalScoreCard();
+    updateComputeButtonState();
+  }
+
+  function formatBuffLabel(buffName, weightMap = getWeightMap()) {
     const label = state.buffLabels[buffName] ?? buffName;
-    const weight = Number(state.weightMap[buffName] ?? 0);
+    const weight = Number(weightMap[buffName] ?? 0);
     if (Math.abs(weight) < 1e-9) {
       return `（无效词条）${label}`;
     }
@@ -275,6 +591,9 @@
     const container = elements.weightInputsContainer;
     container.innerHTML = '';
 
+    const weightMap = getWeightMap();
+    const fixedMode = isFixedScorer();
+
     const available = new Set(state.buffTypes);
     const seen = new Set();
 
@@ -292,14 +611,26 @@
 
       const input = document.createElement('input');
       input.type = 'number';
-      input.step = '0.1';
+      input.step = fixedMode ? '1' : '0.1';
       input.min = '0';
-      input.value = Number(state.weightMap[buffName] ?? 0);
+      input.value = fixedMode
+        ? String(Math.max(0, Math.round(numberOr(weightMap[buffName], 0))))
+        : String(numberOr(weightMap[buffName], 0));
 
-      input.addEventListener('change', () => {
-        state.weightMap[buffName] = Math.max(0, numberOr(input.valueAsNumber, 0));
-        input.value = state.weightMap[buffName];
-        onWeightsUpdated();
+      input.addEventListener('change', async () => {
+        if (fixedMode) {
+          const nextValue = Math.max(
+            0,
+            Math.min(65535, Math.round(numberOr(input.valueAsNumber, 0))),
+          );
+          weightMap[buffName] = nextValue;
+          input.value = String(nextValue);
+        } else {
+          const nextValue = Math.max(0, numberOr(input.valueAsNumber, 0));
+          weightMap[buffName] = nextValue;
+          input.value = String(nextValue);
+        }
+        await onWeightsUpdated();
       });
 
       wrapper.appendChild(label);
@@ -324,9 +655,9 @@
   }
 
   function renderBuffSlots() {
-    const rows = [];
+    const weightMap = getWeightMap();
     const sortedBuffTypes = [...state.buffTypes].sort((left, right) => {
-      const weightDiff = Number(state.weightMap[right] ?? 0) - Number(state.weightMap[left] ?? 0);
+      const weightDiff = Number(weightMap[right] ?? 0) - Number(weightMap[left] ?? 0);
       if (Math.abs(weightDiff) > 1e-9) {
         return weightDiff;
       }
@@ -335,11 +666,13 @@
       return leftLabel.localeCompare(rightLabel, 'zh-Hans-CN');
     });
 
+    const rows = [];
+
     for (let i = 0; i < state.maxSelectedTypes; i += 1) {
       const buffName = state.buffSelections[i];
       const value = state.buffValues[i];
       const score = state.contributions[i];
-      const scoreText = value == null || !buffName ? '-' : score.toFixed(2);
+      const scoreText = value == null || !buffName ? '-' : formatScoreForScorer(score);
       const scoreClass = value == null || !buffName ? 'slot-score inactive' : 'slot-score';
 
       const selectedByOthers = new Set(
@@ -349,7 +682,7 @@
         .filter((name) => !selectedByOthers.has(name) || name === buffName)
         .map((name) => {
           const selected = buffName === name ? 'selected' : '';
-          return `<option value="${escapeHtml(name)}" ${selected}>${escapeHtml(formatBuffLabel(name))}</option>`;
+          return `<option value="${escapeHtml(name)}" ${selected}>${escapeHtml(formatBuffLabel(name, weightMap))}</option>`;
         })
         .join('');
 
@@ -380,7 +713,7 @@
     elements.buffSlotsContainer.innerHTML = rows.join('');
 
     elements.buffSlotsContainer.querySelectorAll('.buff-type-select').forEach((select) => {
-      select.addEventListener('change', (event) => {
+      select.addEventListener('change', async (event) => {
         const index = Number(event.target.dataset.index);
         const selected = event.target.value;
 
@@ -393,26 +726,22 @@
           state.buffValues[index] = values.length > 0 ? values[0] : null;
         }
 
-        computeContributions();
-        renderBuffSlots();
-        renderTotalScoreCard();
+        await computeContributions();
         if (state.policyReady) {
-          updateSuggestion();
+          await updateSuggestion();
         }
       });
     });
 
     elements.buffSlotsContainer.querySelectorAll('.buff-value-select').forEach((select) => {
-      select.addEventListener('change', (event) => {
+      select.addEventListener('change', async (event) => {
         const index = Number(event.target.dataset.index);
         const value = event.target.value;
         state.buffValues[index] = value ? Number(value) : null;
 
-        computeContributions();
-        renderBuffSlots();
-        renderTotalScoreCard();
+        await computeContributions();
         if (state.policyReady) {
-          updateSuggestion();
+          await updateSuggestion();
         }
       });
     });
@@ -464,14 +793,14 @@
     const output = state.reroll.output;
     const baselineScoreText =
       output && output.valid !== false && Number.isFinite(Number(output.baselineScore))
-        ? Number(output.baselineScore).toFixed(2)
+        ? String(Math.round(Number(output.baselineScore)))
         : '--';
     const candidateScoreText =
       output &&
       output.valid !== false &&
       output.candidateScore != null &&
       Number.isFinite(Number(output.candidateScore))
-        ? Number(output.candidateScore).toFixed(2)
+        ? String(Math.round(Number(output.candidateScore)))
         : '--';
     return { baselineScoreText, candidateScoreText };
   }
@@ -510,7 +839,7 @@
     if (elements.rerollComputeButton.dataset.loading === 'true') {
       return;
     }
-    elements.rerollComputeButton.disabled = state.topWeightsSum <= 0;
+    elements.rerollComputeButton.disabled = computeTopWeightsSumForType(SCORER_FIXED) <= 0;
   }
 
   async function updateRerollRecommendation() {
@@ -562,8 +891,9 @@
   }
 
   function renderRerollSlots() {
+    const fixedWeights = getWeightMap(SCORER_FIXED);
     const sortedBuffTypes = [...state.buffTypes].sort((left, right) => {
-      const weightDiff = Number(state.weightMap[right] ?? 0) - Number(state.weightMap[left] ?? 0);
+      const weightDiff = Number(fixedWeights[right] ?? 0) - Number(fixedWeights[left] ?? 0);
       if (Math.abs(weightDiff) > 1e-9) {
         return weightDiff;
       }
@@ -605,7 +935,7 @@
         .filter((name) => !baselineSelectedByOthers.has(name) || name === baselineSelected)
         .map((name) => {
           const selected = baselineSelected === name ? 'selected' : '';
-          return `<option value="${escapeHtml(name)}" ${selected}>${escapeHtml(formatBuffLabel(name))}</option>`;
+          return `<option value="${escapeHtml(name)}" ${selected}>${escapeHtml(formatBuffLabel(name, fixedWeights))}</option>`;
         })
         .join('');
 
@@ -613,7 +943,7 @@
         .filter((name) => !candidateSelectedByOthers.has(name) || name === candidateSelected)
         .map((name) => {
           const selected = candidateSelected === name ? 'selected' : '';
-          return `<option value="${escapeHtml(name)}" ${selected}>${escapeHtml(formatBuffLabel(name))}</option>`;
+          return `<option value="${escapeHtml(name)}" ${selected}>${escapeHtml(formatBuffLabel(name, fixedWeights))}</option>`;
         })
         .join('');
 
@@ -783,9 +1113,10 @@
     });
   }
 
-  function selectedBuffState() {
+  function selectedBuffStateWithSlots() {
     const names = [];
     const values = [];
+    const slotIndices = [];
 
     for (let i = 0; i < state.maxSelectedTypes; i += 1) {
       const buffName = state.buffSelections[i];
@@ -794,9 +1125,15 @@
         continue;
       }
       names.push(buffName);
-      values.push(Number(buffValue));
+      values.push(Math.max(0, Math.round(Number(buffValue))));
+      slotIndices.push(i);
     }
 
+    return { names, values, slotIndices };
+  }
+
+  function selectedBuffState() {
+    const { names, values } = selectedBuffStateWithSlots();
     return { names, values };
   }
 
@@ -838,12 +1175,23 @@
   }
 
   function renderTotalScoreCard() {
-    const totalScoreText =
-      state.scorerType === 'fixed'
-        ? `${state.totalScore.toFixed(2)}`
-        : `${state.totalScore.toFixed(2)} / 100.00`;
+    const scorerType = state.scorerType;
+    const fixedMaxScore = Math.max(
+      0,
+      Math.round(numberOr(state.displayMaxScore, computeTopWeightsSumForType(SCORER_FIXED))),
+    );
+    const normalizedMaxScore = Math.max(
+      TARGET_SCORE_STEP,
+      numberOr(state.displayMaxScore, getNormalizedMaxScore(scorerType)),
+    );
+    const totalScoreText = isFixedScorer(scorerType)
+      ? `${formatScoreForScorer(state.totalScore, scorerType)} / ${fixedMaxScore}`
+      : `${state.totalScore.toFixed(TARGET_SCORE_DIGITS)} / ${normalizedMaxScore.toFixed(TARGET_SCORE_DIGITS)}`;
+
     const selectedCount = state.buffSelections.filter(Boolean).length;
     const targetScore = Number(state.policySummary?.targetScore ?? state.targetScore);
+    const targetText = formatScoreForScorer(targetScore, scorerType);
+
     const stage = state.suggestion?.stage ?? selectedCount;
     const successProbability = Number(state.suggestion?.successProbability);
     const successBadge = Number.isFinite(successProbability)
@@ -858,7 +1206,7 @@
             <div class="score-value">${totalScoreText}</div>
           </div>
           <div class="score-meta">
-            <span class="score-target">目标分数 ${targetScore.toFixed(2)}</span>
+            <span class="score-target">目标分数 ${targetText}</span>
             <span class="score-stage">已揭示 ${stage}/${state.maxSelectedTypes} 词条</span>
             ${successBadge}
           </div>
@@ -932,46 +1280,90 @@
     renderTotalScoreCard();
   }
 
-  function onWeightsUpdated() {
-    computeContributions();
-    renderBuffSlots();
+  async function onWeightsUpdated() {
     updateTargetScoreUI();
     resetPolicyResult();
-    updateComputeButtonState();
-    invalidateRerollPolicy();
+
+    if (state.scorerType === SCORER_FIXED) {
+      updateRerollTargetScoreUI();
+      invalidateRerollPolicy();
+    } else {
+      renderRerollSlots();
+      updateRerollComputeButtonState();
+    }
+
+    await computeContributions();
+  }
+
+  async function onScorerParamsUpdated() {
+    updateTargetScoreUI();
+    resetPolicyResult();
+    await computeContributions();
   }
 
   function setupEventHandlers() {
-    elements.tabUpgrade.addEventListener('click', () => {
-      setActiveTab('upgrade');
+    elements.tabUpgrade.addEventListener('click', async () => {
+      await setActiveTab('upgrade');
     });
 
-    elements.tabReroll.addEventListener('click', () => {
-      setActiveTab('reroll');
+    elements.tabReroll.addEventListener('click', async () => {
+      await setActiveTab('reroll');
     });
 
-    elements.clearBuffsButton.addEventListener('click', () => {
+    elements.clearBuffsButton.addEventListener('click', async () => {
       state.buffSelections.fill(null);
       state.buffValues.fill(null);
       state.contributions.fill(0);
-      state.totalScore = 0;
-      renderBuffSlots();
-      renderTotalScoreCard();
+      state.mainContribution = 0;
+      state.totalScore = isFixedScorer() ? 0 : getMainBuffScore();
+      await computeContributions();
       if (state.policyReady) {
-        updateSuggestion();
+        await updateSuggestion();
       }
     });
 
+    elements.scorerTypeSelect.addEventListener('change', async () => {
+      await applyScorerType(elements.scorerTypeSelect.value, { setRecommendedTarget: true });
+    });
+
+    elements.mainBuffScoreInput.addEventListener('change', async () => {
+      if (isFixedScorer() || isMcBoostAssistantScorer()) {
+        return;
+      }
+      const config = getScorerConfig();
+      config.mainBuffScore = Math.max(0, numberOr(elements.mainBuffScoreInput.valueAsNumber, config.mainBuffScore));
+      elements.mainBuffScoreInput.value = config.mainBuffScore.toFixed(TARGET_SCORE_DIGITS);
+      await onScorerParamsUpdated();
+    });
+
+    elements.normalizedMaxScoreInput.addEventListener('change', async () => {
+      if (isFixedScorer() || isQqBotScorer() || isMcBoostAssistantScorer()) {
+        return;
+      }
+      const config = getScorerConfig();
+      config.normalizedMaxScore = Math.max(
+        TARGET_SCORE_STEP,
+        numberOr(elements.normalizedMaxScoreInput.valueAsNumber, config.normalizedMaxScore),
+      );
+      elements.normalizedMaxScoreInput.value = config.normalizedMaxScore.toFixed(TARGET_SCORE_DIGITS);
+      await onScorerParamsUpdated();
+    });
+
     elements.targetScoreInput.addEventListener('change', () => {
-      state.targetScore = Math.max(0, numberOr(elements.targetScoreInput.valueAsNumber, state.targetScore));
+      if (isFixedScorer()) {
+        state.targetScore = Math.max(0, Math.round(numberOr(elements.targetScoreInput.valueAsNumber, state.targetScore)));
+      } else {
+        state.targetScore = Math.max(
+          0,
+          roundToStep(numberOr(elements.targetScoreInput.valueAsNumber, state.targetScore), TARGET_SCORE_STEP),
+        );
+      }
       updateTargetScoreUI();
       resetPolicyResult();
     });
 
-    elements.scorerTypeSelect.addEventListener('change', () => {
-      state.scorerType = elements.scorerTypeSelect.value === 'fixed' ? 'fixed' : 'linear';
-      computeContributions();
-      updateTargetScoreUI({ setRecommended: true });
+    elements.blendDataSelect.addEventListener('change', () => {
+      state.blendData = elements.blendDataSelect.value === 'true';
       resetPolicyResult();
     });
 
@@ -993,12 +1385,10 @@
       resetPolicyResult();
     });
 
-    elements.expRefundSlider.addEventListener('input', () => {
-      state.expRefundRatio = Math.max(0, Math.min(0.75, numberOr(elements.expRefundSlider.valueAsNumber, state.expRefundRatio)));
-      elements.expRefundValue.textContent = state.expRefundRatio.toFixed(2);
-    });
-
-    elements.expRefundSlider.addEventListener('change', () => {
+    elements.expRefundInput.addEventListener('change', () => {
+      state.expRefundRatio = Math.max(0, Math.min(0.75, numberOr(elements.expRefundInput.valueAsNumber, state.expRefundRatio)));
+      state.expRefundRatio = roundToStep(state.expRefundRatio, TARGET_SCORE_STEP);
+      elements.expRefundInput.value = state.expRefundRatio.toFixed(TARGET_SCORE_DIGITS);
       resetPolicyResult();
     });
 
@@ -1009,9 +1399,9 @@
     elements.rerollTargetScoreInput.addEventListener('change', () => {
       state.reroll.targetScore = Math.max(
         0,
-        numberOr(elements.rerollTargetScoreInput.valueAsNumber, state.reroll.targetScore),
+        Math.round(numberOr(elements.rerollTargetScoreInput.valueAsNumber, state.reroll.targetScore)),
       );
-      elements.rerollTargetScoreInput.value = state.reroll.targetScore.toFixed(1);
+      updateRerollTargetScoreUI();
       invalidateRerollPolicy();
     });
 
@@ -1046,18 +1436,50 @@
     });
   }
 
+  function buildUpgradePayloadWeights() {
+    const weightMap = getWeightMap();
+    const payloadWeights = {};
+
+    state.buffTypes.forEach((buffName) => {
+      const raw = Number(weightMap[buffName] ?? 0);
+      payloadWeights[buffName] = isFixedScorer()
+        ? Math.max(0, Math.round(raw))
+        : Math.max(0, raw);
+    });
+
+    return payloadWeights;
+  }
+
+  function buildFixedPayloadWeights() {
+    const weightMap = getWeightMap(SCORER_FIXED);
+    const payloadWeights = {};
+
+    state.buffTypes.forEach((buffName) => {
+      const raw = Number(weightMap[buffName] ?? 0);
+      payloadWeights[buffName] = Math.max(0, Math.round(raw));
+    });
+
+    return payloadWeights;
+  }
+
   async function handleCompute() {
+    const config = getScorerConfig();
+
     const payload = {
-      buffWeights: state.weightMap,
-      targetScore: state.targetScore,
+      buffWeights: buildUpgradePayloadWeights(),
+      targetScore: isFixedScorer() ? Math.max(0, Math.round(state.targetScore)) : state.targetScore,
       scorerType: state.scorerType,
+      mainBuffScore: isFixedScorer() ? undefined : Math.max(0, numberOr(config.mainBuffScore, 0)),
+      normalizedMaxScore: isFixedScorer()
+        ? undefined
+        : Math.max(TARGET_SCORE_STEP, numberOr(config.normalizedMaxScore, 0)),
       costWeights: {
         wEcho: state.costWeights.wEcho,
         wTuner: state.costWeights.wTuner,
         wExp: state.costWeights.wExp,
       },
       expRefundRatio: state.expRefundRatio,
-      blendData: false,
+      blendData: state.blendData,
       lambdaTolerance: 1e-6,
       lambdaMaxIter: 120,
     };
@@ -1091,9 +1513,9 @@
   }
 
   async function handleRerollCompute() {
-    if (state.topWeightsSum <= 0) {
+    if (computeTopWeightsSumForType(SCORER_FIXED) <= 0) {
       clearRerollRecommendation();
-      state.reroll.error = '请先设置至少一个大于 0 的权重。';
+      state.reroll.error = '请先设置至少一个大于 0 的 FixedScorer 权重。';
       renderRerollSlots();
       renderRerollOutput();
       return;
@@ -1107,8 +1529,8 @@
     try {
       await invoke('compute_reroll_policy', {
         payload: {
-          buffWeights: state.weightMap,
-          targetScore: state.reroll.targetScore,
+          buffWeights: buildFixedPayloadWeights(),
+          targetScore: Math.max(0, Math.round(state.reroll.targetScore)),
         },
       });
 
@@ -1179,17 +1601,20 @@
     try {
       const data = await invoke('bootstrap');
       initialiseState(data);
+
+      renderScorerConfig();
       renderWeightInputs();
       setupEventHandlers();
-      computeContributions();
+
       updateTargetScoreUI();
-      renderBuffSlots();
+      updateRerollTargetScoreUI();
+
       renderRerollSlots();
-      renderTotalScoreCard();
       updateComputeButtonState();
       renderResults();
       renderRerollOutput();
-      setActiveTab('upgrade');
+      await computeContributions();
+      await setActiveTab('upgrade');
     } catch (error) {
       elements.resultsSection.innerHTML = `
         <div class="error-message">初始化失败：${escapeHtml(error?.message || error)}</div>

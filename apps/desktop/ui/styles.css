@@ -107,6 +107,34 @@ body {
   margin-bottom: 1.2rem;
 }
 
+.field-group-inline {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+}
+
+.field-group-inline > div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.scorer-params {
+  margin-top: 0;
+}
+
+.scorer-hint-box {
+  min-height: 92px;
+  padding: 0.7rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  white-space: pre-line;
+  margin-bottom: 1rem;
+}
+
 .field-group label {
   font-size: 0.95rem;
   font-weight: 600;
@@ -119,17 +147,26 @@ body {
   color: #64748b;
 }
 
+.field-group.policy-primary-row,
 .field-group.cost-weights {
   display: grid;
   gap: 0.75rem;
   grid-template-columns: repeat(3, minmax(120px, 1fr));
 }
 
+.field-group.policy-primary-row > div,
 .field-group.cost-weights > div {
   display: grid;
   gap: 0.35rem;
 }
 
+.field-group.policy-primary-row > div select,
+.field-group.policy-primary-row > div input[type='number'] {
+  width: 100%;
+  height: 2.35rem;
+}
+
+.field-group.policy-primary-row > div label,
 .field-group.cost-weights > div label {
   margin: 0;
   white-space: normal;
@@ -265,22 +302,6 @@ input[type='number'] {
 .primary-button:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 18px 28px -12px rgba(79, 70, 229, 0.7);
-}
-
-.slider-row {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-#exp-refund-slider {
-  flex: 1;
-}
-
-#exp-refund-value {
-  min-width: 3.5rem;
-  font-weight: 600;
-  text-align: right;
 }
 
 .buff-slot {
@@ -645,7 +666,13 @@ input[type='number'] {
     padding: 1.25rem 1rem;
   }
 
+  .field-group.policy-primary-row,
   .field-group.cost-weights {
     grid-template-columns: 1fr;
   }
+
+  .field-group-inline {
+    grid-template-columns: 1fr;
+  }
+
 }

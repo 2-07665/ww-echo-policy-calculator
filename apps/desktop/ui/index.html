@@ -11,16 +11,41 @@
     <div id="app">
       <h1 class="page-title">声骸强化策略计算器</h1>
 
-      <section class="card" id="weights-card">
-        <div class="card-title">权重设置</div>
-        <div id="weight-inputs" class="weight-grid"></div>
-      </section>
-
       <section class="card" id="mode-tabs-card">
         <div class="mode-tabs">
           <button type="button" id="tab-upgrade" class="tab-button active">强化策略</button>
           <button type="button" id="tab-reroll" class="tab-button">重抽策略</button>
         </div>
+      </section>
+
+      <section class="card" id="scorer-config-card">
+        <div class="card-title">评分设置</div>
+
+        <div class="field-group">
+          <label for="scorer-type-select">评分模式</label>
+          <select id="scorer-type-select" class="styled-select">
+            <option value="linear_default">自定义线性评分</option>
+            <option value="mc_boost_assistant">漂泊者强化助手评分</option>
+            <option value="qq_bot">WutheringWavesUID评分（QQ机器人）</option>
+            <option value="fixed">固定评分</option>
+          </select>
+        </div>
+
+        <div id="linear-params" class="field-group scorer-params">
+          <div id="linear-params-fields" class="field-group-inline">
+            <div>
+              <label for="main-buff-score-input">主词条原始分数</label>
+              <input id="main-buff-score-input" type="number" step="0.01" min="0" />
+            </div>
+            <div>
+              <label for="normalized-max-score-input">归一化总分</label>
+              <input id="normalized-max-score-input" type="number" step="0.01" min="0.01" />
+            </div>
+          </div>
+        </div>
+        <div id="scorer-config-hint" class="scorer-hint-box"></div>
+
+        <div id="weight-inputs" class="weight-grid"></div>
       </section>
 
       <div id="upgrade-tab">
@@ -37,17 +62,22 @@
         <section class="card" id="policy-config-card">
           <div class="card-title">策略参数</div>
 
-          <div class="field-group">
-            <label for="scorer-type-select">评分模式</label>
-            <select id="scorer-type-select" class="styled-select">
-              <option value="linear">线性评分 (LinearScorer)</option>
-              <option value="fixed">固定评分 (FixedScorer)</option>
-            </select>
-          </div>
-
-          <div class="field-group">
-            <label for="target-score-input">目标分数</label>
-            <input id="target-score-input" type="number" step="0.1" min="0" />
+          <div class="field-group policy-primary-row">
+            <div>
+              <label for="target-score-input">目标分数</label>
+              <input id="target-score-input" type="number" min="0" />
+            </div>
+            <div>
+              <label for="blend-data-select">混合词条统计数据</label>
+              <select id="blend-data-select">
+                <option value="false">否</option>
+                <option value="true">是</option>
+              </select>
+            </div>
+            <div>
+              <label for="exp-refund-input">经验返还比例（理想值 0.75）</label>
+              <input id="exp-refund-input" type="number" min="0" max="0.75" step="0.01" />
+            </div>
           </div>
 
           <div class="field-group cost-weights">
@@ -65,14 +95,6 @@
             </div>
           </div>
 
-          <div class="field-group">
-            <label for="exp-refund-slider">强化失败经验返还比例 (理想值 0.75)</label>
-            <div class="slider-row">
-              <input id="exp-refund-slider" type="range" min="0" max="0.75" step="0.01" />
-              <span id="exp-refund-value"></span>
-            </div>
-          </div>
-
           <button type="button" id="compute-button" class="primary-button">开始计算策略</button>
         </section>
 
@@ -81,10 +103,10 @@
 
       <div id="reroll-tab" hidden>
         <section class="card" id="reroll-config-card">
-          <div class="card-title">重抽参数</div>
+          <div class="card-title">重抽参数 (FixedScorer)</div>
           <div class="field-group">
             <label for="reroll-target-score-input">目标分数</label>
-            <input id="reroll-target-score-input" type="number" step="0.1" min="0" />
+            <input id="reroll-target-score-input" type="number" step="1" min="0" />
           </div>
           <button type="button" id="reroll-compute-button" class="primary-button">计算重抽策略</button>
         </section>
