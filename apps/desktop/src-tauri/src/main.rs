@@ -3,16 +3,21 @@
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::io::ErrorKind;
+use std::net::UdpSocket;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
-use std::time::Instant;
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
+};
+use std::thread::{self, JoinHandle};
+use std::time::{Duration, Instant};
 
 use echo_policy::{
     CostModel, FixedScorer, InternalScorer, LinearScorer, RerollPolicySolver, SCORE_MULTIPLIER,
     UpgradePolicySolver, bits_to_mask, mask_to_bits,
 };
 use serde::{Deserialize, Serialize};
-use tauri::{Manager, State};
+use tauri::{Emitter, Manager, State};
 
 const NUM_BUFFS: usize = 13;
 const MAX_SELECTED_TYPES: usize = 5;
@@ -38,6 +43,11 @@ const DEFAULT_LINEAR_NORMALIZED_MAX_SCORE: f64 = 100.0;
 const DEFAULT_QQ_BOT_MAIN_BUFF_SCORE: f64 = 0.0;
 const DEFAULT_QQ_BOT_NORMALIZED_MAX_SCORE: f64 = 50.0;
 const MIN_NORMALIZED_MAX_SCORE: f64 = 0.01;
+const DEFAULT_OCR_UDP_PORT: u16 = 39191;
+const OCR_UDP_EVENT_FILL_ENTRIES: &str = "ocr_udp_fill_entries";
+const OCR_UDP_EVENT_LISTENER_STATUS: &str = "ocr_udp_listener_status";
+const OCR_UDP_PACKET_BUFFER_SIZE: usize = 16 * 1024;
+const OCR_UDP_READ_TIMEOUT_MS: u64 = 300;
 
 const BUFF_TYPES: [&str; NUM_BUFFS] = [
     "Crit_Rate",
@@ -209,6 +219,25 @@ struct QueryRerollRecommendationRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct StartOcrUdpListenerRequest {
+    port: u16,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct OcrUdpPayload {
+    buff_entries: Vec<OcrUdpBuffEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct OcrUdpBuffEntry {
+    buff_name: String,
+    buff_value: u16,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct LoadScorerPresetsRequest {
     #[serde(default = "default_scorer_type")]
     scorer_type: String,
@@ -314,6 +343,7 @@ struct BootstrapResponse {
     default_cost_weights: CostWeightsOutput,
     default_exp_refund_ratio: f64,
     default_scorer_type: String,
+    default_ocr_udp_port: u16,
 }
 
 #[derive(Debug, Serialize)]
@@ -383,6 +413,22 @@ struct RerollRecommendationResponse {
     accept_candidate: Option<bool>,
 }
 
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct OcrListenerStatusResponse {
+    listening: bool,
+    port: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    last_error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct OcrFillEntriesEvent {
+    buff_names: Vec<String>,
+    buff_values: Vec<u16>,
+}
+
 #[derive(Clone, Copy)]
 enum UpgradeScorerConfig {
     LinearDefault {
@@ -424,9 +470,22 @@ struct RerollSession {
     scorer: FixedScorer,
 }
 
+struct OcrUdpListenerSession {
+    port: u16,
+    stop_flag: Arc<AtomicBool>,
+    join_handle: JoinHandle<()>,
+}
+
+#[derive(Default)]
+struct OcrUdpListenerState {
+    session: Option<OcrUdpListenerSession>,
+    last_error: Option<String>,
+}
+
 struct AppState {
     current_upgrade: Mutex<Option<SolverSession>>,
     current_reroll: Mutex<Option<RerollSession>>,
+    ocr_udp_listener: Mutex<OcrUdpListenerState>,
 }
 
 impl AppState {
@@ -434,6 +493,7 @@ impl AppState {
         Self {
             current_upgrade: Mutex::new(None),
             current_reroll: Mutex::new(None),
+            ocr_udp_listener: Mutex::new(OcrUdpListenerState::default()),
         }
     }
 }
@@ -512,8 +572,12 @@ fn scorer_preset_file_path(app: &tauri::AppHandle, scorer_type: &str) -> Result<
         .app_config_dir()
         .map_err(|err| format!("Failed to resolve app config directory: {err}"))?
         .join(SCORER_PRESET_DIR);
-    fs::create_dir_all(&dir)
-        .map_err(|err| format!("Failed to create preset directory '{}': {err}", dir.display()))?;
+    fs::create_dir_all(&dir).map_err(|err| {
+        format!(
+            "Failed to create preset directory '{}': {err}",
+            dir.display()
+        )
+    })?;
     Ok(dir.join(scorer_preset_file_name(scorer_type)))
 }
 
@@ -580,7 +644,9 @@ fn normalized_max_score(value: Option<f64>, default_value: f64) -> Result<f64, S
 
 fn normalize_fixed_weight(value: f64, buff_name: &str) -> Result<f64, String> {
     if !value.is_finite() || value < 0.0 {
-        return Err(format!("Invalid fixed scorer weight for {buff_name}: {value}"));
+        return Err(format!(
+            "Invalid fixed scorer weight for {buff_name}: {value}"
+        ));
     }
     if value > u16::MAX as f64 {
         return Err(format!(
@@ -625,7 +691,8 @@ fn normalize_preset_item_for_scorer(
     raw_preset_intro: Option<String>,
 ) -> Result<ScorerPresetFileItem, String> {
     let preset_name = normalize_preset_name(preset_name)?;
-    let mut weights = build_weight_array_f64(raw_weights, default_weights_for_scorer_f64(scorer_type))?;
+    let mut weights =
+        build_weight_array_f64(raw_weights, default_weights_for_scorer_f64(scorer_type))?;
 
     if scorer_type == SCORER_TYPE_FIXED {
         for (index, buff_name) in BUFF_TYPES.iter().enumerate() {
@@ -686,10 +753,9 @@ fn normalize_loaded_preset_items(
             item.preset_intro,
         ) {
             Ok(normalized) => {
-                if !out
-                    .iter()
-                    .any(|existing: &ScorerPresetFileItem| existing.preset_name == normalized.preset_name)
-                {
+                if !out.iter().any(|existing: &ScorerPresetFileItem| {
+                    existing.preset_name == normalized.preset_name
+                }) {
                     out.push(normalized);
                 }
             }
@@ -784,9 +850,10 @@ fn scorer_configs_equal(left: &UpgradeScorerConfig, right: &UpgradeScorerConfig)
                 && f64_bits_equal(*lmain, *rmain)
                 && f64_bits_equal(*lnorm, *rnorm)
         }
-        (UpgradeScorerConfig::Fixed { weights: lw }, UpgradeScorerConfig::Fixed { weights: rw }) => {
-            lw == rw
-        }
+        (
+            UpgradeScorerConfig::Fixed { weights: lw },
+            UpgradeScorerConfig::Fixed { weights: rw },
+        ) => lw == rw,
         _ => false,
     }
 }
@@ -829,7 +896,8 @@ fn build_upgrade_scorer_config_from_inputs(
             })
         }
         SCORER_TYPE_FIXED => {
-            let weights = build_weight_array_u16_from_f64(buff_weights, DEFAULT_FIXED_BUFF_WEIGHTS)?;
+            let weights =
+                build_weight_array_u16_from_f64(buff_weights, DEFAULT_FIXED_BUFF_WEIGHTS)?;
             Ok(UpgradeScorerConfig::Fixed { weights })
         }
         _ => unreachable!(),
@@ -859,8 +927,8 @@ fn build_upgrade_scorer(config: &UpgradeScorerConfig) -> Result<UpgradeScorer, S
             *main_buff_score,
         )?)),
         UpgradeScorerConfig::Fixed { weights } => {
-            let scorer =
-                FixedScorer::new(*weights).map_err(|err| format!("Invalid fixed scorer: {err:?}"))?;
+            let scorer = FixedScorer::new(*weights)
+                .map_err(|err| format!("Invalid fixed scorer: {err:?}"))?;
             Ok(UpgradeScorer::Fixed(scorer))
         }
     }
@@ -873,20 +941,14 @@ fn build_upgrade_solver(
     cost_model: CostModel,
 ) -> Result<UpgradePolicySolver, String> {
     match scorer {
-        UpgradeScorer::Linear(linear) => UpgradePolicySolver::new(
-            linear,
-            blend_data,
-            target_score_display,
-            cost_model,
-        )
-        .map_err(|err| format!("Failed to create solver: {err:?}")),
-        UpgradeScorer::Fixed(fixed) => UpgradePolicySolver::new(
-            fixed,
-            blend_data,
-            target_score_display,
-            cost_model,
-        )
-        .map_err(|err| format!("Failed to create solver: {err:?}")),
+        UpgradeScorer::Linear(linear) => {
+            UpgradePolicySolver::new(linear, blend_data, target_score_display, cost_model)
+                .map_err(|err| format!("Failed to create solver: {err:?}"))
+        }
+        UpgradeScorer::Fixed(fixed) => {
+            UpgradePolicySolver::new(fixed, blend_data, target_score_display, cost_model)
+                .map_err(|err| format!("Failed to create solver: {err:?}"))
+        }
     }
 }
 
@@ -914,9 +976,13 @@ fn resolve_target_scores(
                 UpgradeScorer::Linear(linear) => linear.main_buff_score(),
                 UpgradeScorer::Fixed(_) => unreachable!(),
             };
-            Ok((raw_target_score, (target_on_solver_scale - main_score).max(0.0)))
+            Ok((
+                raw_target_score,
+                (target_on_solver_scale - main_score).max(0.0),
+            ))
         }
-        UpgradeScorerConfig::LinearDefault { .. } | UpgradeScorerConfig::McBoostAssistant { .. } => {
+        UpgradeScorerConfig::LinearDefault { .. }
+        | UpgradeScorerConfig::McBoostAssistant { .. } => {
             if !raw_target_score.is_finite() || raw_target_score < 0.0 {
                 return Err("targetScore must be a non-negative finite number".to_string());
             }
@@ -944,6 +1010,106 @@ fn can_reuse_upgrade_solver(
 
 fn buff_index(buff_name: &str) -> Option<usize> {
     BUFF_TYPES.iter().position(|name| *name == buff_name)
+}
+
+fn parse_ocr_udp_payload(raw_message: &str) -> Result<OcrFillEntriesEvent, String> {
+    let payload: OcrUdpPayload =
+        serde_json::from_str(raw_message).map_err(|err| format!("Invalid JSON payload: {err}"))?;
+    if payload.buff_entries.is_empty() {
+        return Err("buffEntries cannot be empty".to_string());
+    }
+    if payload.buff_entries.len() > MAX_SELECTED_TYPES {
+        return Err(format!(
+            "Too many buffEntries: {}, max is {MAX_SELECTED_TYPES}",
+            payload.buff_entries.len()
+        ));
+    }
+
+    let mut seen = [false; NUM_BUFFS];
+    let mut buff_names = Vec::with_capacity(payload.buff_entries.len());
+    let mut buff_values = Vec::with_capacity(payload.buff_entries.len());
+
+    for (entry_idx, entry) in payload.buff_entries.iter().enumerate() {
+        let buff_name = entry.buff_name.trim();
+        let buff_idx = buff_index(buff_name)
+            .ok_or_else(|| format!("Unknown buff in buffEntries[{entry_idx}]: {buff_name}"))?;
+        if seen[buff_idx] {
+            return Err(format!(
+                "Duplicate buff in buffEntries: {}",
+                BUFF_TYPES[buff_idx]
+            ));
+        }
+        if !BUFF_VALUE_OPTIONS[buff_idx].contains(&entry.buff_value) {
+            return Err(format!(
+                "Invalid value {} for buff {}",
+                entry.buff_value, BUFF_TYPES[buff_idx]
+            ));
+        }
+
+        seen[buff_idx] = true;
+        buff_names.push(BUFF_TYPES[buff_idx].to_string());
+        buff_values.push(entry.buff_value);
+    }
+
+    Ok(OcrFillEntriesEvent {
+        buff_names,
+        buff_values,
+    })
+}
+
+fn ocr_listener_status_snapshot(state: &OcrUdpListenerState) -> OcrListenerStatusResponse {
+    OcrListenerStatusResponse {
+        listening: state.session.is_some(),
+        port: state.session.as_ref().map(|session| session.port),
+        last_error: state.last_error.clone(),
+    }
+}
+
+fn emit_ocr_listener_status_event(app: &tauri::AppHandle, status: &OcrListenerStatusResponse) {
+    if let Err(err) = app.emit(OCR_UDP_EVENT_LISTENER_STATUS, status.clone()) {
+        eprintln!("Failed to emit OCR listener status event: {err}");
+    }
+}
+
+fn stop_ocr_udp_session(session: OcrUdpListenerSession) -> Result<(), String> {
+    session.stop_flag.store(true, Ordering::Relaxed);
+    session
+        .join_handle
+        .join()
+        .map_err(|_| "OCR UDP listener thread panicked".to_string())
+}
+
+fn run_ocr_udp_listener_loop(app: tauri::AppHandle, socket: UdpSocket, stop_flag: Arc<AtomicBool>) {
+    let mut buffer = [0u8; OCR_UDP_PACKET_BUFFER_SIZE];
+    while !stop_flag.load(Ordering::Relaxed) {
+        match socket.recv_from(&mut buffer) {
+            Ok((size, source)) => {
+                let message = match std::str::from_utf8(&buffer[..size]) {
+                    Ok(text) => text,
+                    Err(err) => {
+                        eprintln!("Ignoring OCR UDP packet from {source}: invalid UTF-8 ({err})");
+                        continue;
+                    }
+                };
+                match parse_ocr_udp_payload(message) {
+                    Ok(fill_event) => {
+                        if let Err(err) = app.emit(OCR_UDP_EVENT_FILL_ENTRIES, fill_event) {
+                            eprintln!("Failed to emit OCR fill event: {err}");
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!("Ignoring OCR UDP packet from {source}: {err}");
+                    }
+                }
+            }
+            Err(err)
+                if err.kind() == ErrorKind::WouldBlock || err.kind() == ErrorKind::TimedOut => {}
+            Err(err) => {
+                eprintln!("OCR UDP listener receive error: {err}");
+                thread::sleep(Duration::from_millis(100));
+            }
+        }
+    }
 }
 
 fn parse_u16_from_f64(value: f64, field: &str) -> Result<u16, String> {
@@ -1230,7 +1396,115 @@ fn bootstrap() -> BootstrapResponse {
         default_cost_weights: default_cost_weights(),
         default_exp_refund_ratio: DEFAULT_EXP_REFUND_RATIO,
         default_scorer_type: DEFAULT_SCORER_TYPE.to_string(),
+        default_ocr_udp_port: DEFAULT_OCR_UDP_PORT,
     }
+}
+
+#[tauri::command]
+fn get_ocr_udp_listener_status(
+    state: State<'_, AppState>,
+) -> Result<OcrListenerStatusResponse, String> {
+    let listener = state
+        .ocr_udp_listener
+        .lock()
+        .map_err(|_| "Failed to lock OCR UDP listener state".to_string())?;
+    Ok(ocr_listener_status_snapshot(&listener))
+}
+
+#[tauri::command]
+fn start_ocr_udp_listener(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    payload: StartOcrUdpListenerRequest,
+) -> Result<OcrListenerStatusResponse, String> {
+    if payload.port == 0 {
+        return Err("port must be between 1 and 65535".to_string());
+    }
+
+    {
+        let listener = state
+            .ocr_udp_listener
+            .lock()
+            .map_err(|_| "Failed to lock OCR UDP listener state".to_string())?;
+        if let Some(session) = listener.session.as_ref()
+            && session.port == payload.port
+        {
+            let status = ocr_listener_status_snapshot(&listener);
+            emit_ocr_listener_status_event(&app, &status);
+            return Ok(status);
+        }
+    }
+
+    let socket = UdpSocket::bind(("0.0.0.0", payload.port))
+        .map_err(|err| format!("Failed to bind UDP port {}: {err}", payload.port))?;
+    socket
+        .set_read_timeout(Some(Duration::from_millis(OCR_UDP_READ_TIMEOUT_MS)))
+        .map_err(|err| format!("Failed to configure UDP socket timeout: {err}"))?;
+
+    let previous_session = {
+        let mut listener = state
+            .ocr_udp_listener
+            .lock()
+            .map_err(|_| "Failed to lock OCR UDP listener state".to_string())?;
+        listener.session.take()
+    };
+    if let Some(session) = previous_session {
+        stop_ocr_udp_session(session)?;
+    }
+
+    let stop_flag = Arc::new(AtomicBool::new(false));
+    let stop_flag_for_thread = Arc::clone(&stop_flag);
+    let app_for_thread = app.clone();
+    let listener_thread = thread::spawn(move || {
+        run_ocr_udp_listener_loop(app_for_thread, socket, stop_flag_for_thread)
+    });
+
+    let status = {
+        let mut listener = state
+            .ocr_udp_listener
+            .lock()
+            .map_err(|_| "Failed to lock OCR UDP listener state".to_string())?;
+        listener.last_error = None;
+        listener.session = Some(OcrUdpListenerSession {
+            port: payload.port,
+            stop_flag,
+            join_handle: listener_thread,
+        });
+        ocr_listener_status_snapshot(&listener)
+    };
+    emit_ocr_listener_status_event(&app, &status);
+    Ok(status)
+}
+
+#[tauri::command]
+fn stop_ocr_udp_listener(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<OcrListenerStatusResponse, String> {
+    let previous_session = {
+        let mut listener = state
+            .ocr_udp_listener
+            .lock()
+            .map_err(|_| "Failed to lock OCR UDP listener state".to_string())?;
+        listener.session.take()
+    };
+
+    let stop_error = if let Some(session) = previous_session {
+        stop_ocr_udp_session(session).err()
+    } else {
+        None
+    };
+
+    let status = {
+        let mut listener = state
+            .ocr_udp_listener
+            .lock()
+            .map_err(|_| "Failed to lock OCR UDP listener state".to_string())?;
+        listener.last_error = stop_error;
+        ocr_listener_status_snapshot(&listener)
+    };
+    emit_ocr_listener_status_event(&app, &status);
+    Ok(status)
 }
 
 #[tauri::command]
@@ -1545,8 +1819,8 @@ fn compute_reroll_policy(
         solver
             .derive_policy(1e-4, 200)
             .map_err(|err| format!("Failed to derive reroll policy: {err:?}"))?;
-        let scorer = FixedScorer::new(weights)
-            .map_err(|err| format!("Invalid fixed scorer: {err:?}"))?;
+        let scorer =
+            FixedScorer::new(weights).map_err(|err| format!("Invalid fixed scorer: {err:?}"))?;
         *current_reroll = Some(RerollSession {
             solver,
             weights,
@@ -1648,6 +1922,9 @@ fn main() {
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
             bootstrap,
+            get_ocr_udp_listener_status,
+            start_ocr_udp_listener,
+            stop_ocr_udp_listener,
             load_scorer_presets,
             save_scorer_preset,
             delete_scorer_preset,

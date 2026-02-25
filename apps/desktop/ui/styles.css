@@ -22,6 +22,18 @@ body {
   gap: 1.4rem;
 }
 
+#upgrade-tab,
+#reroll-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+#upgrade-tab[hidden],
+#reroll-tab[hidden] {
+  display: none !important;
+}
+
 .page-title {
   display: block;
   position: relative;
@@ -46,6 +58,74 @@ body {
   margin: 0;
   box-shadow: 0 24px 40px -28px rgba(79, 70, 229, 0.32);
   backdrop-filter: blur(6px);
+}
+
+.buff-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.buff-header-ocr {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: auto;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.ocr-port-group {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+}
+
+.ocr-field-label {
+  font-size: 0.92rem;
+  color: #334155;
+  font-weight: 600;
+}
+
+.ocr-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #334155;
+  background: #e2e8f0;
+  width: fit-content;
+}
+
+.ocr-status-badge.listening {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.ocr-port-group input {
+  width: 84px;
+  min-width: 0;
+  flex: 0 0 84px;
+}
+
+.ocr-port-group .ocr-field-label {
+  white-space: nowrap;
+}
+
+.ocr-action-group {
+  display: flex;
+  align-items: center;
+}
+
+#ocr-error {
+  margin: -0.35rem 0 0.45rem;
 }
 
 .card-title {
@@ -697,6 +777,22 @@ input[type='number'] {
 
   .card {
     padding: 1.25rem 1rem;
+  }
+
+  .buff-header-left {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .buff-header-ocr {
+    width: auto;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .ocr-port-group input {
+    width: 84px;
+    flex: 0 0 84px;
   }
 
   .field-group.policy-primary-row,

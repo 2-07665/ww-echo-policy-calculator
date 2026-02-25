@@ -63,9 +63,22 @@
       <div id="upgrade-tab">
         <section class="card" id="buff-slots-card">
           <div class="card-title row">
-            <span>当前词条</span>
+            <div class="buff-header-left">
+              <span>当前词条</span>
+              <div class="buff-header-ocr">
+                <span id="ocr-status-text" class="ocr-status-badge">未监听</span>
+                <div class="ocr-port-group">
+                  <label class="ocr-field-label" for="ocr-port-input">端口</label>
+                  <input id="ocr-port-input" type="number" min="1" max="65535" step="1" />
+                </div>
+                <div class="ocr-action-group">
+                  <button type="button" id="ocr-toggle-button" class="secondary-button">开始监听</button>
+                </div>
+              </div>
+            </div>
             <button type="button" id="clear-buffs" class="secondary-button">清空当前词条</button>
           </div>
+          <div id="ocr-error" class="hint-text error" hidden></div>
           <div id="buff-slots"></div>
         </section>
 
