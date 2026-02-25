@@ -108,6 +108,7 @@
 
     activeTab: 'upgrade',
     scorerBeforeReroll: null,
+    targetScoreBeforeReroll: null,
     ocr: {
       listening: false,
       port: DEFAULT_OCR_UDP_PORT,
@@ -950,17 +951,34 @@
     if (!upgradeActive) {
       if (state.scorerType !== SCORER_FIXED) {
         state.scorerBeforeReroll = state.scorerType;
-        await applyScorerType(SCORER_FIXED, { setRecommendedTarget: true });
+        state.targetScoreBeforeReroll = state.targetScore;
+        await applyScorerType(SCORER_FIXED, {
+          setRecommendedTarget: true,
+          preservePolicyState: true,
+        });
+      } else {
+        state.targetScoreBeforeReroll = state.targetScore;
       }
       elements.scorerTypeSelect.disabled = true;
     } else {
       elements.scorerTypeSelect.disabled = false;
       if (state.scorerBeforeReroll && state.scorerType === SCORER_FIXED) {
         const restoreScorer = state.scorerBeforeReroll;
+        const restoreTargetScore = state.targetScoreBeforeReroll;
         state.scorerBeforeReroll = null;
-        await applyScorerType(restoreScorer, { setRecommendedTarget: false });
+        state.targetScoreBeforeReroll = null;
+        await applyScorerType(restoreScorer, {
+          setRecommendedTarget: false,
+          preservePolicyState: true,
+        });
+        if (Number.isFinite(Number(restoreTargetScore))) {
+          state.targetScore = Number(restoreTargetScore);
+          updateTargetScoreUI({ setRecommended: false });
+          renderTotalScoreCard();
+        }
       } else {
         state.scorerBeforeReroll = null;
+        state.targetScoreBeforeReroll = null;
         renderScorerConfig();
       }
     }
@@ -971,14 +989,19 @@
     elements.tabReroll.classList.toggle('active', !upgradeActive);
   }
 
-  async function applyScorerType(nextScorerType, { setRecommendedTarget = true } = {}) {
+  async function applyScorerType(
+    nextScorerType,
+    { setRecommendedTarget = true, preservePolicyState = false } = {},
+  ) {
     state.scorerType = normalizeScorerType(nextScorerType);
     renderScorerConfig();
     renderWeightInputs();
     renderPresetControls();
     await loadScorerPresetsForType(state.scorerType);
     updateTargetScoreUI({ setRecommended: setRecommendedTarget });
-    resetPolicyResult();
+    if (!preservePolicyState) {
+      resetPolicyResult();
+    }
 
     if (state.scorerType === SCORER_FIXED) {
       updateRerollTargetScoreUI();

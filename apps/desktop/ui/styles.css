@@ -44,6 +44,7 @@ body {
   text-align: center;
   letter-spacing: 0.02em;
   background: none !important;
+  background-clip: border-box !important;
   -webkit-background-clip: border-box !important;
   -webkit-text-fill-color: #3730a3 !important;
   color: #3730a3;
@@ -187,6 +188,10 @@ body {
   margin-bottom: 1.2rem;
 }
 
+.field-group.compact-hint-group {
+  margin-bottom: 0.55rem;
+}
+
 .field-group-inline {
   display: grid;
   gap: 0.8rem;
@@ -213,6 +218,11 @@ body {
   line-height: 1.5;
   white-space: pre-line;
   margin-bottom: 1rem;
+}
+
+#scorer-config-hint,
+#scorer-preset-hint {
+  margin-bottom: 0.1rem;
 }
 
 .field-group label {
@@ -343,11 +353,13 @@ select.styled-select.inactive-select {
 
 input[type='number']::-webkit-outer-spin-button,
 input[type='number']::-webkit-inner-spin-button {
+  appearance: none;
   -webkit-appearance: none;
   margin: 0;
 }
 
 input[type='number'] {
+  appearance: textfield;
   -moz-appearance: textfield;
 }
 
