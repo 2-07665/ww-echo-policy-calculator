@@ -16,13 +16,13 @@
 ### 1. 运行核心求解器示例（CLI）
 
 ```bash
-cargo run --manifest-path crates/echo_policy/Cargo.toml --bin cli --release
+cargo run --release --manifest-path crates/echo_policy/Cargo.toml --bin cli
 ```
 
 ### 2. 运行桌面应用（Tauri）
 
 ```bash
-cargo run --manifest-path apps/desktop/src-tauri/Cargo.toml
+cargo run --release --manifest-path apps/desktop/src-tauri/Cargo.toml
 ```
 
 ## 构建

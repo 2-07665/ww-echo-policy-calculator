@@ -1,6 +1,6 @@
 # OCR UDP Message Format
 
-The desktop app accepts exactly one UDP message format.
+The desktop app accepts the following UDP message format.
 
 ## Encoding
 - UTF-8 JSON text

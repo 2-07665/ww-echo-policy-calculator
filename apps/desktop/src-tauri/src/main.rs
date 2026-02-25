@@ -43,7 +43,7 @@ const DEFAULT_LINEAR_NORMALIZED_MAX_SCORE: f64 = 100.0;
 const DEFAULT_QQ_BOT_MAIN_BUFF_SCORE: f64 = 0.0;
 const DEFAULT_QQ_BOT_NORMALIZED_MAX_SCORE: f64 = 50.0;
 const MIN_NORMALIZED_MAX_SCORE: f64 = 0.01;
-const DEFAULT_OCR_UDP_PORT: u16 = 39191;
+const DEFAULT_OCR_UDP_PORT: u16 = 9999;
 const OCR_UDP_EVENT_FILL_ENTRIES: &str = "ocr_udp_fill_entries";
 const OCR_UDP_EVENT_LISTENER_STATUS: &str = "ocr_udp_listener_status";
 const OCR_UDP_PACKET_BUFFER_SIZE: usize = 16 * 1024;
@@ -1435,7 +1435,7 @@ fn start_ocr_udp_listener(
         }
     }
 
-    let socket = UdpSocket::bind(("0.0.0.0", payload.port))
+    let socket = UdpSocket::bind(("127.0.0.1", payload.port))
         .map_err(|err| format!("Failed to bind UDP port {}: {err}", payload.port))?;
     socket
         .set_read_timeout(Some(Duration::from_millis(OCR_UDP_READ_TIMEOUT_MS)))
