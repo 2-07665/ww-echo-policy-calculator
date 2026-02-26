@@ -99,6 +99,8 @@ In `main.rs` constants:
 - default target scores:
   - `DEFAULT_TARGET_SCORE`
   - `DEFAULT_FIXED_TARGET_SCORE`
+  - `DEFAULT_MC_BOOST_ASSISTANT_TARGET_SCORE`
+  - `DEFAULT_QQ_BOT_TARGET_SCORE`
 - scorer defaults:
   - `DEFAULT_LINEAR_*`
   - `DEFAULT_QQ_BOT_*`
@@ -113,4 +115,3 @@ Before committing backend changes:
 2. Verify `compute_policy` reuse behavior manually:
    - same scorer/cost + new target => reuse path
    - change scorer/cost => rebuild path
-

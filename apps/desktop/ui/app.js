@@ -8,6 +8,13 @@
   const SCORER_MC_BOOST_ASSISTANT = 'mc_boost_assistant';
   const SCORER_QQ_BOT = 'qq_bot';
   const SCORER_FIXED = 'fixed';
+  const SCORER_TYPES = [
+    SCORER_LINEAR_DEFAULT,
+    SCORER_WUWA_ECHO_TOOL,
+    SCORER_MC_BOOST_ASSISTANT,
+    SCORER_QQ_BOT,
+    SCORER_FIXED,
+  ];
   const SCORER_PRESET_CUSTOM = '自定义';
   const SCORER_PRESET_VARIANT_DEFAULT = '默认';
   const DEFAULT_MC_BOOST_ASSISTANT_TARGET_SCORE = 95.0;
@@ -21,6 +28,43 @@
   const OCR_UDP_EVENT_FILL_ENTRIES = 'ocr_udp_fill_entries';
   const OCR_UDP_EVENT_LISTENER_STATUS = 'ocr_udp_listener_status';
 
+  function createScorerTypeMap(initializer) {
+    const out = {};
+    SCORER_TYPES.forEach((type) => {
+      out[type] = initializer(type);
+    });
+    return out;
+  }
+
+  function createScorerConfig(type) {
+    if (type === SCORER_FIXED) {
+      return { weights: {} };
+    }
+    if (type === SCORER_MC_BOOST_ASSISTANT) {
+      return {
+        mainBuffScore: MC_BOOST_ASSISTANT_LOCKED_MAIN_BUFF_SCORE,
+        normalizedMaxScore: MC_BOOST_ASSISTANT_LOCKED_NORMALIZED_MAX_SCORE,
+        weights: {},
+      };
+    }
+    if (type === SCORER_QQ_BOT) {
+      return {
+        mainBuffScore: 0,
+        normalizedMaxScore: QQ_BOT_LOCKED_NORMALIZED_MAX_SCORE,
+        weights: {},
+      };
+    }
+    return {
+      mainBuffScore: 0,
+      normalizedMaxScore: 100,
+      weights: {},
+    };
+  }
+
+  function createScorerConfigMap() {
+    return createScorerTypeMap((type) => createScorerConfig(type));
+  }
+
   const state = {
     buffTypes: [],
     buffLabels: {},
@@ -30,77 +74,11 @@
     percentBuffs: new Set(),
 
     scorerType: SCORER_LINEAR_DEFAULT,
-    scorerConfigs: {
-      [SCORER_LINEAR_DEFAULT]: {
-        mainBuffScore: 0,
-        normalizedMaxScore: 100,
-        weights: {},
-      },
-      [SCORER_WUWA_ECHO_TOOL]: {
-        mainBuffScore: 0,
-        normalizedMaxScore: 100,
-        weights: {},
-      },
-      [SCORER_MC_BOOST_ASSISTANT]: {
-        mainBuffScore: MC_BOOST_ASSISTANT_LOCKED_MAIN_BUFF_SCORE,
-        normalizedMaxScore: MC_BOOST_ASSISTANT_LOCKED_NORMALIZED_MAX_SCORE,
-        weights: {},
-      },
-      [SCORER_QQ_BOT]: {
-        mainBuffScore: 0,
-        normalizedMaxScore: QQ_BOT_LOCKED_NORMALIZED_MAX_SCORE,
-        weights: {},
-      },
-      [SCORER_FIXED]: {
-        weights: {},
-      },
-    },
-    defaultScorerConfigs: {
-      [SCORER_LINEAR_DEFAULT]: {
-        mainBuffScore: 0,
-        normalizedMaxScore: 100,
-        weights: {},
-      },
-      [SCORER_WUWA_ECHO_TOOL]: {
-        mainBuffScore: 0,
-        normalizedMaxScore: 100,
-        weights: {},
-      },
-      [SCORER_MC_BOOST_ASSISTANT]: {
-        mainBuffScore: MC_BOOST_ASSISTANT_LOCKED_MAIN_BUFF_SCORE,
-        normalizedMaxScore: MC_BOOST_ASSISTANT_LOCKED_NORMALIZED_MAX_SCORE,
-        weights: {},
-      },
-      [SCORER_QQ_BOT]: {
-        mainBuffScore: 0,
-        normalizedMaxScore: QQ_BOT_LOCKED_NORMALIZED_MAX_SCORE,
-        weights: {},
-      },
-      [SCORER_FIXED]: {
-        weights: {},
-      },
-    },
-    scorerPresets: {
-      [SCORER_LINEAR_DEFAULT]: [],
-      [SCORER_WUWA_ECHO_TOOL]: [],
-      [SCORER_MC_BOOST_ASSISTANT]: [],
-      [SCORER_QQ_BOT]: [],
-      [SCORER_FIXED]: [],
-    },
-    activePresetNames: {
-      [SCORER_LINEAR_DEFAULT]: SCORER_PRESET_CUSTOM,
-      [SCORER_WUWA_ECHO_TOOL]: SCORER_PRESET_CUSTOM,
-      [SCORER_MC_BOOST_ASSISTANT]: SCORER_PRESET_CUSTOM,
-      [SCORER_QQ_BOT]: SCORER_PRESET_CUSTOM,
-      [SCORER_FIXED]: SCORER_PRESET_CUSTOM,
-    },
-    activePresetVariantNames: {
-      [SCORER_LINEAR_DEFAULT]: '',
-      [SCORER_WUWA_ECHO_TOOL]: '',
-      [SCORER_MC_BOOST_ASSISTANT]: '',
-      [SCORER_QQ_BOT]: '',
-      [SCORER_FIXED]: '',
-    },
+    scorerConfigs: createScorerConfigMap(),
+    defaultScorerConfigs: createScorerConfigMap(),
+    scorerPresets: createScorerTypeMap(() => []),
+    activePresetNames: createScorerTypeMap(() => SCORER_PRESET_CUSTOM),
+    activePresetVariantNames: createScorerTypeMap(() => ''),
     scorerPresetStatus: '',
     scorerPresetStatusError: false,
 
@@ -346,10 +324,6 @@
     return type === SCORER_MC_BOOST_ASSISTANT;
   }
 
-  function isWuwaEchoToolScorer(type = state.scorerType) {
-    return type === SCORER_WUWA_ECHO_TOOL;
-  }
-
   function getScorerConfig(type = state.scorerType) {
     return state.scorerConfigs[type];
   }
@@ -472,6 +446,22 @@
       out.normalizedMaxScore = numberOr(src.normalizedMaxScore, TARGET_SCORE_STEP);
     }
     return out;
+  }
+
+  function syncDefaultScorerConfigs() {
+    SCORER_TYPES.forEach((type) => {
+      state.defaultScorerConfigs[type] = copyScorerConfig(state.scorerConfigs[type]);
+    });
+  }
+
+  function resetPresetState() {
+    SCORER_TYPES.forEach((type) => {
+      state.scorerPresets[type] = [];
+      state.activePresetNames[type] = SCORER_PRESET_CUSTOM;
+      state.activePresetVariantNames[type] = '';
+    });
+    state.scorerPresetStatus = '';
+    state.scorerPresetStatusError = false;
   }
 
   function normalizePresetVariantEntry(raw) {
@@ -1151,8 +1141,12 @@
     state.defaultWuwaEchoToolTargetScore = Number(
       data.defaultWuwaEchoToolTargetScore ?? state.defaultTargetScore,
     );
-    state.defaultMcBoostAssistantTargetScore = DEFAULT_MC_BOOST_ASSISTANT_TARGET_SCORE;
-    state.defaultQqBotTargetScore = DEFAULT_QQ_BOT_TARGET_SCORE;
+    state.defaultMcBoostAssistantTargetScore = Number(
+      data.defaultMcBoostAssistantTargetScore ?? DEFAULT_MC_BOOST_ASSISTANT_TARGET_SCORE,
+    );
+    state.defaultQqBotTargetScore = Number(
+      data.defaultQqBotTargetScore ?? DEFAULT_QQ_BOT_TARGET_SCORE,
+    );
 
     const defaultLinearWeights = data.defaultLinearBuffWeights || data.defaultBuffWeights || {};
     const defaultWuwaEchoToolWeights =
@@ -1161,6 +1155,9 @@
       data.defaultMcBoostAssistantBuffWeights || defaultLinearWeights;
     const defaultQQWeights = data.defaultQqBotBuffWeights || {};
     const defaultFixedWeights = data.defaultFixedBuffWeights || {};
+
+    state.scorerConfigs = createScorerConfigMap();
+    state.defaultScorerConfigs = createScorerConfigMap();
 
     state.scorerConfigs[SCORER_LINEAR_DEFAULT].weights = copyWeightMap(defaultLinearWeights);
     state.scorerConfigs[SCORER_WUWA_ECHO_TOOL].weights = copyWeightMap(defaultWuwaEchoToolWeights);
@@ -1191,34 +1188,8 @@
       MC_BOOST_ASSISTANT_LOCKED_MAIN_BUFF_SCORE;
     state.scorerConfigs[SCORER_MC_BOOST_ASSISTANT].normalizedMaxScore =
       MC_BOOST_ASSISTANT_LOCKED_NORMALIZED_MAX_SCORE;
-    state.defaultScorerConfigs[SCORER_LINEAR_DEFAULT] = copyScorerConfig(
-      state.scorerConfigs[SCORER_LINEAR_DEFAULT],
-    );
-    state.defaultScorerConfigs[SCORER_WUWA_ECHO_TOOL] = copyScorerConfig(
-      state.scorerConfigs[SCORER_WUWA_ECHO_TOOL],
-    );
-    state.defaultScorerConfigs[SCORER_MC_BOOST_ASSISTANT] = copyScorerConfig(
-      state.scorerConfigs[SCORER_MC_BOOST_ASSISTANT],
-    );
-    state.defaultScorerConfigs[SCORER_QQ_BOT] = copyScorerConfig(state.scorerConfigs[SCORER_QQ_BOT]);
-    state.defaultScorerConfigs[SCORER_FIXED] = copyScorerConfig(state.scorerConfigs[SCORER_FIXED]);
-    state.scorerPresets[SCORER_LINEAR_DEFAULT] = [];
-    state.scorerPresets[SCORER_WUWA_ECHO_TOOL] = [];
-    state.scorerPresets[SCORER_MC_BOOST_ASSISTANT] = [];
-    state.scorerPresets[SCORER_QQ_BOT] = [];
-    state.scorerPresets[SCORER_FIXED] = [];
-    state.activePresetNames[SCORER_LINEAR_DEFAULT] = SCORER_PRESET_CUSTOM;
-    state.activePresetNames[SCORER_WUWA_ECHO_TOOL] = SCORER_PRESET_CUSTOM;
-    state.activePresetNames[SCORER_MC_BOOST_ASSISTANT] = SCORER_PRESET_CUSTOM;
-    state.activePresetNames[SCORER_QQ_BOT] = SCORER_PRESET_CUSTOM;
-    state.activePresetNames[SCORER_FIXED] = SCORER_PRESET_CUSTOM;
-    state.activePresetVariantNames[SCORER_LINEAR_DEFAULT] = '';
-    state.activePresetVariantNames[SCORER_WUWA_ECHO_TOOL] = '';
-    state.activePresetVariantNames[SCORER_MC_BOOST_ASSISTANT] = '';
-    state.activePresetVariantNames[SCORER_QQ_BOT] = '';
-    state.activePresetVariantNames[SCORER_FIXED] = '';
-    state.scorerPresetStatus = '';
-    state.scorerPresetStatusError = false;
+    syncDefaultScorerConfigs();
+    resetPresetState();
 
     state.scorerType = normalizeScorerType(data.defaultScorerType);
     if (isFixedScorer()) {
@@ -1415,7 +1386,6 @@
     state.scorerType = normalizeScorerType(nextScorerType);
     renderScorerConfig();
     renderWeightInputs();
-    renderPresetControls();
     await loadScorerPresetsForType(state.scorerType);
     updateTargetScoreUI({ setRecommended: setRecommendedTarget });
     if (!preservePolicyState) {
@@ -1775,6 +1745,15 @@
     state.reroll.error = null;
   }
 
+  function onRerollSelectionChanged() {
+    if (state.reroll.policyReady) {
+      void updateRerollRecommendation();
+    } else {
+      clearRerollRecommendation();
+      renderRerollOutput();
+    }
+  }
+
   function buildAcceptSummary() {
     if (!state.reroll.policyReady) {
       return { text: '未计算重抽策略', className: 'info' };
@@ -1986,12 +1965,7 @@
         const index = Number(event.target.dataset.index);
         state.reroll.baselineSelections[index] = event.target.value || null;
         renderRerollSlots();
-        if (state.reroll.policyReady) {
-          updateRerollRecommendation();
-        } else {
-          clearRerollRecommendation();
-          renderRerollOutput();
-        }
+        onRerollSelectionChanged();
       });
     });
 
@@ -2000,12 +1974,7 @@
         const index = Number(event.target.dataset.index);
         state.reroll.candidateSelections[index] = event.target.value || null;
         renderRerollSlots();
-        if (state.reroll.policyReady) {
-          updateRerollRecommendation();
-        } else {
-          clearRerollRecommendation();
-          renderRerollOutput();
-        }
+        onRerollSelectionChanged();
       });
     });
 
@@ -2114,12 +2083,7 @@
 
         state.reroll.candidateSelections = nextCandidate;
         renderRerollSlots();
-        if (state.reroll.policyReady) {
-          updateRerollRecommendation();
-        } else {
-          clearRerollRecommendation();
-          renderRerollOutput();
-        }
+        onRerollSelectionChanged();
       });
     });
   }
@@ -2141,11 +2105,6 @@
     }
 
     return { names, values, slotIndices };
-  }
-
-  function selectedBuffState() {
-    const { names, values } = selectedBuffStateWithSlots();
-    return { names, values };
   }
 
   function renderSuggestionBlock() {
@@ -2476,12 +2435,7 @@
     elements.rerollClearBaselineButton.addEventListener('click', () => {
       state.reroll.baselineSelections = Array(state.maxSelectedTypes).fill(null);
       renderRerollSlots();
-      if (state.reroll.policyReady) {
-        updateRerollRecommendation();
-      } else {
-        clearRerollRecommendation();
-        renderRerollOutput();
-      }
+      onRerollSelectionChanged();
     });
 
     elements.rerollReplaceButton.addEventListener('click', () => {
@@ -2491,12 +2445,7 @@
       state.reroll.baselineSelections = [...state.reroll.candidateSelections];
       state.reroll.candidateSelections = Array(state.maxSelectedTypes).fill(null);
       renderRerollSlots();
-      if (state.reroll.policyReady) {
-        updateRerollRecommendation();
-      } else {
-        clearRerollRecommendation();
-        renderRerollOutput();
-      }
+      onRerollSelectionChanged();
     });
   }
 
@@ -2561,7 +2510,7 @@
       state.suggestion = null;
       renderResults();
       renderTotalScoreCard();
-      updateSuggestion();
+      await updateSuggestion();
     } catch (error) {
       state.policySummary = null;
       state.policyError = error?.message || String(error);
@@ -2626,14 +2575,13 @@
       return;
     }
 
-    const selected = selectedBuffState();
+    const selected = selectedBuffStateWithSlots();
     const token = ++suggestionRequestToken;
     try {
       const response = await invoke('policy_suggestion', {
         payload: {
           buffNames: selected.names,
           buffValues: selected.values,
-          totalScore: state.totalScore,
         },
       });
 

@@ -85,12 +85,15 @@ Preset controls support `preset -> variants[]`:
 
 At top of `app.js`:
 
-- scorer IDs and per-scorer default targets:
-  - `DEFAULT_MC_BOOST_ASSISTANT_TARGET_SCORE`
-  - `DEFAULT_QQ_BOT_TARGET_SCORE`
 - locked values:
   - `MC_BOOST_ASSISTANT_LOCKED_*`
   - `QQ_BOT_LOCKED_NORMALIZED_MAX_SCORE`
+
+From backend bootstrap (`main.rs` constants):
+
+- per-scorer default targets:
+  - `DEFAULT_MC_BOOST_ASSISTANT_TARGET_SCORE`
+  - `DEFAULT_QQ_BOT_TARGET_SCORE`
 
 Display names are in `index.html` scorer `<option>` labels.
 

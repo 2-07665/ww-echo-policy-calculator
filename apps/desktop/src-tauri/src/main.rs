@@ -23,6 +23,8 @@ const NUM_BUFFS: usize = 13;
 const MAX_SELECTED_TYPES: usize = 5;
 const DEFAULT_TARGET_SCORE: f64 = 60.0;
 const DEFAULT_FIXED_TARGET_SCORE: u16 = 7;
+const DEFAULT_MC_BOOST_ASSISTANT_TARGET_SCORE: f64 = 95.0;
+const DEFAULT_QQ_BOT_TARGET_SCORE: f64 = 35.0;
 const DEFAULT_EXP_REFUND_RATIO: f64 = 0.66;
 const DEFAULT_SCORER_TYPE: &str = "linear_default";
 
@@ -189,7 +191,6 @@ struct PolicySuggestionRequest {
     buff_names: Vec<String>,
     #[serde(default)]
     buff_values: Vec<u16>,
-    total_score: f64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -456,6 +457,8 @@ struct BootstrapResponse {
     default_linear_main_buff_score: f64,
     default_linear_normalized_max_score: f64,
     default_wuwa_echo_tool_target_score: f64,
+    default_mc_boost_assistant_target_score: f64,
+    default_qq_bot_target_score: f64,
     default_wuwa_echo_tool_main_buff_score: f64,
     default_wuwa_echo_tool_normalized_max_score: f64,
     default_qq_bot_main_buff_score: f64,
@@ -1101,10 +1104,13 @@ fn normalize_loaded_preset_groups(
                     continue;
                 }
 
-                let base_variant = resolved
-                    .variants
-                    .first()
-                    .expect("resolved preset always has at least one variant");
+                let Some(base_variant) = resolved.variants.first() else {
+                    eprintln!(
+                        "Skipping invalid preset '{}': no normalized variants",
+                        resolved.preset_name
+                    );
+                    continue;
+                };
                 let mut normalized_variants = vec![resolved_variant_to_file_full(base_variant)];
                 for variant in resolved.variants.iter().skip(1) {
                     normalized_variants.push(build_variant_override_from_base(base_variant, variant));
@@ -1917,6 +1923,8 @@ fn bootstrap() -> BootstrapResponse {
         default_linear_main_buff_score: DEFAULT_LINEAR_MAIN_BUFF_SCORE,
         default_linear_normalized_max_score: DEFAULT_LINEAR_NORMALIZED_MAX_SCORE,
         default_wuwa_echo_tool_target_score: DEFAULT_WUWA_ECHO_TOOL_TARGET_SCORE,
+        default_mc_boost_assistant_target_score: DEFAULT_MC_BOOST_ASSISTANT_TARGET_SCORE,
+        default_qq_bot_target_score: DEFAULT_QQ_BOT_TARGET_SCORE,
         default_wuwa_echo_tool_main_buff_score: DEFAULT_WUWA_ECHO_TOOL_MAIN_BUFF_SCORE,
         default_wuwa_echo_tool_normalized_max_score: DEFAULT_WUWA_ECHO_TOOL_NORMALIZED_MAX_SCORE,
         default_qq_bot_main_buff_score: DEFAULT_QQ_BOT_MAIN_BUFF_SCORE,
@@ -2412,7 +2420,9 @@ fn compute_policy(
     });
 
     if reuse_existing {
-        let session = current_upgrade.as_mut().expect("checked above");
+        let session = current_upgrade
+            .as_mut()
+            .ok_or_else(|| "Upgrade solver session was not initialized".to_string())?;
         session
             .solver
             .update_target_score(solver_target_score)
@@ -2432,7 +2442,9 @@ fn compute_policy(
         });
     }
 
-    let session = current_upgrade.as_mut().expect("session is initialized");
+    let session = current_upgrade
+        .as_mut()
+        .ok_or_else(|| "Upgrade solver session was not initialized".to_string())?;
     let start = Instant::now();
     let lambda_star = session
         .solver
@@ -2469,9 +2481,6 @@ fn policy_suggestion(
     state: State<'_, AppState>,
     payload: PolicySuggestionRequest,
 ) -> Result<PolicySuggestionResponse, String> {
-    if !payload.total_score.is_finite() || payload.total_score < 0.0 {
-        return Err("totalScore must be a non-negative finite number".to_string());
-    }
     if !payload.buff_names.is_empty() && payload.buff_values.len() != payload.buff_names.len() {
         return Err("buffNames and buffValues must have the same length".to_string());
     }
@@ -2538,7 +2547,9 @@ fn compute_reroll_policy(
         .is_some_and(|session| session.weights == weights);
 
     if reuse_existing {
-        let session = current_reroll.as_mut().expect("checked above");
+        let session = current_reroll
+            .as_mut()
+            .ok_or_else(|| "Reroll solver session was not initialized".to_string())?;
         session
             .solver
             .set_target(payload.target_score)
