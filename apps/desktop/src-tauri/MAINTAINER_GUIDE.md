@@ -1,6 +1,36 @@
 # Tauri Backend Maintainer Guide
 
-This document explains the architecture and invariants of `apps/desktop/src-tauri/src/main.rs`.
+This document explains the architecture and invariants of the Tauri backend runtime.
+
+## Module Layout
+
+- `main.rs`: thin entrypoint that calls `app::run()`.
+- `app.rs`: backend orchestration module; pulls feature sections via `include!`.
+- `app/types*.rs`: request/response/session structures.
+  - Request types are split into:
+    - `types_requests_common.rs`
+    - `types_requests_upgrade.rs`
+    - `types_requests_reroll_ocr.rs`
+    - `types_requests_presets.rs`
+  - Response/data types are split into:
+    - `types_data_presets.rs`
+    - `types_data_upgrade.rs`
+    - `types_data_reroll.rs`
+    - `types_data_ocr.rs`
+- `app/presets*.rs`: scorer preset parsing/normalization/merge utilities.
+  - Preset resolution is split into:
+    - `presets_resolution_variants.rs`
+    - `presets_resolution_groups.rs`
+    - `presets_resolution_lookup.rs`
+    - `presets_resolution_response.rs`
+- `app/scoring*.rs`: scorer construction, mask/weight helpers, OCR parsing helpers.
+- `app/commands*.rs`: Tauri command handlers grouped by feature.
+  - Preset commands are split into:
+    - `commands_presets_shared.rs`
+    - `commands_presets_load_save.rs`
+    - `commands_presets_delete.rs`
+- `app/run.rs`: Tauri builder wiring and invoke handler registration.
+- `constants.rs`: scorer IDs, defaults, buff metadata, bundled preset JSON constants.
 
 ## Scope
 
@@ -94,7 +124,7 @@ If weights change, rebuild solver.
 
 ## Defaults You May Want to Edit
 
-In `main.rs` constants:
+In `constants.rs`:
 
 - default target scores:
   - `DEFAULT_TARGET_SCORE`
@@ -110,6 +140,8 @@ In `main.rs` constants:
 ## Validation
 
 Before committing backend changes:
+
+Optional one-shot runner: `bash scripts/check-tauri-app.sh`
 
 1. `cargo check -p echo_calculator_app`
 2. Verify `compute_policy` reuse behavior manually:
