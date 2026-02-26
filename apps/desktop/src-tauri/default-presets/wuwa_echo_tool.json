@@ -1,0 +1,25 @@
+{
+  "presets": [
+    {
+      "presetName": "示例",
+      "presetIntro": "Wuwa Echo Tool 示例预设：该评分模式与自定义线性评分使用相同参数，但预设列表独立。",
+      "weights": {
+        "Crit_Rate": 100.0,
+        "Crit_Damage": 100.0,
+        "Attack": 70.0,
+        "Defence": 0.0,
+        "HP": 0.0,
+        "Attack_Flat": 36.0,
+        "Defence_Flat": 0.0,
+        "HP_Flat": 0.0,
+        "ER": 40.0,
+        "Basic_Attack_Damage": 0.0,
+        "Heavy_Attack_Damage": 0.0,
+        "Skill_Damage": 0.0,
+        "Ult_Damage": 0.0
+      },
+      "mainBuffScore": 0.0,
+      "normalizedMaxScore": 100.0
+    }
+  ]
+}

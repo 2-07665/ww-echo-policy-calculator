@@ -12,10 +12,11 @@
       {
         "label": "main",
         "title": "声骸强化策略计算器",
-        "width": 940,
-        "height": 880,
-        "minWidth": 940,
-        "minHeight": 700,
+        "width": 688,
+        "height": 720,
+        "minWidth": 688,
+        "maxWidth": 688,
+        "minHeight": 720,
         "resizable": true
       }
     ],

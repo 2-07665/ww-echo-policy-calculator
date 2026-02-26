@@ -3,14 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>声骸强化策略计算器</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div id="app">
-      <h1 class="page-title">声骸强化策略计算器</h1>
-
       <section class="card" id="mode-tabs-card">
         <div class="mode-tabs">
           <button type="button" id="tab-upgrade" class="tab-button active">强化策略</button>
@@ -23,24 +20,29 @@
 
         <div class="field-group compact-hint-group">
           <label for="scorer-type-select">评分模式</label>
-          <select id="scorer-type-select" class="styled-select">
-            <option value="linear_default">自定义线性评分</option>
-            <option value="mc_boost_assistant">漂泊者强化助手评分</option>
-            <option value="qq_bot">WutheringWavesUID评分（QQ机器人）</option>
-            <option value="fixed">固定评分</option>
-          </select>
-          <div id="scorer-config-hint" class="scorer-hint-box"></div>
+          <div class="select-help-row">
+            <select id="scorer-type-select" class="styled-select">
+              <option value="linear_default">自定义线性评分</option>
+              <option value="wuwa_echo_tool">Wuwa Echo Tool 评分</option>
+              <option value="mc_boost_assistant">漂泊者强化助手评分</option>
+              <option value="qq_bot">WutheringWavesUID评分（QQ机器人）</option>
+              <option value="fixed">固定评分</option>
+            </select>
+            <span id="scorer-config-help" class="hint-help" role="button" tabindex="0" aria-label="当前选中模式说明">?</span>
+          </div>
         </div>
 
         <div class="field-group compact-hint-group">
           <label for="scorer-preset-select">评分预设</label>
           <div class="preset-row">
-            <select id="scorer-preset-select" class="styled-select"></select>
+            <div class="select-help-row">
+              <select id="scorer-preset-select" class="styled-select"></select>
+              <span id="scorer-preset-help" class="hint-help" role="button" tabindex="0" aria-label="当前选中预设说明" hidden>?</span>
+            </div>
             <input id="scorer-preset-name-input" type="text" placeholder="输入预设名称" />
             <button type="button" id="scorer-preset-save-button" class="secondary-button">保存</button>
             <button type="button" id="scorer-preset-delete-button" class="secondary-button">删除</button>
           </div>
-          <div id="scorer-preset-hint" class="scorer-hint-box" hidden></div>
           <div id="scorer-preset-status" class="hint-text"></div>
         </div>
 
@@ -57,7 +59,9 @@
           </div>
         </div>
 
-        <div id="weight-inputs" class="weight-grid"></div>
+        <div class="field-group weight-inputs-group">
+          <div id="weight-inputs" class="weight-grid"></div>
+        </div>
       </section>
 
       <div id="upgrade-tab">

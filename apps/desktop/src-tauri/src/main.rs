@@ -27,12 +27,15 @@ const DEFAULT_EXP_REFUND_RATIO: f64 = 0.66;
 const DEFAULT_SCORER_TYPE: &str = "linear_default";
 
 const SCORER_TYPE_LINEAR_DEFAULT: &str = "linear_default";
+const SCORER_TYPE_WUWA_ECHO_TOOL: &str = "wuwa_echo_tool";
 const SCORER_TYPE_MC_BOOST_ASSISTANT: &str = "mc_boost_assistant";
 const SCORER_TYPE_QQ_BOT: &str = "qq_bot";
 const SCORER_TYPE_FIXED: &str = "fixed";
 const SCORER_PRESET_DIR: &str = "scorer-presets";
 const SCORER_PRESET_NAME_CUSTOM: &str = "自定义";
 const DEFAULT_LINEAR_PRESETS_JSON: &str = include_str!("../default-presets/linear_default.json");
+const DEFAULT_WUWA_ECHO_TOOL_PRESETS_JSON: &str =
+    include_str!("../default-presets/wuwa_echo_tool.json");
 const DEFAULT_MC_BOOST_ASSISTANT_PRESETS_JSON: &str =
     include_str!("../default-presets/mc_boost_assistant.json");
 const DEFAULT_QQ_BOT_PRESETS_JSON: &str = include_str!("../default-presets/qq_bot.json");
@@ -40,6 +43,9 @@ const DEFAULT_FIXED_PRESETS_JSON: &str = include_str!("../default-presets/fixed.
 
 const DEFAULT_LINEAR_MAIN_BUFF_SCORE: f64 = 0.0;
 const DEFAULT_LINEAR_NORMALIZED_MAX_SCORE: f64 = 100.0;
+const DEFAULT_WUWA_ECHO_TOOL_MAIN_BUFF_SCORE: f64 = 0.0;
+const DEFAULT_WUWA_ECHO_TOOL_NORMALIZED_MAX_SCORE: f64 = 100.0;
+const DEFAULT_WUWA_ECHO_TOOL_TARGET_SCORE: f64 = 60.0;
 const DEFAULT_QQ_BOT_MAIN_BUFF_SCORE: f64 = 0.0;
 const DEFAULT_QQ_BOT_NORMALIZED_MAX_SCORE: f64 = 50.0;
 const MIN_NORMALIZED_MAX_SCORE: f64 = 0.01;
@@ -86,6 +92,10 @@ const BUFF_TYPE_MAX_VALUES: [f64; NUM_BUFFS] = [
 ];
 
 const DEFAULT_LINEAR_BUFF_WEIGHTS: [f64; NUM_BUFFS] = [
+    100.0, 100.0, 70.0, 0.0, 0.0, 36.0, 0.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0,
+];
+
+const DEFAULT_WUWA_ECHO_TOOL_BUFF_WEIGHTS: [f64; NUM_BUFFS] = [
     100.0, 100.0, 70.0, 0.0, 0.0, 36.0, 0.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0,
 ];
 
@@ -330,6 +340,7 @@ struct BootstrapResponse {
     buff_value_options: BTreeMap<String, Vec<u16>>,
     default_buff_weights: BTreeMap<String, f64>,
     default_linear_buff_weights: BTreeMap<String, f64>,
+    default_wuwa_echo_tool_buff_weights: BTreeMap<String, f64>,
     default_mc_boost_assistant_buff_weights: BTreeMap<String, f64>,
     default_qq_bot_buff_weights: BTreeMap<String, f64>,
     default_fixed_buff_weights: BTreeMap<String, u16>,
@@ -338,6 +349,9 @@ struct BootstrapResponse {
     default_fixed_target_score: u16,
     default_linear_main_buff_score: f64,
     default_linear_normalized_max_score: f64,
+    default_wuwa_echo_tool_target_score: f64,
+    default_wuwa_echo_tool_main_buff_score: f64,
+    default_wuwa_echo_tool_normalized_max_score: f64,
     default_qq_bot_main_buff_score: f64,
     default_qq_bot_normalized_max_score: f64,
     default_cost_weights: CostWeightsOutput,
@@ -436,6 +450,11 @@ enum UpgradeScorerConfig {
         main_buff_score: f64,
         normalized_max_score: f64,
     },
+    WuwaEchoTool {
+        weights: [f64; NUM_BUFFS],
+        main_buff_score: f64,
+        normalized_max_score: f64,
+    },
     McBoostAssistant {
         weights: [f64; NUM_BUFFS],
     },
@@ -526,11 +545,12 @@ fn parse_scorer_type(raw: &str) -> Result<&'static str, String> {
     let lowered = raw.trim().to_ascii_lowercase();
     match lowered.as_str() {
         "linear" | SCORER_TYPE_LINEAR_DEFAULT => Ok(SCORER_TYPE_LINEAR_DEFAULT),
+        SCORER_TYPE_WUWA_ECHO_TOOL => Ok(SCORER_TYPE_WUWA_ECHO_TOOL),
         SCORER_TYPE_MC_BOOST_ASSISTANT => Ok(SCORER_TYPE_MC_BOOST_ASSISTANT),
         SCORER_TYPE_QQ_BOT => Ok(SCORER_TYPE_QQ_BOT),
         SCORER_TYPE_FIXED => Ok(SCORER_TYPE_FIXED),
         _ => Err(format!(
-            "Unsupported scorerType '{}'. Use 'linear_default', 'mc_boost_assistant', 'qq_bot', or 'fixed'.",
+            "Unsupported scorerType '{}'. Use 'linear_default', 'wuwa_echo_tool', 'mc_boost_assistant', 'qq_bot', or 'fixed'.",
             raw
         )),
     }
@@ -539,6 +559,7 @@ fn parse_scorer_type(raw: &str) -> Result<&'static str, String> {
 fn scorer_preset_file_name(scorer_type: &str) -> &'static str {
     match scorer_type {
         SCORER_TYPE_LINEAR_DEFAULT => "linear_default.json",
+        SCORER_TYPE_WUWA_ECHO_TOOL => "wuwa_echo_tool.json",
         SCORER_TYPE_MC_BOOST_ASSISTANT => "mc_boost_assistant.json",
         SCORER_TYPE_QQ_BOT => "qq_bot.json",
         SCORER_TYPE_FIXED => "fixed.json",
@@ -549,6 +570,7 @@ fn scorer_preset_file_name(scorer_type: &str) -> &'static str {
 fn built_in_preset_source_name(scorer_type: &str) -> &'static str {
     match scorer_type {
         SCORER_TYPE_LINEAR_DEFAULT => "default-presets/linear_default.json",
+        SCORER_TYPE_WUWA_ECHO_TOOL => "default-presets/wuwa_echo_tool.json",
         SCORER_TYPE_MC_BOOST_ASSISTANT => "default-presets/mc_boost_assistant.json",
         SCORER_TYPE_QQ_BOT => "default-presets/qq_bot.json",
         SCORER_TYPE_FIXED => "default-presets/fixed.json",
@@ -559,6 +581,7 @@ fn built_in_preset_source_name(scorer_type: &str) -> &'static str {
 fn built_in_preset_json(scorer_type: &str) -> &'static str {
     match scorer_type {
         SCORER_TYPE_LINEAR_DEFAULT => DEFAULT_LINEAR_PRESETS_JSON,
+        SCORER_TYPE_WUWA_ECHO_TOOL => DEFAULT_WUWA_ECHO_TOOL_PRESETS_JSON,
         SCORER_TYPE_MC_BOOST_ASSISTANT => DEFAULT_MC_BOOST_ASSISTANT_PRESETS_JSON,
         SCORER_TYPE_QQ_BOT => DEFAULT_QQ_BOT_PRESETS_JSON,
         SCORER_TYPE_FIXED => DEFAULT_FIXED_PRESETS_JSON,
@@ -619,6 +642,7 @@ fn default_fixed_weights_f64() -> [f64; NUM_BUFFS] {
 fn default_weights_for_scorer_f64(scorer_type: &str) -> [f64; NUM_BUFFS] {
     match scorer_type {
         SCORER_TYPE_LINEAR_DEFAULT => DEFAULT_LINEAR_BUFF_WEIGHTS,
+        SCORER_TYPE_WUWA_ECHO_TOOL => DEFAULT_WUWA_ECHO_TOOL_BUFF_WEIGHTS,
         SCORER_TYPE_MC_BOOST_ASSISTANT => DEFAULT_MC_BOOST_ASSISTANT_BUFF_WEIGHTS,
         SCORER_TYPE_QQ_BOT => DEFAULT_QQ_BOT_BUFF_WEIGHTS,
         SCORER_TYPE_FIXED => default_fixed_weights_f64(),
@@ -709,6 +733,16 @@ fn normalize_preset_item_for_scorer(
             Some(normalized_max_score(
                 raw_normalized_max_score,
                 DEFAULT_LINEAR_NORMALIZED_MAX_SCORE,
+            )?),
+        ),
+        SCORER_TYPE_WUWA_ECHO_TOOL => (
+            Some(normalized_main_buff_score(
+                raw_main_buff_score,
+                DEFAULT_WUWA_ECHO_TOOL_MAIN_BUFF_SCORE,
+            )?),
+            Some(normalized_max_score(
+                raw_normalized_max_score,
+                DEFAULT_WUWA_ECHO_TOOL_NORMALIZED_MAX_SCORE,
             )?),
         ),
         SCORER_TYPE_MC_BOOST_ASSISTANT => (None, None),
@@ -831,6 +865,22 @@ fn scorer_configs_equal(left: &UpgradeScorerConfig, right: &UpgradeScorerConfig)
                 && f64_bits_equal(*lnorm, *rnorm)
         }
         (
+            UpgradeScorerConfig::WuwaEchoTool {
+                weights: lw,
+                main_buff_score: lmain,
+                normalized_max_score: lnorm,
+            },
+            UpgradeScorerConfig::WuwaEchoTool {
+                weights: rw,
+                main_buff_score: rmain,
+                normalized_max_score: rnorm,
+            },
+        ) => {
+            f64_weight_arrays_equal(lw, rw)
+                && f64_bits_equal(*lmain, *rmain)
+                && f64_bits_equal(*lnorm, *rnorm)
+        }
+        (
             UpgradeScorerConfig::McBoostAssistant { weights: lw },
             UpgradeScorerConfig::McBoostAssistant { weights: rw },
         ) => f64_weight_arrays_equal(lw, rw),
@@ -876,6 +926,18 @@ fn build_upgrade_scorer_config_from_inputs(
                 normalized_max_score,
             })
         }
+        SCORER_TYPE_WUWA_ECHO_TOOL => {
+            let weights = build_weight_array_f64(buff_weights, DEFAULT_WUWA_ECHO_TOOL_BUFF_WEIGHTS)?;
+            let main_buff_score =
+                main_buff_score.unwrap_or(DEFAULT_WUWA_ECHO_TOOL_MAIN_BUFF_SCORE);
+            let normalized_max_score =
+                normalized_max_score.unwrap_or(DEFAULT_WUWA_ECHO_TOOL_NORMALIZED_MAX_SCORE);
+            Ok(UpgradeScorerConfig::WuwaEchoTool {
+                weights,
+                main_buff_score,
+                normalized_max_score,
+            })
+        }
         SCORER_TYPE_MC_BOOST_ASSISTANT => {
             let weights =
                 build_weight_array_f64(buff_weights, DEFAULT_MC_BOOST_ASSISTANT_BUFF_WEIGHTS)?;
@@ -911,6 +973,15 @@ fn build_upgrade_scorer(config: &UpgradeScorerConfig) -> Result<UpgradeScorer, S
             main_buff_score,
             normalized_max_score,
         } => Ok(UpgradeScorer::Linear(build_default_linear_scorer(
+            *weights,
+            *main_buff_score,
+            *normalized_max_score,
+        )?)),
+        UpgradeScorerConfig::WuwaEchoTool {
+            weights,
+            main_buff_score,
+            normalized_max_score,
+        } => Ok(UpgradeScorer::Linear(build_wuwa_echo_tool_scorer(
             *weights,
             *main_buff_score,
             *normalized_max_score,
@@ -982,6 +1053,7 @@ fn resolve_target_scores(
             ))
         }
         UpgradeScorerConfig::LinearDefault { .. }
+        | UpgradeScorerConfig::WuwaEchoTool { .. }
         | UpgradeScorerConfig::McBoostAssistant { .. } => {
             if !raw_target_score.is_finite() || raw_target_score < 0.0 {
                 return Err("targetScore must be a non-negative finite number".to_string());
@@ -1259,6 +1331,15 @@ fn build_default_linear_scorer(
     }
 }
 
+fn build_wuwa_echo_tool_scorer(
+    weights: [f64; NUM_BUFFS],
+    main_buff_score: f64,
+    normalized_max_score: f64,
+) -> Result<LinearScorer, String> {
+    LinearScorer::new(weights, main_buff_score, normalized_max_score)
+        .map_err(|err| format!("Invalid Wuwa Echo Tool scorer: {err:?}"))
+}
+
 fn build_qq_bot_scorer(
     qq_bot_weights: [f64; NUM_BUFFS],
     main_buff_score: f64,
@@ -1381,6 +1462,9 @@ fn bootstrap() -> BootstrapResponse {
         buff_value_options: value_options,
         default_buff_weights: build_default_weight_map_f64(&DEFAULT_LINEAR_BUFF_WEIGHTS),
         default_linear_buff_weights: build_default_weight_map_f64(&DEFAULT_LINEAR_BUFF_WEIGHTS),
+        default_wuwa_echo_tool_buff_weights: build_default_weight_map_f64(
+            &DEFAULT_WUWA_ECHO_TOOL_BUFF_WEIGHTS,
+        ),
         default_mc_boost_assistant_buff_weights: build_default_weight_map_f64(
             &DEFAULT_MC_BOOST_ASSISTANT_BUFF_WEIGHTS,
         ),
@@ -1391,6 +1475,9 @@ fn bootstrap() -> BootstrapResponse {
         default_fixed_target_score: DEFAULT_FIXED_TARGET_SCORE,
         default_linear_main_buff_score: DEFAULT_LINEAR_MAIN_BUFF_SCORE,
         default_linear_normalized_max_score: DEFAULT_LINEAR_NORMALIZED_MAX_SCORE,
+        default_wuwa_echo_tool_target_score: DEFAULT_WUWA_ECHO_TOOL_TARGET_SCORE,
+        default_wuwa_echo_tool_main_buff_score: DEFAULT_WUWA_ECHO_TOOL_MAIN_BUFF_SCORE,
+        default_wuwa_echo_tool_normalized_max_score: DEFAULT_WUWA_ECHO_TOOL_NORMALIZED_MAX_SCORE,
         default_qq_bot_main_buff_score: DEFAULT_QQ_BOT_MAIN_BUFF_SCORE,
         default_qq_bot_normalized_max_score: DEFAULT_QQ_BOT_NORMALIZED_MAX_SCORE,
         default_cost_weights: default_cost_weights(),

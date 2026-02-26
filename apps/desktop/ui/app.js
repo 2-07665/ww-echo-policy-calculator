@@ -4,6 +4,7 @@
   const TARGET_SCORE_DIGITS = 2;
 
   const SCORER_LINEAR_DEFAULT = 'linear_default';
+  const SCORER_WUWA_ECHO_TOOL = 'wuwa_echo_tool';
   const SCORER_MC_BOOST_ASSISTANT = 'mc_boost_assistant';
   const SCORER_QQ_BOT = 'qq_bot';
   const SCORER_FIXED = 'fixed';
@@ -34,6 +35,11 @@
         normalizedMaxScore: 100,
         weights: {},
       },
+      [SCORER_WUWA_ECHO_TOOL]: {
+        mainBuffScore: 0,
+        normalizedMaxScore: 100,
+        weights: {},
+      },
       [SCORER_MC_BOOST_ASSISTANT]: {
         mainBuffScore: MC_BOOST_ASSISTANT_LOCKED_MAIN_BUFF_SCORE,
         normalizedMaxScore: MC_BOOST_ASSISTANT_LOCKED_NORMALIZED_MAX_SCORE,
@@ -54,6 +60,11 @@
         normalizedMaxScore: 100,
         weights: {},
       },
+      [SCORER_WUWA_ECHO_TOOL]: {
+        mainBuffScore: 0,
+        normalizedMaxScore: 100,
+        weights: {},
+      },
       [SCORER_MC_BOOST_ASSISTANT]: {
         mainBuffScore: MC_BOOST_ASSISTANT_LOCKED_MAIN_BUFF_SCORE,
         normalizedMaxScore: MC_BOOST_ASSISTANT_LOCKED_NORMALIZED_MAX_SCORE,
@@ -70,12 +81,14 @@
     },
     scorerPresets: {
       [SCORER_LINEAR_DEFAULT]: [],
+      [SCORER_WUWA_ECHO_TOOL]: [],
       [SCORER_MC_BOOST_ASSISTANT]: [],
       [SCORER_QQ_BOT]: [],
       [SCORER_FIXED]: [],
     },
     activePresetNames: {
       [SCORER_LINEAR_DEFAULT]: SCORER_PRESET_CUSTOM,
+      [SCORER_WUWA_ECHO_TOOL]: SCORER_PRESET_CUSTOM,
       [SCORER_MC_BOOST_ASSISTANT]: SCORER_PRESET_CUSTOM,
       [SCORER_QQ_BOT]: SCORER_PRESET_CUSTOM,
       [SCORER_FIXED]: SCORER_PRESET_CUSTOM,
@@ -98,6 +111,7 @@
 
     defaultTargetScore: 60,
     defaultFixedTargetScore: 60,
+    defaultWuwaEchoToolTargetScore: 60,
     defaultMcBoostAssistantTargetScore: DEFAULT_MC_BOOST_ASSISTANT_TARGET_SCORE,
     defaultQqBotTargetScore: DEFAULT_QQ_BOT_TARGET_SCORE,
     targetScore: 60,
@@ -297,6 +311,9 @@
     if (lowered === 'linear') {
       return SCORER_LINEAR_DEFAULT;
     }
+    if (lowered === SCORER_WUWA_ECHO_TOOL) {
+      return SCORER_WUWA_ECHO_TOOL;
+    }
     if (lowered === SCORER_MC_BOOST_ASSISTANT) {
       return SCORER_MC_BOOST_ASSISTANT;
     }
@@ -319,6 +336,10 @@
 
   function isMcBoostAssistantScorer(type = state.scorerType) {
     return type === SCORER_MC_BOOST_ASSISTANT;
+  }
+
+  function isWuwaEchoToolScorer(type = state.scorerType) {
+    return type === SCORER_WUWA_ECHO_TOOL;
   }
 
   function getScorerConfig(type = state.scorerType) {
@@ -397,13 +418,13 @@
     elements.scorerPresetNameInput = document.getElementById('scorer-preset-name-input');
     elements.scorerPresetSaveButton = document.getElementById('scorer-preset-save-button');
     elements.scorerPresetDeleteButton = document.getElementById('scorer-preset-delete-button');
-    elements.scorerPresetHint = document.getElementById('scorer-preset-hint');
+    elements.scorerPresetHelp = document.getElementById('scorer-preset-help');
     elements.scorerPresetStatus = document.getElementById('scorer-preset-status');
     elements.linearParams = document.getElementById('linear-params');
     elements.linearParamsFields = document.getElementById('linear-params-fields');
     elements.mainBuffScoreInput = document.getElementById('main-buff-score-input');
     elements.normalizedMaxScoreInput = document.getElementById('normalized-max-score-input');
-    elements.scorerConfigHint = document.getElementById('scorer-config-hint');
+    elements.scorerConfigHelp = document.getElementById('scorer-config-help');
     elements.targetScoreInput = document.getElementById('target-score-input');
     elements.blendDataSelect = document.getElementById('blend-data-select');
     elements.costWEchoInput = document.getElementById('cost-w-echo');
@@ -496,29 +517,43 @@
     elements.scorerPresetStatus.classList.toggle('error', state.scorerPresetStatusError);
   }
 
+  function setHelpTooltip(helpElement, text, { hideWhenEmpty = false } = {}) {
+    if (!helpElement) {
+      return;
+    }
+    const message = String(text || '').trim();
+    if (!message) {
+      helpElement.dataset.tooltip = '';
+      if (hideWhenEmpty) {
+        helpElement.hidden = true;
+      }
+      return;
+    }
+    helpElement.dataset.tooltip = message;
+    helpElement.hidden = false;
+  }
+
   function renderPresetHint(selectedPresetName) {
-    const hintBox = elements.scorerPresetHint;
-    if (!hintBox) {
+    const help = elements.scorerPresetHelp;
+    if (!help) {
       return;
     }
 
     const activeName = String(selectedPresetName || SCORER_PRESET_CUSTOM);
     if (activeName === SCORER_PRESET_CUSTOM) {
-      hintBox.hidden = true;
-      hintBox.textContent = '';
+      setHelpTooltip(help, '', { hideWhenEmpty: true });
       return;
     }
 
     const preset = findPresetByName(state.scorerType, activeName);
     const intro = String(preset?.presetIntro || '').trim();
     if (!intro) {
-      hintBox.hidden = true;
-      hintBox.textContent = '';
+      setHelpTooltip(help, '', { hideWhenEmpty: true });
       return;
     }
 
-    hintBox.textContent = intro;
-    hintBox.hidden = false;
+    setHelpTooltip(help, intro, { hideWhenEmpty: true });
+    help.setAttribute('aria-label', `当前选中预设说明：${activeName}`);
   }
 
   function findPresetByName(type, presetName) {
@@ -533,13 +568,17 @@
     const next = copyScorerConfig(state.defaultScorerConfigs[type]);
     next.weights = copyWeightMap(preset?.weights);
 
-    if (type === SCORER_LINEAR_DEFAULT || type === SCORER_QQ_BOT) {
+    if (
+      type === SCORER_LINEAR_DEFAULT ||
+      type === SCORER_WUWA_ECHO_TOOL ||
+      type === SCORER_QQ_BOT
+    ) {
       next.mainBuffScore = Math.max(
         0,
         numberOr(preset?.mainBuffScore, numberOr(next.mainBuffScore, 0)),
       );
     }
-    if (type === SCORER_LINEAR_DEFAULT) {
+    if (type === SCORER_LINEAR_DEFAULT || type === SCORER_WUWA_ECHO_TOOL) {
       next.normalizedMaxScore = Math.max(
         TARGET_SCORE_STEP,
         numberOr(preset?.normalizedMaxScore, numberOr(next.normalizedMaxScore, TARGET_SCORE_STEP)),
@@ -756,16 +795,22 @@
 
     state.defaultTargetScore = Number(data.defaultTargetScore || 60);
     state.defaultFixedTargetScore = Number(data.defaultFixedTargetScore || Math.round(state.defaultTargetScore));
+    state.defaultWuwaEchoToolTargetScore = Number(
+      data.defaultWuwaEchoToolTargetScore ?? state.defaultTargetScore,
+    );
     state.defaultMcBoostAssistantTargetScore = DEFAULT_MC_BOOST_ASSISTANT_TARGET_SCORE;
     state.defaultQqBotTargetScore = DEFAULT_QQ_BOT_TARGET_SCORE;
 
     const defaultLinearWeights = data.defaultLinearBuffWeights || data.defaultBuffWeights || {};
+    const defaultWuwaEchoToolWeights =
+      data.defaultWuwaEchoToolBuffWeights || data.defaultBuffWeights || {};
     const defaultMcBoostAssistantWeights =
       data.defaultMcBoostAssistantBuffWeights || defaultLinearWeights;
     const defaultQQWeights = data.defaultQqBotBuffWeights || {};
     const defaultFixedWeights = data.defaultFixedBuffWeights || {};
 
     state.scorerConfigs[SCORER_LINEAR_DEFAULT].weights = copyWeightMap(defaultLinearWeights);
+    state.scorerConfigs[SCORER_WUWA_ECHO_TOOL].weights = copyWeightMap(defaultWuwaEchoToolWeights);
     state.scorerConfigs[SCORER_MC_BOOST_ASSISTANT].weights = copyWeightMap(defaultMcBoostAssistantWeights);
     state.scorerConfigs[SCORER_QQ_BOT].weights = copyWeightMap(defaultQQWeights);
     state.scorerConfigs[SCORER_FIXED].weights = copyWeightMap(defaultFixedWeights);
@@ -775,6 +820,12 @@
     );
     state.scorerConfigs[SCORER_LINEAR_DEFAULT].normalizedMaxScore = Number(
       data.defaultLinearNormalizedMaxScore ?? 100,
+    );
+    state.scorerConfigs[SCORER_WUWA_ECHO_TOOL].mainBuffScore = Number(
+      data.defaultWuwaEchoToolMainBuffScore ?? 0,
+    );
+    state.scorerConfigs[SCORER_WUWA_ECHO_TOOL].normalizedMaxScore = Number(
+      data.defaultWuwaEchoToolNormalizedMaxScore ?? 100,
     );
 
     state.scorerConfigs[SCORER_QQ_BOT].mainBuffScore = Number(
@@ -790,16 +841,21 @@
     state.defaultScorerConfigs[SCORER_LINEAR_DEFAULT] = copyScorerConfig(
       state.scorerConfigs[SCORER_LINEAR_DEFAULT],
     );
+    state.defaultScorerConfigs[SCORER_WUWA_ECHO_TOOL] = copyScorerConfig(
+      state.scorerConfigs[SCORER_WUWA_ECHO_TOOL],
+    );
     state.defaultScorerConfigs[SCORER_MC_BOOST_ASSISTANT] = copyScorerConfig(
       state.scorerConfigs[SCORER_MC_BOOST_ASSISTANT],
     );
     state.defaultScorerConfigs[SCORER_QQ_BOT] = copyScorerConfig(state.scorerConfigs[SCORER_QQ_BOT]);
     state.defaultScorerConfigs[SCORER_FIXED] = copyScorerConfig(state.scorerConfigs[SCORER_FIXED]);
     state.scorerPresets[SCORER_LINEAR_DEFAULT] = [];
+    state.scorerPresets[SCORER_WUWA_ECHO_TOOL] = [];
     state.scorerPresets[SCORER_MC_BOOST_ASSISTANT] = [];
     state.scorerPresets[SCORER_QQ_BOT] = [];
     state.scorerPresets[SCORER_FIXED] = [];
     state.activePresetNames[SCORER_LINEAR_DEFAULT] = SCORER_PRESET_CUSTOM;
+    state.activePresetNames[SCORER_WUWA_ECHO_TOOL] = SCORER_PRESET_CUSTOM;
     state.activePresetNames[SCORER_MC_BOOST_ASSISTANT] = SCORER_PRESET_CUSTOM;
     state.activePresetNames[SCORER_QQ_BOT] = SCORER_PRESET_CUSTOM;
     state.activePresetNames[SCORER_FIXED] = SCORER_PRESET_CUSTOM;
@@ -813,6 +869,8 @@
       state.targetScore = state.defaultMcBoostAssistantTargetScore;
     } else if (state.scorerType === SCORER_QQ_BOT) {
       state.targetScore = state.defaultQqBotTargetScore;
+    } else if (state.scorerType === SCORER_WUWA_ECHO_TOOL) {
+      state.targetScore = state.defaultWuwaEchoToolTargetScore;
     } else {
       state.targetScore = state.defaultTargetScore;
     }
@@ -901,6 +959,9 @@
     }
     if (type === SCORER_QQ_BOT) {
       return state.defaultQqBotTargetScore;
+    }
+    if (type === SCORER_WUWA_ECHO_TOOL) {
+      return state.defaultWuwaEchoToolTargetScore;
     }
     return state.defaultTargetScore;
   }
@@ -1016,14 +1077,22 @@
 
   function renderScorerConfig() {
     elements.scorerTypeSelect.value = state.scorerType;
+    let scorerHelpText = '';
+    const scorerTypeLabel = String(
+      elements.scorerTypeSelect?.selectedOptions?.[0]?.textContent || state.scorerType,
+    ).trim();
+    if (elements.scorerConfigHelp) {
+      elements.scorerConfigHelp.setAttribute('aria-label', `当前选中模式说明：${scorerTypeLabel}`);
+    }
 
     if (isFixedScorer()) {
       elements.linearParams.hidden = true;
       elements.linearParams.style.display = 'none';
       elements.mainBuffScoreInput.disabled = true;
       elements.normalizedMaxScoreInput.disabled = true;
-      elements.scorerConfigHint.textContent =
+      scorerHelpText =
         '固定评分模式下，每个词条直接按设置的权重计分，不受词条数值高低影响。\n权重和目标分数只能为整数。\n此评分模式主要用于只关注词条数目的场景。';
+      setHelpTooltip(elements.scorerConfigHelp, scorerHelpText);
       return;
     }
 
@@ -1052,15 +1121,20 @@
     elements.normalizedMaxScoreInput.value = config.normalizedMaxScore.toFixed(TARGET_SCORE_DIGITS);
 
     if (state.scorerType === SCORER_MC_BOOST_ASSISTANT) {
-      elements.scorerConfigHint.textContent =
-        '漂泊者强化助手按线性规则评分。归一化总分 120.00，其中主词条固定贡献 50.00。请在小程序中查看词条权重。\n这里的单词条分数为小程序内显示的0.7倍，且未计入对无效生存词条的“安慰分数”。\n注意，该来源的评分权重由词条对期望伤害的提升计算得到，但考虑的是词条对0+1角色与对6+5角色的提升平均值。';
+      scorerHelpText =
+        '漂泊者强化助手按线性规则评分。归一化总分 120.00，其中主词条固定贡献 50.00。请在小程序中查看词条权重。\n这里的单词条分数为它们对总分的贡献，因而是小程序内显示的0.7倍。并且未计入对生存词条的“安慰分数”。\n注意，该来源的评分权重虽然是由词条对期望伤害的提升计算得到，但考虑的是词条对0+1角色与对6+5角色的提升平均值。';
+    } else if (state.scorerType === SCORER_WUWA_ECHO_TOOL) {
+      scorerHelpText =
+        'Wuwa Echo Tool 按线性规则评分。\n由于工具原始的评分规则中主词条占比高，且未对单件声骸给出归一化分数，这里等价转换了其提供的权重，以提供针对单件声骸副词条的评分。';
     } else if (state.scorerType === SCORER_QQ_BOT) {
-      elements.scorerConfigHint.textContent =
-        'WutheringWavesUID （QQ机器人）按线性规则评分，归一化总分 50.00。请使用“ww(角色名)权重”查看角色权重。\n主词条原始分数填写对应Cost声骸两个主词条的权重与数值乘积之和。\n注意，该来源的评分权重与实际词条价值存在相当偏差。';
+      scorerHelpText =
+        'WutheringWavesUID （QQ机器人）按线性规则评分，归一化总分 50.00。请使用“ww(角色名)权重”命令查看角色权重，如“ww椿权重”。\n如需总分与机器人结果一致，需在主词条原始分数处填写对应Cost声骸两个主词条的权重与数值乘积之和。\n注意，该来源的评分权重与实际词条价值存在相当偏差。';
     } else {
-      elements.scorerConfigHint.textContent =
+      scorerHelpText =
         '自定义线性评分模式下，按词条数值占该词条最大数值的比例线性计分。词条权重对应词条最大数值的原始分数。\n可设置声骸主词条的原始分数与归一化总分。权重与分数支持小数。\n建议配合拉表计算得到的词条权重使用。';
     }
+
+    setHelpTooltip(elements.scorerConfigHelp, scorerHelpText);
   }
 
   async function computeContributions() {
@@ -1768,15 +1842,16 @@
       ? `${formatScoreForScorer(state.totalScore, scorerType)} / ${fixedMaxScore}`
       : `${state.totalScore.toFixed(TARGET_SCORE_DIGITS)} / ${normalizedMaxScore.toFixed(TARGET_SCORE_DIGITS)}`;
 
-    const selectedCount = state.buffSelections.filter(Boolean).length;
     const targetScore = Number(state.policySummary?.targetScore ?? state.targetScore);
     const targetText = formatScoreForScorer(targetScore, scorerType);
 
-    const stage = state.suggestion?.stage ?? selectedCount;
     const successProbability = Number(state.suggestion?.successProbability);
-    const successBadge = Number.isFinite(successProbability)
-      ? `<span class="score-success">当前成功率 ${(successProbability * 100).toFixed(4)}%</span>`
-      : '';
+    const successBadgeText = Number.isFinite(successProbability)
+      ? `当前成功率 ${(successProbability * 100).toFixed(4)}%`
+      : '当前成功率 --';
+    const successBadgeClass = Number.isFinite(successProbability)
+      ? 'score-success'
+      : 'score-success score-success-pending';
 
     const summaryHtml = `
       <div class="score-summary">
@@ -1787,12 +1862,10 @@
           </div>
           <div class="score-meta">
             <span class="score-target">目标分数 ${targetText}</span>
-            <span class="score-stage">已揭示 ${stage}/${state.maxSelectedTypes} 词条</span>
-            ${successBadge}
+            <span class="${successBadgeClass}">${successBadgeText}</span>
           </div>
         </div>
         <div class="score-suggestion">
-          <div class="score-suggestion-title">强化建议</div>
           ${renderSuggestionBlock()}
         </div>
       </div>

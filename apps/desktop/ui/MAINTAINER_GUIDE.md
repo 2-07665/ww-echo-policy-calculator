@@ -29,7 +29,7 @@ The UI sends current scorer settings + selected buffs, and backend returns:
 
 Key scorer config map:
 
-- `state.scorerConfigs[linear_default|mc_boost_assistant|qq_bot|fixed]`
+- `state.scorerConfigs[linear_default|wuwa_echo_tool|mc_boost_assistant|qq_bot|fixed]`
 
 ## Async Update Flow
 
@@ -65,6 +65,9 @@ This only invalidates result state in UI; solver reuse decision is backend respo
   - lock `normalizedMaxScore = 120.00`
 - `qq_bot`:
   - lock `normalizedMaxScore = 50.00`
+- `wuwa_echo_tool`:
+  - same scoring behavior as `linear_default`
+  - independent hints and preset list
 
 ## Defaults You May Want to Edit
 
@@ -97,4 +100,3 @@ Before committing UI changes:
    - run `开始计算策略`
    - verify suggestion updates after buff edits
    - reroll compute and recommendation paths
-
