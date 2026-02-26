@@ -33,6 +33,7 @@ const SCORER_TYPE_QQ_BOT: &str = "qq_bot";
 const SCORER_TYPE_FIXED: &str = "fixed";
 const SCORER_PRESET_DIR: &str = "scorer-presets";
 const SCORER_PRESET_NAME_CUSTOM: &str = "自定义";
+const SCORER_PRESET_VARIANT_NAME_DEFAULT: &str = "默认";
 const DEFAULT_LINEAR_PRESETS_JSON: &str = include_str!("../default-presets/linear_default.json");
 const DEFAULT_WUWA_ECHO_TOOL_PRESETS_JSON: &str =
     include_str!("../default-presets/wuwa_echo_tool.json");
@@ -260,6 +261,25 @@ struct SaveScorerPresetRequest {
     scorer_type: String,
     preset_name: String,
     #[serde(default)]
+    variant_name: Option<String>,
+    #[serde(default)]
+    weights: HashMap<String, f64>,
+    #[serde(default)]
+    main_buff_score: Option<f64>,
+    #[serde(default)]
+    normalized_max_score: Option<f64>,
+    #[serde(default)]
+    preset_intro: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SaveScorerPresetVariantRequest {
+    #[serde(default = "default_scorer_type")]
+    scorer_type: String,
+    preset_name: String,
+    variant_name: String,
+    #[serde(default)]
     weights: HashMap<String, f64>,
     #[serde(default)]
     main_buff_score: Option<f64>,
@@ -277,10 +297,19 @@ struct DeleteScorerPresetRequest {
     preset_name: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DeleteScorerPresetVariantRequest {
+    #[serde(default = "default_scorer_type")]
+    scorer_type: String,
+    preset_name: String,
+    variant_name: String,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct ScorerPresetResponseItem {
-    preset_name: String,
+struct ScorerPresetResponseVariantItem {
+    variant_name: String,
     weights: BTreeMap<String, f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     main_buff_score: Option<f64>,
@@ -288,6 +317,15 @@ struct ScorerPresetResponseItem {
     normalized_max_score: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     preset_intro: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ScorerPresetResponseItem {
+    preset_name: String,
+    variants: Vec<ScorerPresetResponseVariantItem>,
+    built_in: bool,
+    user_defined: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -300,6 +338,7 @@ struct LoadScorerPresetsResponse {
 #[serde(rename_all = "camelCase")]
 struct SaveScorerPresetResponse {
     saved_preset_name: String,
+    saved_variant_name: String,
     presets: Vec<ScorerPresetResponseItem>,
 }
 
@@ -307,6 +346,22 @@ struct SaveScorerPresetResponse {
 #[serde(rename_all = "camelCase")]
 struct DeleteScorerPresetResponse {
     deleted_preset_name: String,
+    presets: Vec<ScorerPresetResponseItem>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SaveScorerPresetVariantResponse {
+    saved_preset_name: String,
+    saved_variant_name: String,
+    presets: Vec<ScorerPresetResponseItem>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DeleteScorerPresetVariantResponse {
+    deleted_preset_name: String,
+    deleted_variant_name: String,
     presets: Vec<ScorerPresetResponseItem>,
 }
 
@@ -318,8 +373,44 @@ struct ScorerPresetFile {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct ScorerPresetFileItem {
+    preset_name: String,
+    #[serde(default)]
+    variants: Vec<ScorerPresetVariantFileItem>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ScorerPresetVariantFileItem {
+    variant_name: String,
+    #[serde(default)]
+    weights: BTreeMap<String, f64>,
+    #[serde(default)]
+    main_buff_score: Option<f64>,
+    #[serde(default)]
+    normalized_max_score: Option<f64>,
+    #[serde(default)]
+    preset_intro: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct ScorerPresetRawFile {
+    #[serde(default)]
+    presets: Vec<ScorerPresetRawItem>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum ScorerPresetRawItem {
+    Grouped(ScorerPresetFileItem),
+    Legacy(ScorerPresetLegacyFileItem),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ScorerPresetLegacyFileItem {
     preset_name: String,
     #[serde(default)]
     weights: BTreeMap<String, f64>,
@@ -328,6 +419,21 @@ struct ScorerPresetFileItem {
     #[serde(default)]
     normalized_max_score: Option<f64>,
     #[serde(default)]
+    preset_intro: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct ScorerPresetResolvedItem {
+    preset_name: String,
+    variants: Vec<ScorerPresetResolvedVariantItem>,
+}
+
+#[derive(Debug, Clone)]
+struct ScorerPresetResolvedVariantItem {
+    variant_name: String,
+    weights: BTreeMap<String, f64>,
+    main_buff_score: Option<f64>,
+    normalized_max_score: Option<f64>,
     preset_intro: Option<String>,
 }
 
@@ -604,10 +710,35 @@ fn scorer_preset_file_path(app: &tauri::AppHandle, scorer_type: &str) -> Result<
     Ok(dir.join(scorer_preset_file_name(scorer_type)))
 }
 
+fn parse_scorer_preset_file_content(
+    content: &str,
+    source_name: &str,
+) -> Result<ScorerPresetFile, String> {
+    let raw_file: ScorerPresetRawFile = serde_json::from_str(content)
+        .map_err(|err| format!("Failed to parse preset file '{source_name}': {err}"))?;
+    let presets = raw_file
+        .presets
+        .into_iter()
+        .map(|item| match item {
+            ScorerPresetRawItem::Grouped(grouped) => grouped,
+            ScorerPresetRawItem::Legacy(legacy) => ScorerPresetFileItem {
+                preset_name: legacy.preset_name,
+                variants: vec![ScorerPresetVariantFileItem {
+                    variant_name: SCORER_PRESET_VARIANT_NAME_DEFAULT.to_string(),
+                    weights: legacy.weights,
+                    main_buff_score: legacy.main_buff_score,
+                    normalized_max_score: legacy.normalized_max_score,
+                    preset_intro: legacy.preset_intro,
+                }],
+            },
+        })
+        .collect();
+    Ok(ScorerPresetFile { presets })
+}
+
 fn read_scorer_preset_file(path: &Path) -> Result<ScorerPresetFile, String> {
     match fs::read_to_string(path) {
-        Ok(content) => serde_json::from_str(&content)
-            .map_err(|err| format!("Failed to parse preset file '{}': {err}", path.display())),
+        Ok(content) => parse_scorer_preset_file_content(&content, &path.display().to_string()),
         Err(err) if err.kind() == ErrorKind::NotFound => Ok(ScorerPresetFile::default()),
         Err(err) => Err(format!(
             "Failed to read preset file '{}': {err}",
@@ -619,9 +750,8 @@ fn read_scorer_preset_file(path: &Path) -> Result<ScorerPresetFile, String> {
 fn read_built_in_scorer_presets(scorer_type: &str) -> Result<Vec<ScorerPresetFileItem>, String> {
     let source_name = built_in_preset_source_name(scorer_type);
     let content = built_in_preset_json(scorer_type);
-    let file: ScorerPresetFile = serde_json::from_str(content)
-        .map_err(|err| format!("Failed to parse bundled presets '{source_name}': {err}"))?;
-    Ok(normalize_loaded_preset_items(scorer_type, file.presets))
+    let file = parse_scorer_preset_file_content(content, source_name)?;
+    Ok(normalize_loaded_preset_groups(scorer_type, file.presets))
 }
 
 fn write_scorer_preset_file(path: &Path, file: &ScorerPresetFile) -> Result<(), String> {
@@ -695,6 +825,14 @@ fn normalize_preset_name(raw_name: &str) -> Result<String, String> {
     Ok(trimmed.to_string())
 }
 
+fn normalize_preset_variant_name(raw_name: &str) -> Result<String, String> {
+    let trimmed = raw_name.trim();
+    if trimmed.is_empty() {
+        return Err("variantName cannot be empty".to_string());
+    }
+    Ok(trimmed.to_string())
+}
+
 fn normalize_preset_intro(raw_intro: Option<String>) -> Option<String> {
     raw_intro.and_then(|intro| {
         let trimmed = intro.trim();
@@ -706,15 +844,42 @@ fn normalize_preset_intro(raw_intro: Option<String>) -> Option<String> {
     })
 }
 
-fn normalize_preset_item_for_scorer(
+fn default_main_buff_score_for_scorer(scorer_type: &str) -> Option<f64> {
+    match scorer_type {
+        SCORER_TYPE_LINEAR_DEFAULT => Some(DEFAULT_LINEAR_MAIN_BUFF_SCORE),
+        SCORER_TYPE_WUWA_ECHO_TOOL => Some(DEFAULT_WUWA_ECHO_TOOL_MAIN_BUFF_SCORE),
+        SCORER_TYPE_MC_BOOST_ASSISTANT => None,
+        SCORER_TYPE_QQ_BOT => Some(DEFAULT_QQ_BOT_MAIN_BUFF_SCORE),
+        SCORER_TYPE_FIXED => None,
+        _ => unreachable!(),
+    }
+}
+
+fn default_normalized_max_score_for_scorer(scorer_type: &str) -> Option<f64> {
+    match scorer_type {
+        SCORER_TYPE_LINEAR_DEFAULT => Some(DEFAULT_LINEAR_NORMALIZED_MAX_SCORE),
+        SCORER_TYPE_WUWA_ECHO_TOOL => Some(DEFAULT_WUWA_ECHO_TOOL_NORMALIZED_MAX_SCORE),
+        SCORER_TYPE_MC_BOOST_ASSISTANT => None,
+        SCORER_TYPE_QQ_BOT => None,
+        SCORER_TYPE_FIXED => None,
+        _ => unreachable!(),
+    }
+}
+
+fn btree_weights_to_hash_map(weights: &BTreeMap<String, f64>) -> HashMap<String, f64> {
+    weights
+        .iter()
+        .map(|(name, value)| (name.clone(), *value))
+        .collect()
+}
+
+fn normalize_preset_variant_values_for_scorer(
     scorer_type: &str,
-    preset_name: &str,
     raw_weights: &HashMap<String, f64>,
     raw_main_buff_score: Option<f64>,
     raw_normalized_max_score: Option<f64>,
     raw_preset_intro: Option<String>,
-) -> Result<ScorerPresetFileItem, String> {
-    let preset_name = normalize_preset_name(preset_name)?;
+) -> Result<(BTreeMap<String, f64>, Option<f64>, Option<f64>, Option<String>), String> {
     let mut weights =
         build_weight_array_f64(raw_weights, default_weights_for_scorer_f64(scorer_type))?;
 
@@ -757,41 +922,198 @@ fn normalize_preset_item_for_scorer(
         _ => unreachable!(),
     };
 
-    Ok(ScorerPresetFileItem {
-        preset_name,
-        weights: build_default_weight_map_f64(&weights),
+    Ok((
+        build_default_weight_map_f64(&weights),
         main_buff_score,
         normalized_max_score,
-        preset_intro: normalize_preset_intro(raw_preset_intro),
+        normalize_preset_intro(raw_preset_intro),
+    ))
+}
+
+fn option_f64_bits_equal(left: Option<f64>, right: Option<f64>) -> bool {
+    match (left, right) {
+        (Some(lhs), Some(rhs)) => f64_bits_equal(lhs, rhs),
+        (None, None) => true,
+        _ => false,
+    }
+}
+
+fn resolve_variant_from_base(
+    scorer_type: &str,
+    base_variant: &ScorerPresetResolvedVariantItem,
+    raw_variant: &ScorerPresetVariantFileItem,
+) -> Result<ScorerPresetResolvedVariantItem, String> {
+    let variant_name = normalize_preset_variant_name(&raw_variant.variant_name)?;
+    let mut merged_weights = btree_weights_to_hash_map(&base_variant.weights);
+    for (buff_name, value) in &raw_variant.weights {
+        merged_weights.insert(buff_name.clone(), *value);
+    }
+    let raw_main_buff_score = raw_variant.main_buff_score.or(base_variant.main_buff_score);
+    let raw_normalized_max_score = raw_variant
+        .normalized_max_score
+        .or(base_variant.normalized_max_score);
+    let raw_preset_intro = raw_variant
+        .preset_intro
+        .clone()
+        .or(base_variant.preset_intro.clone());
+    let (weights, main_buff_score, normalized_max_score, preset_intro) =
+        normalize_preset_variant_values_for_scorer(
+            scorer_type,
+            &merged_weights,
+            raw_main_buff_score,
+            raw_normalized_max_score,
+            raw_preset_intro,
+        )?;
+    Ok(ScorerPresetResolvedVariantItem {
+        variant_name,
+        weights,
+        main_buff_score,
+        normalized_max_score,
+        preset_intro,
     })
 }
 
-fn normalize_loaded_preset_items(
+fn build_variant_override_from_base(
+    base_variant: &ScorerPresetResolvedVariantItem,
+    variant: &ScorerPresetResolvedVariantItem,
+) -> ScorerPresetVariantFileItem {
+    let mut weights = BTreeMap::new();
+    for buff_name in BUFF_TYPES {
+        let base_value = *base_variant.weights.get(buff_name).unwrap_or(&0.0);
+        let variant_value = *variant.weights.get(buff_name).unwrap_or(&0.0);
+        if !f64_bits_equal(base_value, variant_value) {
+            weights.insert(buff_name.to_string(), variant_value);
+        }
+    }
+
+    let main_buff_score = if option_f64_bits_equal(base_variant.main_buff_score, variant.main_buff_score)
+    {
+        None
+    } else {
+        variant.main_buff_score
+    };
+    let normalized_max_score = if option_f64_bits_equal(
+        base_variant.normalized_max_score,
+        variant.normalized_max_score,
+    ) {
+        None
+    } else {
+        variant.normalized_max_score
+    };
+    let preset_intro = if base_variant.preset_intro == variant.preset_intro {
+        None
+    } else {
+        variant.preset_intro.clone()
+    };
+
+    ScorerPresetVariantFileItem {
+        variant_name: variant.variant_name.clone(),
+        weights,
+        main_buff_score,
+        normalized_max_score,
+        preset_intro,
+    }
+}
+
+fn resolved_variant_to_file_full(variant: &ScorerPresetResolvedVariantItem) -> ScorerPresetVariantFileItem {
+    ScorerPresetVariantFileItem {
+        variant_name: variant.variant_name.clone(),
+        weights: variant.weights.clone(),
+        main_buff_score: variant.main_buff_score,
+        normalized_max_score: variant.normalized_max_score,
+        preset_intro: variant.preset_intro.clone(),
+    }
+}
+
+fn resolve_preset_group_for_scorer(
+    scorer_type: &str,
+    preset: &ScorerPresetFileItem,
+) -> Result<ScorerPresetResolvedItem, String> {
+    let preset_name = normalize_preset_name(&preset.preset_name)?;
+    let base_raw_variant = preset
+        .variants
+        .first()
+        .ok_or_else(|| format!("Preset '{preset_name}' must contain at least one variant"))?;
+    let default_variant_name = if base_raw_variant.variant_name.trim().is_empty() {
+        SCORER_PRESET_VARIANT_NAME_DEFAULT.to_string()
+    } else {
+        base_raw_variant.variant_name.clone()
+    };
+    let (weights, main_buff_score, normalized_max_score, preset_intro) =
+        normalize_preset_variant_values_for_scorer(
+            scorer_type,
+            &btree_weights_to_hash_map(&base_raw_variant.weights),
+            base_raw_variant
+                .main_buff_score
+                .or(default_main_buff_score_for_scorer(scorer_type)),
+            base_raw_variant
+                .normalized_max_score
+                .or(default_normalized_max_score_for_scorer(scorer_type)),
+            base_raw_variant.preset_intro.clone(),
+        )?;
+    let base_variant = ScorerPresetResolvedVariantItem {
+        variant_name: normalize_preset_variant_name(&default_variant_name)?,
+        weights,
+        main_buff_score,
+        normalized_max_score,
+        preset_intro,
+    };
+
+    let mut variants = vec![base_variant.clone()];
+    for raw_variant in preset.variants.iter().skip(1) {
+        match resolve_variant_from_base(scorer_type, &base_variant, raw_variant) {
+            Ok(variant) => {
+                if !variants
+                    .iter()
+                    .any(|existing| existing.variant_name == variant.variant_name)
+                {
+                    variants.push(variant);
+                }
+            }
+            Err(err) => {
+                eprintln!(
+                    "Skipping invalid variant '{}' in preset '{}': {err}",
+                    raw_variant.variant_name, preset_name
+                );
+            }
+        }
+    }
+
+    Ok(ScorerPresetResolvedItem {
+        preset_name,
+        variants,
+    })
+}
+
+fn normalize_loaded_preset_groups(
     scorer_type: &str,
     items: Vec<ScorerPresetFileItem>,
 ) -> Vec<ScorerPresetFileItem> {
     let mut out = Vec::new();
 
     for item in items {
-        let raw_weights: HashMap<String, f64> = item
-            .weights
-            .iter()
-            .map(|(name, value)| (name.clone(), *value))
-            .collect();
-        match normalize_preset_item_for_scorer(
-            scorer_type,
-            &item.preset_name,
-            &raw_weights,
-            item.main_buff_score,
-            item.normalized_max_score,
-            item.preset_intro,
-        ) {
-            Ok(normalized) => {
-                if !out.iter().any(|existing: &ScorerPresetFileItem| {
-                    existing.preset_name == normalized.preset_name
-                }) {
-                    out.push(normalized);
+        match resolve_preset_group_for_scorer(scorer_type, &item) {
+            Ok(resolved) => {
+                if out
+                    .iter()
+                    .any(|existing: &ScorerPresetFileItem| existing.preset_name == resolved.preset_name)
+                {
+                    continue;
                 }
+
+                let base_variant = resolved
+                    .variants
+                    .first()
+                    .expect("resolved preset always has at least one variant");
+                let mut normalized_variants = vec![resolved_variant_to_file_full(base_variant)];
+                for variant in resolved.variants.iter().skip(1) {
+                    normalized_variants.push(build_variant_override_from_base(base_variant, variant));
+                }
+
+                out.push(ScorerPresetFileItem {
+                    preset_name: resolved.preset_name,
+                    variants: normalized_variants,
+                });
             }
             Err(err) => {
                 eprintln!("Skipping invalid preset '{}': {err}", item.preset_name);
@@ -802,32 +1124,151 @@ fn normalize_loaded_preset_items(
     out
 }
 
-fn preset_item_to_response(item: ScorerPresetFileItem) -> ScorerPresetResponseItem {
+fn resolve_preset_groups_for_scorer(
+    scorer_type: &str,
+    groups: &[ScorerPresetFileItem],
+) -> Vec<ScorerPresetResolvedItem> {
+    groups
+        .iter()
+        .filter_map(|group| match resolve_preset_group_for_scorer(scorer_type, group) {
+            Ok(resolved) => Some(resolved),
+            Err(err) => {
+                eprintln!("Skipping invalid preset '{}': {err}", group.preset_name);
+                None
+            }
+        })
+        .collect()
+}
+
+fn preset_item_to_response(
+    item: ScorerPresetResolvedItem,
+    built_in: bool,
+    user_defined: bool,
+) -> ScorerPresetResponseItem {
     ScorerPresetResponseItem {
         preset_name: item.preset_name,
-        weights: item.weights,
-        main_buff_score: item.main_buff_score,
-        normalized_max_score: item.normalized_max_score,
-        preset_intro: item.preset_intro,
+        variants: item
+            .variants
+            .into_iter()
+            .map(|variant| ScorerPresetResponseVariantItem {
+                variant_name: variant.variant_name,
+                weights: variant.weights,
+                main_buff_score: variant.main_buff_score,
+                normalized_max_score: variant.normalized_max_score,
+                preset_intro: variant.preset_intro,
+            })
+            .collect(),
+        built_in,
+        user_defined,
     }
 }
 
-fn merge_preset_items(
-    built_in_items: Vec<ScorerPresetFileItem>,
-    user_items: Vec<ScorerPresetFileItem>,
-) -> Vec<ScorerPresetFileItem> {
-    let mut merged = built_in_items;
-    for item in user_items {
-        if let Some(existing_index) = merged
+fn build_resolved_variant_from_payload(
+    scorer_type: &str,
+    variant_name: &str,
+    weights: &HashMap<String, f64>,
+    main_buff_score: Option<f64>,
+    normalized_max_score: Option<f64>,
+    preset_intro: Option<String>,
+) -> Result<ScorerPresetResolvedVariantItem, String> {
+    let variant_name = normalize_preset_variant_name(variant_name)?;
+    let (weights, main_buff_score, normalized_max_score, preset_intro) =
+        normalize_preset_variant_values_for_scorer(
+            scorer_type,
+            weights,
+            main_buff_score,
+            normalized_max_score,
+            preset_intro,
+        )?;
+    Ok(ScorerPresetResolvedVariantItem {
+        variant_name,
+        weights,
+        main_buff_score,
+        normalized_max_score,
+        preset_intro,
+    })
+}
+
+fn find_preset_group_index(groups: &[ScorerPresetFileItem], preset_name: &str) -> Option<usize> {
+    groups
+        .iter()
+        .position(|item| item.preset_name.as_str() == preset_name)
+}
+
+fn find_resolved_preset<'a>(
+    presets: &'a [ScorerPresetResolvedItem],
+    preset_name: &str,
+) -> Option<&'a ScorerPresetResolvedItem> {
+    presets
+        .iter()
+        .find(|item| item.preset_name.as_str() == preset_name)
+}
+
+fn find_resolved_variant<'a>(
+    preset: &'a ScorerPresetResolvedItem,
+    variant_name: &str,
+) -> Option<&'a ScorerPresetResolvedVariantItem> {
+    preset
+        .variants
+        .iter()
+        .find(|item| item.variant_name.as_str() == variant_name)
+}
+
+fn build_merged_preset_response(
+    scorer_type: &str,
+    built_in_items: &[ScorerPresetFileItem],
+    user_items: &[ScorerPresetFileItem],
+) -> Vec<ScorerPresetResponseItem> {
+    let built_in_resolved = resolve_preset_groups_for_scorer(scorer_type, built_in_items);
+    let user_resolved = resolve_preset_groups_for_scorer(scorer_type, user_items);
+
+    let mut out = Vec::new();
+    for user_preset in &user_resolved {
+        if built_in_resolved
             .iter()
-            .position(|existing| existing.preset_name == item.preset_name)
+            .any(|item| item.preset_name == user_preset.preset_name)
         {
-            merged[existing_index] = item;
+            out.push(preset_item_to_response(user_preset.clone(), true, true));
         } else {
-            merged.push(item);
+            out.push(preset_item_to_response(user_preset.clone(), false, true));
         }
     }
-    merged
+
+    for built_in_preset in &built_in_resolved {
+        if !user_resolved
+            .iter()
+            .any(|item| item.preset_name == built_in_preset.preset_name)
+        {
+            out.push(preset_item_to_response(built_in_preset.clone(), true, false));
+        }
+    }
+
+    out
+}
+
+fn resolved_variants_equal(
+    left: &ScorerPresetResolvedVariantItem,
+    right: &ScorerPresetResolvedVariantItem,
+) -> bool {
+    left.variant_name == right.variant_name
+        && left.preset_intro == right.preset_intro
+        && option_f64_bits_equal(left.main_buff_score, right.main_buff_score)
+        && option_f64_bits_equal(left.normalized_max_score, right.normalized_max_score)
+        && BUFF_TYPES.iter().all(|buff_name| {
+            let lhs = *left.weights.get(*buff_name).unwrap_or(&0.0);
+            let rhs = *right.weights.get(*buff_name).unwrap_or(&0.0);
+            f64_bits_equal(lhs, rhs)
+        })
+}
+
+fn resolved_presets_equal(left: &ScorerPresetResolvedItem, right: &ScorerPresetResolvedItem) -> bool {
+    left.preset_name == right.preset_name
+        && left.variants.len() == right.variants.len()
+        && left
+            .variants
+            .iter()
+            .zip(right.variants.iter())
+            .all(|(lhs, rhs)| resolved_variants_equal(lhs, rhs))
 }
 
 fn f64_bits_equal(left: f64, right: f64) -> bool {
@@ -1603,11 +2044,8 @@ fn load_scorer_presets(
     let file_path = scorer_preset_file_path(&app, scorer_type)?;
     let built_in_items = read_built_in_scorer_presets(scorer_type)?;
     let file = read_scorer_preset_file(&file_path)?;
-    let user_items = normalize_loaded_preset_items(scorer_type, file.presets);
-    let presets = merge_preset_items(built_in_items, user_items)
-        .into_iter()
-        .map(preset_item_to_response)
-        .collect();
+    let user_items = normalize_loaded_preset_groups(scorer_type, file.presets);
+    let presets = build_merged_preset_response(scorer_type, &built_in_items, &user_items);
     Ok(LoadScorerPresetsResponse { presets })
 }
 
@@ -1617,37 +2055,70 @@ fn save_scorer_preset(
     payload: SaveScorerPresetRequest,
 ) -> Result<SaveScorerPresetResponse, String> {
     let scorer_type = parse_scorer_type(&payload.scorer_type)?;
+    let preset_name = normalize_preset_name(&payload.preset_name)?;
     let file_path = scorer_preset_file_path(&app, scorer_type)?;
     let built_in_items = read_built_in_scorer_presets(scorer_type)?;
     let file = read_scorer_preset_file(&file_path)?;
-    let mut user_items = normalize_loaded_preset_items(scorer_type, file.presets);
+    let mut user_items = normalize_loaded_preset_groups(scorer_type, file.presets);
 
-    let mut normalized = normalize_preset_item_for_scorer(
+    let bundled_exists = find_preset_group_index(&built_in_items, &preset_name).is_some();
+    let user_index = find_preset_group_index(&user_items, &preset_name);
+    if bundled_exists && user_index.is_none() {
+        return Err(format!(
+            "Bundled preset '{}' is read-only. Save it using a new preset name.",
+            preset_name
+        ));
+    }
+
+    let user_resolved = resolve_preset_groups_for_scorer(scorer_type, &user_items);
+    let fallback_intro = find_resolved_preset(&user_resolved, &preset_name)
+        .and_then(|preset| preset.variants.first())
+        .and_then(|variant| variant.preset_intro.clone());
+
+    let requested_variant_name = payload
+        .variant_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(normalize_preset_variant_name)
+        .transpose()?;
+
+    let base_variant_name = if let Some(index) = user_index {
+        user_items[index]
+            .variants
+            .first()
+            .map(|variant| variant.variant_name.clone())
+            .unwrap_or_else(|| SCORER_PRESET_VARIANT_NAME_DEFAULT.to_string())
+    } else {
+        requested_variant_name.unwrap_or_else(|| SCORER_PRESET_VARIANT_NAME_DEFAULT.to_string())
+    };
+
+    let resolved_base_variant = build_resolved_variant_from_payload(
         scorer_type,
-        &payload.preset_name,
+        &base_variant_name,
         &payload.weights,
         payload.main_buff_score,
         payload.normalized_max_score,
-        payload.preset_intro,
+        payload.preset_intro.or(fallback_intro),
     )?;
+    let serialized_base_variant = resolved_variant_to_file_full(&resolved_base_variant);
 
-    if let Some(existing_index) = user_items
-        .iter()
-        .position(|item| item.preset_name == normalized.preset_name)
-    {
-        if normalized.preset_intro.is_none() {
-            normalized.preset_intro = user_items[existing_index].preset_intro.clone();
+    if let Some(existing_index) = user_index {
+        if user_items[existing_index].variants.is_empty() {
+            user_items[existing_index]
+                .variants
+                .push(serialized_base_variant.clone());
+        } else {
+            user_items[existing_index].variants[0] = serialized_base_variant.clone();
         }
-        user_items[existing_index] = normalized.clone();
     } else {
-        if normalized.preset_intro.is_none() {
-            normalized.preset_intro = built_in_items
-                .iter()
-                .find(|item| item.preset_name == normalized.preset_name)
-                .and_then(|item| item.preset_intro.clone());
-        }
-        user_items.push(normalized.clone());
+        user_items.push(ScorerPresetFileItem {
+            preset_name: preset_name.clone(),
+            variants: vec![serialized_base_variant],
+        });
     }
+
+    user_items = normalize_loaded_preset_groups(scorer_type, user_items);
 
     write_scorer_preset_file(
         &file_path,
@@ -1656,12 +2127,99 @@ fn save_scorer_preset(
         },
     )?;
 
-    let presets = merge_preset_items(built_in_items, user_items)
-        .into_iter()
-        .map(preset_item_to_response)
-        .collect();
+    let presets = build_merged_preset_response(scorer_type, &built_in_items, &user_items);
     Ok(SaveScorerPresetResponse {
-        saved_preset_name: normalized.preset_name,
+        saved_preset_name: preset_name,
+        saved_variant_name: resolved_base_variant.variant_name,
+        presets,
+    })
+}
+
+#[tauri::command]
+fn save_scorer_preset_variant(
+    app: tauri::AppHandle,
+    payload: SaveScorerPresetVariantRequest,
+) -> Result<SaveScorerPresetVariantResponse, String> {
+    let scorer_type = parse_scorer_type(&payload.scorer_type)?;
+    let preset_name = normalize_preset_name(&payload.preset_name)?;
+    let variant_name = normalize_preset_variant_name(&payload.variant_name)?;
+    let file_path = scorer_preset_file_path(&app, scorer_type)?;
+    let built_in_items = read_built_in_scorer_presets(scorer_type)?;
+    let file = read_scorer_preset_file(&file_path)?;
+    let mut user_items = normalize_loaded_preset_groups(scorer_type, file.presets);
+    let user_index = find_preset_group_index(&user_items, &preset_name).ok_or_else(|| {
+        if find_preset_group_index(&built_in_items, &preset_name).is_some() {
+            format!(
+                "Bundled preset '{}' is read-only. Save as a new preset first.",
+                preset_name
+            )
+        } else {
+            format!("Preset '{preset_name}' does not exist")
+        }
+    })?;
+    let user_resolved = resolve_preset_groups_for_scorer(scorer_type, &user_items);
+    let source_preset = find_resolved_preset(&user_resolved, &preset_name)
+        .ok_or_else(|| format!("Preset '{preset_name}' does not exist"))?;
+    let default_variant_name = source_preset
+        .variants
+        .first()
+        .map(|variant| variant.variant_name.clone())
+        .unwrap_or_else(|| SCORER_PRESET_VARIANT_NAME_DEFAULT.to_string());
+
+    if variant_name == default_variant_name {
+        return Err(format!(
+            "Variant '{}' is the default variant. Use preset save to update it.",
+            variant_name
+        ));
+    }
+
+    let current_user_preset = find_resolved_preset(&user_resolved, &preset_name)
+        .ok_or_else(|| format!("Preset '{preset_name}' failed to load"))?;
+    let base_variant = current_user_preset
+        .variants
+        .first()
+        .ok_or_else(|| format!("Preset '{preset_name}' has no base variant"))?;
+    let fallback_intro = find_resolved_variant(current_user_preset, &variant_name)
+        .and_then(|variant| variant.preset_intro.clone());
+
+    let resolved_variant = build_resolved_variant_from_payload(
+        scorer_type,
+        &variant_name,
+        &payload.weights,
+        payload.main_buff_score,
+        payload.normalized_max_score,
+        payload.preset_intro.or(fallback_intro),
+    )?;
+    let serialized_variant = build_variant_override_from_base(base_variant, &resolved_variant);
+
+    if let Some(existing_index) = user_items[user_index]
+        .variants
+        .iter()
+        .position(|variant| variant.variant_name == variant_name)
+    {
+        if existing_index == 0 {
+            return Err(format!(
+                "Variant '{}' is the default variant. Use preset save to update it.",
+                variant_name
+            ));
+        }
+        user_items[user_index].variants[existing_index] = serialized_variant;
+    } else {
+        user_items[user_index].variants.push(serialized_variant);
+    }
+
+    user_items = normalize_loaded_preset_groups(scorer_type, user_items);
+    write_scorer_preset_file(
+        &file_path,
+        &ScorerPresetFile {
+            presets: user_items.clone(),
+        },
+    )?;
+
+    let presets = build_merged_preset_response(scorer_type, &built_in_items, &user_items);
+    Ok(SaveScorerPresetVariantResponse {
+        saved_preset_name: preset_name,
+        saved_variant_name: variant_name,
         presets,
     })
 }
@@ -1676,12 +2234,9 @@ fn delete_scorer_preset(
     let file_path = scorer_preset_file_path(&app, scorer_type)?;
     let built_in_items = read_built_in_scorer_presets(scorer_type)?;
     let file = read_scorer_preset_file(&file_path)?;
-    let mut user_items = normalize_loaded_preset_items(scorer_type, file.presets);
+    let mut user_items = normalize_loaded_preset_groups(scorer_type, file.presets);
 
-    let Some(existing_index) = user_items
-        .iter()
-        .position(|item| item.preset_name == preset_name)
-    else {
+    let Some(existing_index) = find_preset_group_index(&user_items, &preset_name) else {
         if built_in_items
             .iter()
             .any(|item| item.preset_name == preset_name)
@@ -1692,6 +2247,7 @@ fn delete_scorer_preset(
     };
 
     user_items.remove(existing_index);
+    user_items = normalize_loaded_preset_groups(scorer_type, user_items);
     write_scorer_preset_file(
         &file_path,
         &ScorerPresetFile {
@@ -1699,12 +2255,106 @@ fn delete_scorer_preset(
         },
     )?;
 
-    let presets = merge_preset_items(built_in_items, user_items)
-        .into_iter()
-        .map(preset_item_to_response)
-        .collect();
+    let presets = build_merged_preset_response(scorer_type, &built_in_items, &user_items);
     Ok(DeleteScorerPresetResponse {
         deleted_preset_name: preset_name,
+        presets,
+    })
+}
+
+#[tauri::command]
+fn delete_scorer_preset_variant(
+    app: tauri::AppHandle,
+    payload: DeleteScorerPresetVariantRequest,
+) -> Result<DeleteScorerPresetVariantResponse, String> {
+    let scorer_type = parse_scorer_type(&payload.scorer_type)?;
+    let preset_name = normalize_preset_name(&payload.preset_name)?;
+    let variant_name = normalize_preset_variant_name(&payload.variant_name)?;
+    let file_path = scorer_preset_file_path(&app, scorer_type)?;
+    let built_in_items = read_built_in_scorer_presets(scorer_type)?;
+    let built_in_resolved = resolve_preset_groups_for_scorer(scorer_type, &built_in_items);
+    let file = read_scorer_preset_file(&file_path)?;
+    let mut user_items = normalize_loaded_preset_groups(scorer_type, file.presets);
+
+    let user_index = find_preset_group_index(&user_items, &preset_name);
+    let bundled_has_variant = find_resolved_preset(&built_in_resolved, &preset_name)
+        .and_then(|preset| find_resolved_variant(preset, &variant_name))
+        .is_some();
+
+    let Some(user_index) = user_index else {
+        if bundled_has_variant {
+            return Err(format!(
+                "Bundled variant '{} / {}' cannot be deleted",
+                preset_name, variant_name
+            ));
+        }
+        return Err(format!(
+            "Preset variant '{} / {}' does not exist",
+            preset_name, variant_name
+        ));
+    };
+
+    let resolved_user_preset = resolve_preset_group_for_scorer(scorer_type, &user_items[user_index])?;
+    let default_variant_name = resolved_user_preset
+        .variants
+        .first()
+        .map(|variant| variant.variant_name.clone())
+        .unwrap_or_else(|| SCORER_PRESET_VARIANT_NAME_DEFAULT.to_string());
+    if variant_name == default_variant_name {
+        return Err(format!(
+            "Default variant '{}' cannot be deleted",
+            variant_name
+        ));
+    }
+
+    let Some(variant_index) = user_items[user_index]
+        .variants
+        .iter()
+        .position(|variant| variant.variant_name == variant_name)
+    else {
+        if bundled_has_variant {
+            return Err(format!(
+                "Bundled variant '{} / {}' cannot be deleted",
+                preset_name, variant_name
+            ));
+        }
+        return Err(format!(
+            "Preset variant '{} / {}' does not exist",
+            preset_name, variant_name
+        ));
+    };
+
+    if variant_index == 0 {
+        return Err(format!(
+            "Default variant '{}' cannot be deleted",
+            variant_name
+        ));
+    }
+
+    user_items[user_index].variants.remove(variant_index);
+    user_items = normalize_loaded_preset_groups(scorer_type, user_items);
+
+    if let Some(bundled_preset) = find_resolved_preset(&built_in_resolved, &preset_name)
+        && let Some(new_user_index) = find_preset_group_index(&user_items, &preset_name)
+    {
+        let resolved_user_after =
+            resolve_preset_group_for_scorer(scorer_type, &user_items[new_user_index])?;
+        if resolved_presets_equal(&resolved_user_after, bundled_preset) {
+            user_items.remove(new_user_index);
+        }
+    }
+
+    write_scorer_preset_file(
+        &file_path,
+        &ScorerPresetFile {
+            presets: user_items.clone(),
+        },
+    )?;
+
+    let presets = build_merged_preset_response(scorer_type, &built_in_items, &user_items);
+    Ok(DeleteScorerPresetVariantResponse {
+        deleted_preset_name: preset_name,
+        deleted_variant_name: variant_name,
         presets,
     })
 }
@@ -2014,7 +2664,9 @@ fn main() {
             stop_ocr_udp_listener,
             load_scorer_presets,
             save_scorer_preset,
+            save_scorer_preset_variant,
             delete_scorer_preset,
+            delete_scorer_preset_variant,
             preview_upgrade_score,
             compute_policy,
             policy_suggestion,

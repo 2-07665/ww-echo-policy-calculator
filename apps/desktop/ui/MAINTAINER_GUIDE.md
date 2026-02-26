@@ -66,8 +66,20 @@ This only invalidates result state in UI; solver reuse decision is backend respo
 - `qq_bot`:
   - lock `normalizedMaxScore = 50.00`
 - `wuwa_echo_tool`:
-  - same scoring behavior as `linear_default`
+  - separate scorer type from `linear_default`
   - independent hints and preset list
+
+Preset controls support `preset -> variants[]`:
+
+- selecting a preset auto-loads its first variant
+- additional variants override the first variant
+- UI provides separate save/delete actions for presets and variants
+- preset dropdown groups presets into `自定义预设` then `内置预设`
+- user-defined presets are listed before bundled presets
+- in `自定义` mode, variant name input stays editable for creating a new preset
+- on bundled preset selection, variant name input also stays editable, but variant save/delete remain disabled
+- saving as a new preset carries the current/typed variant name as the base variant
+- bundled presets are read-only; users must save with a new preset name to customize
 
 ## Defaults You May Want to Edit
 

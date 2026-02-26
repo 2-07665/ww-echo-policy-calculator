@@ -9,6 +9,7 @@
   const SCORER_QQ_BOT = 'qq_bot';
   const SCORER_FIXED = 'fixed';
   const SCORER_PRESET_CUSTOM = '自定义';
+  const SCORER_PRESET_VARIANT_DEFAULT = '默认';
   const DEFAULT_MC_BOOST_ASSISTANT_TARGET_SCORE = 95.0;
   const DEFAULT_QQ_BOT_TARGET_SCORE = 35.0;
   const MC_BOOST_ASSISTANT_LOCKED_MAIN_BUFF_SCORE = 0.0;
@@ -92,6 +93,13 @@
       [SCORER_MC_BOOST_ASSISTANT]: SCORER_PRESET_CUSTOM,
       [SCORER_QQ_BOT]: SCORER_PRESET_CUSTOM,
       [SCORER_FIXED]: SCORER_PRESET_CUSTOM,
+    },
+    activePresetVariantNames: {
+      [SCORER_LINEAR_DEFAULT]: '',
+      [SCORER_WUWA_ECHO_TOOL]: '',
+      [SCORER_MC_BOOST_ASSISTANT]: '',
+      [SCORER_QQ_BOT]: '',
+      [SCORER_FIXED]: '',
     },
     scorerPresetStatus: '',
     scorerPresetStatusError: false,
@@ -418,6 +426,10 @@
     elements.scorerPresetNameInput = document.getElementById('scorer-preset-name-input');
     elements.scorerPresetSaveButton = document.getElementById('scorer-preset-save-button');
     elements.scorerPresetDeleteButton = document.getElementById('scorer-preset-delete-button');
+    elements.scorerPresetVariantSelect = document.getElementById('scorer-preset-variant-select');
+    elements.scorerPresetVariantNameInput = document.getElementById('scorer-preset-variant-name-input');
+    elements.scorerPresetVariantSaveButton = document.getElementById('scorer-preset-variant-save-button');
+    elements.scorerPresetVariantDeleteButton = document.getElementById('scorer-preset-variant-delete-button');
     elements.scorerPresetHelp = document.getElementById('scorer-preset-help');
     elements.scorerPresetStatus = document.getElementById('scorer-preset-status');
     elements.linearParams = document.getElementById('linear-params');
@@ -462,14 +474,13 @@
     return out;
   }
 
-  function normalizePresetEntry(raw) {
-    const presetName = String(raw?.presetName || '').trim();
-    if (!presetName || presetName === SCORER_PRESET_CUSTOM) {
+  function normalizePresetVariantEntry(raw) {
+    const variantName = String(raw?.variantName || '').trim();
+    if (!variantName) {
       return null;
     }
-
     const next = {
-      presetName,
+      variantName,
       weights: copyWeightMap(raw?.weights),
     };
     if (raw?.mainBuffScore != null) {
@@ -488,6 +499,36 @@
     return next;
   }
 
+  function normalizePresetEntry(raw) {
+    const presetName = String(raw?.presetName || '').trim();
+    if (!presetName || presetName === SCORER_PRESET_CUSTOM) {
+      return null;
+    }
+    const variants = Array.isArray(raw?.variants)
+      ? raw.variants.map(normalizePresetVariantEntry).filter(Boolean)
+      : [];
+    if (!variants.length) {
+      return null;
+    }
+    return {
+      presetName,
+      variants,
+      builtIn: Boolean(raw?.builtIn),
+      userDefined: Boolean(raw?.userDefined),
+    };
+  }
+
+  function findPresetByName(type, presetName) {
+    return (state.scorerPresets[type] || []).find((item) => item.presetName === presetName) || null;
+  }
+
+  function findVariantByName(preset, variantName) {
+    if (!preset || !Array.isArray(preset.variants)) {
+      return null;
+    }
+    return preset.variants.find((item) => item.variantName === variantName) || null;
+  }
+
   function applyPresetList(type, rawPresets) {
     const normalized = Array.isArray(rawPresets)
       ? rawPresets.map(normalizePresetEntry).filter(Boolean)
@@ -495,12 +536,18 @@
     state.scorerPresets[type] = normalized;
 
     const activeName = state.activePresetNames[type];
-    if (
-      activeName !== SCORER_PRESET_CUSTOM &&
-      !normalized.some((preset) => preset.presetName === activeName)
-    ) {
+    const activePreset = activeName === SCORER_PRESET_CUSTOM ? null : findPresetByName(type, activeName);
+    if (!activePreset) {
       state.activePresetNames[type] = SCORER_PRESET_CUSTOM;
+      state.activePresetVariantNames[type] = '';
+      return;
     }
+
+    const activeVariantName = state.activePresetVariantNames[type];
+    const activeVariant = findVariantByName(activePreset, activeVariantName);
+    state.activePresetVariantNames[type] = activeVariant
+      ? activeVariant.variantName
+      : String(activePreset.variants[0]?.variantName || '');
   }
 
   function setPresetStatus(message, { error = false } = {}) {
@@ -533,7 +580,7 @@
     helpElement.hidden = false;
   }
 
-  function renderPresetHint(selectedPresetName) {
+  function renderPresetHint(selectedPresetName, selectedVariantName) {
     const help = elements.scorerPresetHelp;
     if (!help) {
       return;
@@ -546,27 +593,24 @@
     }
 
     const preset = findPresetByName(state.scorerType, activeName);
-    const intro = String(preset?.presetIntro || '').trim();
+    const variant = findVariantByName(preset, selectedVariantName);
+    const intro = String(variant?.presetIntro || '').trim();
     if (!intro) {
       setHelpTooltip(help, '', { hideWhenEmpty: true });
       return;
     }
 
     setHelpTooltip(help, intro, { hideWhenEmpty: true });
-    help.setAttribute('aria-label', `当前选中预设说明：${activeName}`);
-  }
-
-  function findPresetByName(type, presetName) {
-    return (state.scorerPresets[type] || []).find((item) => item.presetName === presetName) || null;
+    help.setAttribute('aria-label', `当前选中预设说明：${activeName} / ${String(variant?.variantName || '')}`);
   }
 
   function applyBuiltinCustomPresetForScorer(type) {
     state.scorerConfigs[type] = copyScorerConfig(state.defaultScorerConfigs[type]);
   }
 
-  function applyPresetConfigForScorer(type, preset) {
+  function applyPresetConfigForScorer(type, presetVariant) {
     const next = copyScorerConfig(state.defaultScorerConfigs[type]);
-    next.weights = copyWeightMap(preset?.weights);
+    next.weights = copyWeightMap(presetVariant?.weights);
 
     if (
       type === SCORER_LINEAR_DEFAULT ||
@@ -575,13 +619,16 @@
     ) {
       next.mainBuffScore = Math.max(
         0,
-        numberOr(preset?.mainBuffScore, numberOr(next.mainBuffScore, 0)),
+        numberOr(presetVariant?.mainBuffScore, numberOr(next.mainBuffScore, 0)),
       );
     }
     if (type === SCORER_LINEAR_DEFAULT || type === SCORER_WUWA_ECHO_TOOL) {
       next.normalizedMaxScore = Math.max(
         TARGET_SCORE_STEP,
-        numberOr(preset?.normalizedMaxScore, numberOr(next.normalizedMaxScore, TARGET_SCORE_STEP)),
+        numberOr(
+          presetVariant?.normalizedMaxScore,
+          numberOr(next.normalizedMaxScore, TARGET_SCORE_STEP),
+        ),
       );
     }
 
@@ -593,6 +640,8 @@
     const presets = state.scorerPresets[currentType] || [];
     const select = elements.scorerPresetSelect;
     const nameInput = elements.scorerPresetNameInput;
+    const variantSelect = elements.scorerPresetVariantSelect;
+    const variantNameInput = elements.scorerPresetVariantNameInput;
 
     select.innerHTML = '';
     const defaultOption = document.createElement('option');
@@ -600,12 +649,40 @@
     defaultOption.textContent = SCORER_PRESET_CUSTOM;
     select.appendChild(defaultOption);
 
-    presets.forEach((preset) => {
-      const option = document.createElement('option');
-      option.value = preset.presetName;
-      option.textContent = preset.presetName;
-      select.appendChild(option);
-    });
+    const userDefinedPresets = presets.filter((preset) => Boolean(preset?.userDefined));
+    const builtInPresets = presets.filter(
+      (preset) => Boolean(preset?.builtIn) && !preset?.userDefined,
+    );
+    const otherPresets = presets.filter(
+      (preset) => !preset?.userDefined && !preset?.builtIn,
+    );
+
+    const appendPresetOptions = (container, list) => {
+      list.forEach((preset) => {
+        const option = document.createElement('option');
+        option.value = preset.presetName;
+        option.textContent = preset.presetName;
+        container.appendChild(option);
+      });
+    };
+
+    if (userDefinedPresets.length) {
+      const userGroup = document.createElement('optgroup');
+      userGroup.label = '自定义预设';
+      appendPresetOptions(userGroup, userDefinedPresets);
+      select.appendChild(userGroup);
+    }
+
+    if (builtInPresets.length) {
+      const builtInGroup = document.createElement('optgroup');
+      builtInGroup.label = '内置预设';
+      appendPresetOptions(builtInGroup, builtInPresets);
+      select.appendChild(builtInGroup);
+    }
+
+    if (otherPresets.length) {
+      appendPresetOptions(select, otherPresets);
+    }
 
     const activeName = state.activePresetNames[currentType];
     const activeExists =
@@ -619,18 +696,60 @@
     if (document.activeElement !== nameInput) {
       nameInput.value = select.value === SCORER_PRESET_CUSTOM ? '' : select.value;
     }
-    if (elements.scorerPresetDeleteButton) {
-      elements.scorerPresetDeleteButton.disabled = select.value === SCORER_PRESET_CUSTOM;
+    const activePreset = findPresetByName(currentType, select.value);
+    const hasPreset = select.value !== SCORER_PRESET_CUSTOM && Boolean(activePreset);
+    const presetUserDefined = hasPreset && Boolean(activePreset?.userDefined);
+
+    variantSelect.innerHTML = '';
+    if (!hasPreset) {
+      const emptyOption = document.createElement('option');
+      emptyOption.value = '';
+      emptyOption.textContent = '-';
+      variantSelect.appendChild(emptyOption);
+      variantSelect.value = '';
+      variantSelect.disabled = true;
+      state.activePresetVariantNames[currentType] = '';
+      const customVariantName = String(variantNameInput.value || '').trim();
+      if (document.activeElement !== variantNameInput) {
+        variantNameInput.value = customVariantName || SCORER_PRESET_VARIANT_DEFAULT;
+      }
+      variantNameInput.disabled = false;
+      elements.scorerPresetVariantSaveButton.disabled = true;
+      elements.scorerPresetVariantDeleteButton.disabled = true;
+    } else {
+      const variants = activePreset.variants || [];
+      variants.forEach((variant) => {
+        const option = document.createElement('option');
+        option.value = variant.variantName;
+        option.textContent = variant.variantName;
+        variantSelect.appendChild(option);
+      });
+      const activeVariantName = state.activePresetVariantNames[currentType];
+      const activeVariantExists = variants.some((variant) => variant.variantName === activeVariantName);
+      const selectedVariantName = activeVariantExists
+        ? activeVariantName
+        : String(variants[0]?.variantName || '');
+      state.activePresetVariantNames[currentType] = selectedVariantName;
+      variantSelect.value = selectedVariantName;
+      variantSelect.disabled = false;
+      if (document.activeElement !== variantNameInput) {
+        variantNameInput.value = selectedVariantName;
+      }
+      variantNameInput.disabled = false;
+      elements.scorerPresetVariantSaveButton.disabled = !presetUserDefined;
+      const defaultVariantName = String(variants[0]?.variantName || SCORER_PRESET_VARIANT_DEFAULT);
+      elements.scorerPresetVariantDeleteButton.disabled =
+        !presetUserDefined ||
+        !selectedVariantName ||
+        selectedVariantName === defaultVariantName;
     }
 
-    renderPresetHint(select.value);
-    renderPresetStatus();
-  }
+    if (elements.scorerPresetDeleteButton) {
+      elements.scorerPresetDeleteButton.disabled = !presetUserDefined;
+    }
 
-  function markCurrentScorerPresetAsCustom() {
-    state.activePresetNames[state.scorerType] = SCORER_PRESET_CUSTOM;
-    renderPresetControls();
-    setPresetStatus('');
+    renderPresetHint(select.value, state.activePresetVariantNames[currentType]);
+    renderPresetStatus();
   }
 
   async function loadScorerPresetsForType(type = state.scorerType) {
@@ -646,6 +765,7 @@
     } catch (error) {
       applyPresetList(type, []);
       state.activePresetNames[type] = SCORER_PRESET_CUSTOM;
+      state.activePresetVariantNames[type] = '';
       if (type === state.scorerType) {
         renderPresetControls();
         setPresetStatus(`读取预设失败：${error?.message || error}`, { error: true });
@@ -660,16 +780,20 @@
     if (selectedName === SCORER_PRESET_CUSTOM) {
       applyBuiltinCustomPresetForScorer(type);
       state.activePresetNames[type] = SCORER_PRESET_CUSTOM;
+      state.activePresetVariantNames[type] = '';
     } else {
       const preset = findPresetByName(type, selectedName);
       if (!preset) {
         state.activePresetNames[type] = SCORER_PRESET_CUSTOM;
+        state.activePresetVariantNames[type] = '';
         renderPresetControls();
         setPresetStatus(`未找到预设：${selectedName}`, { error: true });
         return;
       }
-      applyPresetConfigForScorer(type, preset);
+      const defaultVariant = preset.variants[0];
+      applyPresetConfigForScorer(type, defaultVariant);
       state.activePresetNames[type] = preset.presetName;
+      state.activePresetVariantNames[type] = String(defaultVariant?.variantName || '');
     }
 
     renderScorerConfig();
@@ -679,7 +803,38 @@
     await onWeightsUpdated();
   }
 
-  function buildPresetSavePayload(presetName) {
+  async function applySelectedScorerPresetVariant(variantName) {
+    const type = state.scorerType;
+    const presetName = String(state.activePresetNames[type] || SCORER_PRESET_CUSTOM);
+    if (presetName === SCORER_PRESET_CUSTOM) {
+      return;
+    }
+    const preset = findPresetByName(type, presetName);
+    if (!preset) {
+      state.activePresetNames[type] = SCORER_PRESET_CUSTOM;
+      state.activePresetVariantNames[type] = '';
+      renderPresetControls();
+      setPresetStatus(`未找到预设：${presetName}`, { error: true });
+      return;
+    }
+    const selectedVariantName = String(variantName || '').trim();
+    const variant = findVariantByName(preset, selectedVariantName);
+    if (!variant) {
+      setPresetStatus(`未找到预设变体：${selectedVariantName}`, { error: true });
+      renderPresetControls();
+      return;
+    }
+
+    applyPresetConfigForScorer(type, variant);
+    state.activePresetVariantNames[type] = variant.variantName;
+    renderScorerConfig();
+    renderWeightInputs();
+    renderPresetControls();
+    setPresetStatus('');
+    await onWeightsUpdated();
+  }
+
+  function buildPresetSavePayload(presetName, variantName = '') {
     const config = getScorerConfig();
     const payload = {
       scorerType: state.scorerType,
@@ -696,12 +851,27 @@
         numberOr(config.normalizedMaxScore, TARGET_SCORE_STEP),
       );
     }
+    const normalizedVariantName = String(variantName || '').trim();
+    if (normalizedVariantName) {
+      payload.variantName = normalizedVariantName;
+    }
 
     return payload;
   }
 
+  function buildPresetVariantSavePayload(presetName, variantName) {
+    const payload = buildPresetSavePayload(presetName);
+    payload.variantName = variantName;
+    return payload;
+  }
+
   async function handleSaveCurrentPreset() {
+    const currentType = state.scorerType;
+    const activePresetName = String(state.activePresetNames[currentType] || SCORER_PRESET_CUSTOM);
+    const activeVariantName = String(state.activePresetVariantNames[currentType] || '');
+    const activePreset = findPresetByName(currentType, activePresetName);
     const presetName = String(elements.scorerPresetNameInput.value || '').trim();
+    const typedVariantName = String(elements.scorerPresetVariantNameInput.value || '').trim();
     if (!presetName) {
       setPresetStatus('请输入预设名称后再保存。', { error: true });
       return;
@@ -710,9 +880,28 @@
       setPresetStatus(`“${SCORER_PRESET_CUSTOM}”为默认项名称，不能保存为预设。`, { error: true });
       return;
     }
+    if (
+      activePreset &&
+      activePreset.builtIn &&
+      !activePreset.userDefined &&
+      presetName === activePreset.presetName
+    ) {
+      setPresetStatus('内置预设为只读。请使用新的预设名称进行保存。', { error: true });
+      return;
+    }
     if (elements.scorerPresetSaveButton.dataset.loading === 'true') {
       return;
     }
+
+    const activeDefaultVariantName = String(
+      activePreset?.variants?.[0]?.variantName || SCORER_PRESET_VARIANT_DEFAULT,
+    );
+    const shouldSaveActiveVariant =
+      Boolean(activePreset?.userDefined) &&
+      presetName === activePresetName &&
+      Boolean(activeVariantName) &&
+      activeVariantName !== activeDefaultVariantName;
+    const presetSaveVariantName = typedVariantName || activeVariantName || SCORER_PRESET_VARIANT_DEFAULT;
 
     elements.scorerPresetSaveButton.dataset.loading = 'true';
     elements.scorerPresetSaveButton.disabled = true;
@@ -720,22 +909,43 @@
     elements.scorerPresetSaveButton.textContent = '保存中…';
 
     try {
-      const response = await invoke('save_scorer_preset', {
-        payload: buildPresetSavePayload(presetName),
-      });
+      const response = shouldSaveActiveVariant
+        ? await invoke('save_scorer_preset_variant', {
+            payload: buildPresetVariantSavePayload(presetName, activeVariantName),
+          })
+        : await invoke('save_scorer_preset', {
+            payload: buildPresetSavePayload(presetName, presetSaveVariantName),
+          });
 
-      const currentType = state.scorerType;
       applyPresetList(currentType, response?.presets || []);
-      state.activePresetNames[currentType] = String(response?.savedPresetName || presetName);
+      const savedPresetName = String(response?.savedPresetName || presetName);
+      const returnedVariantName = String(response?.savedVariantName || SCORER_PRESET_VARIANT_DEFAULT);
+      state.activePresetNames[currentType] = savedPresetName;
+      state.activePresetVariantNames[currentType] = returnedVariantName;
+      const savedPreset = findPresetByName(currentType, state.activePresetNames[currentType]);
+      const savedVariant = findVariantByName(savedPreset, state.activePresetVariantNames[currentType]);
+      if (savedVariant) {
+        applyPresetConfigForScorer(currentType, savedVariant);
+      }
+      renderScorerConfig();
+      renderWeightInputs();
       renderPresetControls();
       elements.scorerPresetNameInput.value = state.activePresetNames[currentType];
-      setPresetStatus(`已保存预设：${state.activePresetNames[currentType]}`);
+      if (shouldSaveActiveVariant) {
+        setPresetStatus(
+          `已保存变体：${state.activePresetNames[currentType]} / ${state.activePresetVariantNames[currentType]}`,
+        );
+      } else {
+        setPresetStatus(`已保存预设：${state.activePresetNames[currentType]}`);
+      }
+      await onWeightsUpdated();
     } catch (error) {
       setPresetStatus(`保存失败：${error?.message || error}`, { error: true });
     } finally {
       elements.scorerPresetSaveButton.dataset.loading = 'false';
       elements.scorerPresetSaveButton.disabled = false;
       elements.scorerPresetSaveButton.textContent = originalText;
+      renderPresetControls();
     }
   }
 
@@ -743,6 +953,11 @@
     const presetName = String(elements.scorerPresetSelect.value || '').trim();
     if (!presetName || presetName === SCORER_PRESET_CUSTOM) {
       setPresetStatus('请选择要删除的预设。', { error: true });
+      return;
+    }
+    const preset = findPresetByName(state.scorerType, presetName);
+    if (!preset || !preset.userDefined) {
+      setPresetStatus('内置预设不能删除。', { error: true });
       return;
     }
     if (elements.scorerPresetDeleteButton.dataset.loading === 'true') {
@@ -767,9 +982,12 @@
       const fallbackPreset = findPresetByName(currentType, presetName);
       if (fallbackPreset) {
         state.activePresetNames[currentType] = presetName;
-        applyPresetConfigForScorer(currentType, fallbackPreset);
+        const fallbackVariant = fallbackPreset.variants[0];
+        state.activePresetVariantNames[currentType] = String(fallbackVariant?.variantName || '');
+        applyPresetConfigForScorer(currentType, fallbackVariant);
       } else {
         state.activePresetNames[currentType] = SCORER_PRESET_CUSTOM;
+        state.activePresetVariantNames[currentType] = '';
         applyBuiltinCustomPresetForScorer(currentType);
       }
       renderScorerConfig();
@@ -783,6 +1001,141 @@
     } finally {
       elements.scorerPresetDeleteButton.dataset.loading = 'false';
       elements.scorerPresetDeleteButton.textContent = originalText;
+      renderPresetControls();
+    }
+  }
+
+  async function handleSaveCurrentPresetVariant() {
+    const currentType = state.scorerType;
+    const presetName = String(state.activePresetNames[currentType] || SCORER_PRESET_CUSTOM);
+    if (presetName === SCORER_PRESET_CUSTOM) {
+      setPresetStatus('请先选择一个预设，再保存变体。', { error: true });
+      return;
+    }
+    const preset = findPresetByName(currentType, presetName);
+    if (!preset) {
+      setPresetStatus(`未找到预设：${presetName}`, { error: true });
+      return;
+    }
+    if (!preset.userDefined) {
+      setPresetStatus('内置预设为只读。请先另存为自定义预设。', { error: true });
+      return;
+    }
+    const variantName = String(elements.scorerPresetVariantNameInput.value || '').trim();
+    if (!variantName) {
+      setPresetStatus('请输入变体名称后再保存。', { error: true });
+      return;
+    }
+    const defaultVariantName = String(preset.variants?.[0]?.variantName || SCORER_PRESET_VARIANT_DEFAULT);
+    if (variantName === defaultVariantName) {
+      setPresetStatus(`“${defaultVariantName}”是默认变体，请使用预设保存按钮。`, { error: true });
+      return;
+    }
+    if (elements.scorerPresetVariantSaveButton.dataset.loading === 'true') {
+      return;
+    }
+
+    elements.scorerPresetVariantSaveButton.dataset.loading = 'true';
+    elements.scorerPresetVariantSaveButton.disabled = true;
+    const originalText = elements.scorerPresetVariantSaveButton.textContent;
+    elements.scorerPresetVariantSaveButton.textContent = '保存中…';
+
+    try {
+      const response = await invoke('save_scorer_preset_variant', {
+        payload: buildPresetVariantSavePayload(presetName, variantName),
+      });
+      applyPresetList(currentType, response?.presets || []);
+      state.activePresetNames[currentType] = String(response?.savedPresetName || presetName);
+      state.activePresetVariantNames[currentType] = String(response?.savedVariantName || variantName);
+      const savedPreset = findPresetByName(currentType, state.activePresetNames[currentType]);
+      const savedVariant = findVariantByName(savedPreset, state.activePresetVariantNames[currentType]);
+      if (savedVariant) {
+        applyPresetConfigForScorer(currentType, savedVariant);
+      }
+      renderScorerConfig();
+      renderWeightInputs();
+      renderPresetControls();
+      setPresetStatus(
+        `已保存变体：${state.activePresetNames[currentType]} / ${state.activePresetVariantNames[currentType]}`,
+      );
+      await onWeightsUpdated();
+    } catch (error) {
+      setPresetStatus(`保存变体失败：${error?.message || error}`, { error: true });
+      renderPresetControls();
+    } finally {
+      elements.scorerPresetVariantSaveButton.dataset.loading = 'false';
+      elements.scorerPresetVariantSaveButton.disabled = false;
+      elements.scorerPresetVariantSaveButton.textContent = originalText;
+      renderPresetControls();
+    }
+  }
+
+  async function handleDeleteCurrentPresetVariant() {
+    const currentType = state.scorerType;
+    const presetName = String(state.activePresetNames[currentType] || SCORER_PRESET_CUSTOM);
+    if (presetName === SCORER_PRESET_CUSTOM) {
+      setPresetStatus('请先选择一个预设变体。', { error: true });
+      return;
+    }
+    const preset = findPresetByName(currentType, presetName);
+    if (!preset) {
+      setPresetStatus(`未找到预设：${presetName}`, { error: true });
+      return;
+    }
+    if (!preset.userDefined) {
+      setPresetStatus('内置预设的变体不能删除。', { error: true });
+      return;
+    }
+    const variantName = String(elements.scorerPresetVariantSelect.value || '').trim();
+    if (!variantName) {
+      setPresetStatus('请选择要删除的变体。', { error: true });
+      return;
+    }
+    const defaultVariantName = String(preset.variants?.[0]?.variantName || SCORER_PRESET_VARIANT_DEFAULT);
+    if (variantName === defaultVariantName) {
+      setPresetStatus(`默认变体“${defaultVariantName}”不能删除。`, { error: true });
+      return;
+    }
+    if (elements.scorerPresetVariantDeleteButton.dataset.loading === 'true') {
+      return;
+    }
+
+    elements.scorerPresetVariantDeleteButton.dataset.loading = 'true';
+    elements.scorerPresetVariantDeleteButton.disabled = true;
+    const originalText = elements.scorerPresetVariantDeleteButton.textContent;
+    elements.scorerPresetVariantDeleteButton.textContent = '删除中…';
+
+    try {
+      const response = await invoke('delete_scorer_preset_variant', {
+        payload: {
+          scorerType: currentType,
+          presetName,
+          variantName,
+        },
+      });
+      applyPresetList(currentType, response?.presets || []);
+      const fallbackPreset = findPresetByName(currentType, presetName);
+      if (fallbackPreset) {
+        const fallbackVariant = fallbackPreset.variants[0];
+        state.activePresetNames[currentType] = presetName;
+        state.activePresetVariantNames[currentType] = String(fallbackVariant?.variantName || '');
+        applyPresetConfigForScorer(currentType, fallbackVariant);
+      } else {
+        state.activePresetNames[currentType] = SCORER_PRESET_CUSTOM;
+        state.activePresetVariantNames[currentType] = '';
+        applyBuiltinCustomPresetForScorer(currentType);
+      }
+      renderScorerConfig();
+      renderWeightInputs();
+      renderPresetControls();
+      setPresetStatus(`已删除变体：${String(response?.deletedVariantName || variantName)}`);
+      await onWeightsUpdated();
+    } catch (error) {
+      setPresetStatus(`删除变体失败：${error?.message || error}`, { error: true });
+      renderPresetControls();
+    } finally {
+      elements.scorerPresetVariantDeleteButton.dataset.loading = 'false';
+      elements.scorerPresetVariantDeleteButton.textContent = originalText;
       renderPresetControls();
     }
   }
@@ -859,6 +1212,11 @@
     state.activePresetNames[SCORER_MC_BOOST_ASSISTANT] = SCORER_PRESET_CUSTOM;
     state.activePresetNames[SCORER_QQ_BOT] = SCORER_PRESET_CUSTOM;
     state.activePresetNames[SCORER_FIXED] = SCORER_PRESET_CUSTOM;
+    state.activePresetVariantNames[SCORER_LINEAR_DEFAULT] = '';
+    state.activePresetVariantNames[SCORER_WUWA_ECHO_TOOL] = '';
+    state.activePresetVariantNames[SCORER_MC_BOOST_ASSISTANT] = '';
+    state.activePresetVariantNames[SCORER_QQ_BOT] = '';
+    state.activePresetVariantNames[SCORER_FIXED] = '';
     state.scorerPresetStatus = '';
     state.scorerPresetStatusError = false;
 
@@ -1283,7 +1641,6 @@
           const nextValue = Math.max(0, numberOr(Number(input.value), 0));
           weightMap[buffName] = nextValue;
         }
-        markCurrentScorerPresetAsCustom();
         await onWeightsUpdated();
       });
 
@@ -1993,12 +2350,24 @@
       await applySelectedScorerPreset(elements.scorerPresetSelect.value);
     });
 
+    elements.scorerPresetVariantSelect.addEventListener('change', async () => {
+      await applySelectedScorerPresetVariant(elements.scorerPresetVariantSelect.value);
+    });
+
     elements.scorerPresetSaveButton.addEventListener('click', async () => {
       await handleSaveCurrentPreset();
     });
 
     elements.scorerPresetDeleteButton.addEventListener('click', async () => {
       await handleDeleteCurrentPreset();
+    });
+
+    elements.scorerPresetVariantSaveButton.addEventListener('click', async () => {
+      await handleSaveCurrentPresetVariant();
+    });
+
+    elements.scorerPresetVariantDeleteButton.addEventListener('click', async () => {
+      await handleDeleteCurrentPresetVariant();
     });
 
     elements.scorerPresetNameInput.addEventListener('keydown', async (event) => {
@@ -2009,6 +2378,18 @@
       await handleSaveCurrentPreset();
     });
 
+    elements.scorerPresetVariantNameInput.addEventListener('keydown', async (event) => {
+      if (event.key !== 'Enter') {
+        return;
+      }
+      event.preventDefault();
+      if (state.activePresetNames[state.scorerType] === SCORER_PRESET_CUSTOM) {
+        await handleSaveCurrentPreset();
+      } else {
+        await handleSaveCurrentPresetVariant();
+      }
+    });
+
     elements.mainBuffScoreInput.addEventListener('change', async () => {
       if (isFixedScorer() || isMcBoostAssistantScorer()) {
         return;
@@ -2016,7 +2397,6 @@
       const config = getScorerConfig();
       config.mainBuffScore = Math.max(0, numberOr(elements.mainBuffScoreInput.valueAsNumber, config.mainBuffScore));
       elements.mainBuffScoreInput.value = config.mainBuffScore.toFixed(TARGET_SCORE_DIGITS);
-      markCurrentScorerPresetAsCustom();
       await onScorerParamsUpdated();
     });
 
@@ -2030,7 +2410,6 @@
         numberOr(elements.normalizedMaxScoreInput.valueAsNumber, config.normalizedMaxScore),
       );
       elements.normalizedMaxScoreInput.value = config.normalizedMaxScore.toFixed(TARGET_SCORE_DIGITS);
-      markCurrentScorerPresetAsCustom();
       await onScorerParamsUpdated();
     });
 

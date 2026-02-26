@@ -304,6 +304,17 @@ body {
   width: 100%;
 }
 
+.preset-row select {
+  width: 100%;
+}
+
+.preset-sub-label {
+  margin-top: 0.2rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
 .hint-text.error {
   color: #b91c1c;
 }
