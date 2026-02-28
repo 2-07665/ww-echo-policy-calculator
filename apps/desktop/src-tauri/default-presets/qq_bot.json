@@ -1,10 +1,960 @@
 {
   "presets": [
     {
-      "presetName": "爱弥斯",
+      "presetName": "菲比",
+      "variants": [
+        {
+          "variantName": "4C 暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 1.58,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.1,
+            "Basic_Attack_Damage": 0.088,
+            "Heavy_Attack_Damage": 0.66,
+            "Skill_Damage": 0.055,
+            "Ult_Damage": 0.187
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "4C 暴击",
+          "mainBuffScore": 12.44
+        },
+        {
+          "variantName": "3C 攻击/衍射",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "长离",
       "variants": [
         {
           "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.3,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.66,
+            "Ult_Damage": 0.44
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/热熔",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "丹瑾",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.3,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.605,
+            "Skill_Damage": 0.495,
+            "Ult_Damage": 0.165
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/湮灭",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "布兰特",
+      "variants": [
+        {
+          "variantName": "4C 治疗效果加成",
+          "mainBuffScore": 14.058,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 0.44,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.044,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.8,
+            "Basic_Attack_Damage": 0.66,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.0,
+            "Ult_Damage": 0.165
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 12.65
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 5.28
+        },
+        {
+          "variantName": "3C 共鸣效率/热熔",
+          "mainBuffScore": 9.35
+        },
+        {
+          "variantName": "3C 攻击",
+          "mainBuffScore": 4.4
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "今汐",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.25,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.715,
+            "Ult_Damage": 0.33
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/衍射",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "暗主",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.5,
+            "Basic_Attack_Damage": 0.275,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.22,
+            "Ult_Damage": 0.605
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/湮灭",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "珂莱塔",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.2,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.91,
+            "Ult_Damage": 0.0
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/冷凝",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "椿",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.15,
+            "Basic_Attack_Damage": 0.715,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.0,
+            "Ult_Damage": 0.275
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/湮灭",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "忌炎",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.3,
+            "Basic_Attack_Damage": 0.165,
+            "Heavy_Attack_Damage": 0.715,
+            "Skill_Damage": 0.33,
+            "Ult_Damage": 0.0
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/气动",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "安可",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.12,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.3,
+            "Basic_Attack_Damage": 0.66,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.275,
+            "Ult_Damage": 0.22
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/热熔",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "散华",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.175,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.2002,
+            "Skill_Damage": 0.495,
+            "Ult_Damage": 0.5005
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/冷凝",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "相里要",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.3,
+            "Basic_Attack_Damage": 0.165,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.22,
+            "Ult_Damage": 0.715
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/导电",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "吟霖",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.4,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.66,
+            "Ult_Damage": 0.33
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/导电",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "风主",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.2,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.84,
+            "Ult_Damage": 0.216
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/气动",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "洛可可",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.3,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.84,
+            "Skill_Damage": 0.0,
+            "Ult_Damage": 0.0
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/湮灭",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "坎特蕾拉",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.5,
+            "Basic_Attack_Damage": 0.66,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.0,
+            "Ult_Damage": 0.0
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/湮灭",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "赞妮",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.3,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.715,
+            "Skill_Damage": 0.0,
+            "Ult_Damage": 0.154
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/衍射",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "卡卡罗",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.3,
+            "Basic_Attack_Damage": 0.187,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.242,
+            "Ult_Damage": 0.715
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/导电",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "夏空",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.3,
+            "Basic_Attack_Damage": 0.506,
+            "Heavy_Attack_Damage": 0.363,
+            "Skill_Damage": 0.0,
+            "Ult_Damage": 0.627
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/气动",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "守岸人",
+      "variants": [
+        {
+          "variantName": "4C 治疗效果加成",
+          "mainBuffScore": 12.408,
+          "weights": {
+            "Crit_Rate": 0.0,
+            "Crit_Damage": 0.33,
+            "Attack": 0.0,
+            "Defence": 0.0,
+            "HP": 1.2,
+            "Attack_Flat": 0.0,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.02,
+            "ER": 1.1,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.0,
+            "Ult_Damage": 0.385
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 生命",
+          "mainBuffScore": 11.55
+        },
+        {
+          "variantName": "4C 暴击伤害",
+          "mainBuffScore": 8.8
+        },
+        {
+          "variantName": "3C 共鸣效率",
+          "mainBuffScore": 9.6
+        },
+        {
+          "variantName": "3C 生命",
+          "mainBuffScore": 9.0
+        },
+        {
+          "variantName": "3C 衍射",
+          "mainBuffScore": 8.4
+        },
+        {
+          "variantName": "1C 生命",
+          "mainBuffScore": 15.96
+        }
+      ]
+    },
+    {
+      "presetName": "维里奈",
+      "variants": [
+        {
+          "variantName": "4C 攻击/治疗效果加成",
+          "mainBuffScore": 15.525,
+          "weights": {
+            "Crit_Rate": 0.0,
+            "Crit_Damage": 0.0,
+            "Attack": 1.2,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.15,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 1.2,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.0,
+            "Ult_Damage": 0.0
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "3C 共鸣效率",
+          "mainBuffScore": 13.359
+        },
+        {
+          "variantName": "3C 攻击",
+          "mainBuffScore": 12.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.92
+        }
+      ]
+    },
+    {
+      "presetName": "卡提希娅",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 11.0,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 0.0,
+            "Defence": 0.0,
+            "HP": 1.1,
+            "Attack_Flat": 0.0,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.01,
+            "ER": 0.1,
+            "Basic_Attack_Damage": 0.704,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.0,
+            "Ult_Damage": 0.308
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 生命",
+          "mainBuffScore": 9.9
+        },
+        {
+          "variantName": "3C 生命/气动",
+          "mainBuffScore": 8.4
+        },
+        {
+          "variantName": "1C 生命",
+          "mainBuffScore": 10.26
+        }
+      ]
+    },
+    {
+      "presetName": "露帕",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.2,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.231,
+            "Ult_Damage": 0.737
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/热熔",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "弗洛洛",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.0,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.737,
+            "Ult_Damage": 0.0
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/湮灭",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "奥古斯塔",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.2,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.832,
+            "Skill_Damage": 0.0,
+            "Ult_Damage": 0.0
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/导电",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "尤诺",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
           "weights": {
             "Crit_Rate": 2.0,
             "Crit_Damage": 1.0,
@@ -18,12 +968,127 @@
             "Basic_Attack_Damage": 0.0,
             "Heavy_Attack_Damage": 0.0,
             "Skill_Damage": 0.0,
-            "Ult_Damage": 0.91
+            "Ult_Damage": 0.715
           },
-          "mainBuffScore": 14.75
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
         },
         {
-          "variantName": "3C 热熔/攻击",
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/气动",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "嘉贝莉娜",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.2,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.418,
+            "Skill_Damage": 0.0,
+            "Ult_Damage": 0.0
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/热熔",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "仇远",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.2,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.561,
+            "Skill_Damage": 0.0,
+            "Ult_Damage": 0.0
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/气动",
+          "mainBuffScore": 10.75
+        },
+        {
+          "variantName": "1C 攻击",
+          "mainBuffScore": 7.2
+        }
+      ]
+    },
+    {
+      "presetName": "千咲",
+      "variants": [
+        {
+          "variantName": "4C 暴击/暴击伤害",
+          "mainBuffScore": 14.75,
+          "weights": {
+            "Crit_Rate": 2.0,
+            "Crit_Damage": 1.0,
+            "Attack": 1.1,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 0.1,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 0.25,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.0,
+            "Ult_Damage": 0.605
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "4C 攻击",
+          "mainBuffScore": 12.825
+        },
+        {
+          "variantName": "3C 攻击/湮灭",
           "mainBuffScore": 10.75
         },
         {

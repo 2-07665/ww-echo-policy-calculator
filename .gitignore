@@ -33,3 +33,10 @@ coverage/
 build/
 dist/
 out/
+
+# temporary files
+tmp/
+temp/
+
+# python
+__pycache__/
