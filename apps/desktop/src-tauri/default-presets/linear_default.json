@@ -1,3 +1,28 @@
 {
-  "presets": []
+  "presets": [
+    {
+      "presetName": "爱弥斯",
+      "variants": [
+        {
+          "variantName": "0+1",
+          "weights": {
+            "Crit_Rate": 21,
+            "Crit_Damage": 15.75,
+            "Attack": 10.74,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 5.49,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 8.44,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.0,
+            "Ult_Damage": 8.44
+          },
+          "presetIntro": "权重提取自猫眼石攻略组对01爱琳莫标准轴的拉表计算。每1%暴击、暴伤、攻击、解放，分别对应单轮9667、3623、4476、3518总伤提升。共鸣效率为手动设置。"
+        }
+      ]
+    }
+  ]
 }
