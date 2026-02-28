@@ -25,6 +25,12 @@ cargo run --release --manifest-path crates/echo_policy/Cargo.toml --bin cli
 cargo run --release --manifest-path apps/desktop/src-tauri/Cargo.toml
 ```
 
+### 3. OCR 集成（Windows Only）
+
+- OCR 方案依赖 `ok-wuthering-waves` 项目：
+  https://github.com/ok-oldking/ok-wuthering-waves
+- 使用方式：将 `apps/ocr/add_ocr_task.ps1` 与 `EchoOCRTask.py` 放在同一目录后运行脚本，脚本会将任务注入到本地 `ok-ww` 的任务配置中。
+
 ## 构建
 
 先安装 Tauri CLI：
