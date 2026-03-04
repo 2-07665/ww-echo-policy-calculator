@@ -59,7 +59,7 @@ cargo tauri build
 桌面应用内置的评分预设转换来源如下：
 - Wuwa Echo Tool: https://github.com/2-07665/WuwaEchoTool
 - 漂泊者强化助手（微信小程序）: `#小程序://漂泊者强化助手/FGd22Ty9ssvPcRy`
-- WutheringWavesUID（GPL 许可来源，仅用于转换角色权重数据）: https://github.com/Cccc-owo/WutheringWavesUID
+- WutheringWavesUID（GPL 许可来源）: https://github.com/Cccc-owo/WutheringWavesUID
 
 ### 讨论与交流
 - Bilibili **[@冰封_](https://space.bilibili.com/88548986)**
