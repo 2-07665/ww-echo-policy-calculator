@@ -32,6 +32,114 @@ fn best_case_remaining_score(mask: u16, buff_max_score: &[u16; NUM_BUFFS]) -> u1
     top_scores[..num_remaining_slots].iter().sum()
 }
 
+struct ScorePmfAnalysis {
+    score_pmfs: Vec<Vec<(u16, f64)>>,
+    buff_min_score: [u16; NUM_BUFFS],
+    buff_max_score: [u16; NUM_BUFFS],
+    pmf_len: [usize; NUM_BUFFS],
+    max_possible_score: u16,
+}
+
+fn normalize_target_score(target_score_display: f64) -> Result<u16, UpgradePolicySolverError> {
+    if target_score_display.is_nan() || target_score_display.is_infinite() {
+        return Err(UpgradePolicySolverError::InvalidScore);
+    }
+
+    Ok(if target_score_display <= 0.0 {
+        0
+    } else {
+        convert_display_to_internal(target_score_display)
+    })
+}
+
+fn validate_target_score(
+    target_score: u16,
+    max_possible_score: u16,
+) -> Result<(), UpgradePolicySolverError> {
+    if target_score > max_possible_score {
+        return Err(UpgradePolicySolverError::TargetScoreImpossible {
+            max_possible_score,
+            target_score,
+        });
+    }
+    Ok(())
+}
+
+fn analyze_score_pmfs<S: InternalScorer>(
+    scorer: &S,
+    blend_data: bool,
+) -> Result<ScorePmfAnalysis, UpgradePolicySolverError> {
+    let score_pmfs = scorer.build_score_pmfs(blend_data);
+    if score_pmfs.len() != NUM_BUFFS {
+        return Err(UpgradePolicySolverError::InvalidScorePmfCount {
+            count: score_pmfs.len(),
+        });
+    }
+
+    let mut buff_min_score = [0u16; NUM_BUFFS];
+    let mut buff_max_score = [0u16; NUM_BUFFS];
+    let mut pmf_len = [0usize; NUM_BUFFS];
+    let mut top_max_scores = [0u16; NUM_ECHO_SLOTS];
+    const PMF_SUM_TOL: f64 = 1e-9;
+
+    for buff_index in 0..NUM_BUFFS {
+        let buff_pmf = &score_pmfs[buff_index];
+        if buff_pmf.is_empty() {
+            return Err(UpgradePolicySolverError::InvalidScorePmfEmpty { buff_index });
+        }
+
+        pmf_len[buff_index] = buff_pmf.len();
+
+        let mut min_score = u16::MAX;
+        let mut max_score = u16::MIN;
+        let mut probability_sum: f64 = 0.0;
+        for &(_, probability) in buff_pmf.iter() {
+            if !probability.is_finite() || probability < 0.0 {
+                return Err(UpgradePolicySolverError::InvalidScorePmfProbability {
+                    buff_index,
+                    probability,
+                });
+            }
+            probability_sum += probability;
+        }
+        if (probability_sum - 1.0).abs() > PMF_SUM_TOL {
+            return Err(UpgradePolicySolverError::InvalidScorePmfNotNormalized {
+                buff_index,
+                probability_sum,
+            });
+        }
+
+        for &(score, _) in buff_pmf.iter() {
+            min_score = min_score.min(score);
+            max_score = max_score.max(score);
+        }
+        buff_min_score[buff_index] = min_score;
+        buff_max_score[buff_index] = max_score;
+
+        if max_score > top_max_scores[NUM_ECHO_SLOTS - 1] {
+            let mut j = NUM_ECHO_SLOTS - 1;
+            while j > 0 && max_score > top_max_scores[j - 1] {
+                top_max_scores[j] = top_max_scores[j - 1];
+                j -= 1;
+            }
+            top_max_scores[j] = max_score;
+        }
+    }
+
+    let max_score_sum: u32 = top_max_scores.into_iter().map(u32::from).sum();
+    if max_score_sum > u16::MAX as u32 {
+        return Err(UpgradePolicySolverError::ScoreRangeOverflow { max_score_sum });
+    }
+
+    Ok(ScorePmfAnalysis {
+        score_pmfs,
+        buff_min_score,
+        buff_max_score,
+        pmf_len,
+        max_possible_score: best_case_remaining_score(0u16, &buff_max_score),
+    })
+}
+
 struct MaskCache {
     dp: Vec<f64>,
     touched: Vec<usize>,
@@ -314,84 +422,15 @@ impl UpgradePolicySolver {
         target_score_display: f64,
         cost_model: CostModel,
     ) -> Result<Self, UpgradePolicySolverError> {
-        if target_score_display.is_nan() || target_score_display.is_infinite() {
-            return Err(UpgradePolicySolverError::InvalidScore);
-        }
-
-        let score_pmfs = scorer.build_score_pmfs(blend_data);
-        if score_pmfs.len() != NUM_BUFFS {
-            return Err(UpgradePolicySolverError::InvalidScorePmfCount {
-                count: score_pmfs.len(),
-            });
-        }
-
-        let mut buff_min_score = [0u16; NUM_BUFFS];
-        let mut buff_max_score = [0u16; NUM_BUFFS];
-        let mut pmf_len = [0usize; NUM_BUFFS];
-        let mut top_max_scores = [0u16; NUM_ECHO_SLOTS];
-        const PMF_SUM_TOL: f64 = 1e-9;
-
-        for buff_index in 0..NUM_BUFFS {
-            let buff_pmf = &score_pmfs[buff_index];
-            if buff_pmf.is_empty() {
-                return Err(UpgradePolicySolverError::InvalidScorePmfEmpty { buff_index });
-            }
-
-            pmf_len[buff_index] = buff_pmf.len();
-
-            let mut min_score = u16::MAX;
-            let mut max_score = u16::MIN;
-            let mut probability_sum: f64 = 0.0;
-            for &(_, probability) in buff_pmf.iter() {
-                if !probability.is_finite() || probability < 0.0 {
-                    return Err(UpgradePolicySolverError::InvalidScorePmfProbability {
-                        buff_index,
-                        probability,
-                    });
-                }
-                probability_sum += probability;
-            }
-            if (probability_sum - 1.0).abs() > PMF_SUM_TOL {
-                return Err(UpgradePolicySolverError::InvalidScorePmfNotNormalized {
-                    buff_index,
-                    probability_sum,
-                });
-            }
-
-            for &(score, _) in buff_pmf.iter() {
-                min_score = min_score.min(score);
-                max_score = max_score.max(score);
-            }
-            buff_min_score[buff_index] = min_score;
-            buff_max_score[buff_index] = max_score;
-
-            if max_score > top_max_scores[NUM_ECHO_SLOTS - 1] {
-                let mut j = NUM_ECHO_SLOTS - 1;
-                while j > 0 && max_score > top_max_scores[j - 1] {
-                    top_max_scores[j] = top_max_scores[j - 1];
-                    j -= 1;
-                }
-                top_max_scores[j] = max_score;
-            }
-        }
-
-        let max_score_sum: u32 = top_max_scores.into_iter().map(u32::from).sum();
-        if max_score_sum > u16::MAX as u32 {
-            return Err(UpgradePolicySolverError::ScoreRangeOverflow { max_score_sum });
-        }
-
-        let max_possible_score = best_case_remaining_score(0u16, &buff_max_score);
-        let target_score = if target_score_display <= 0.0 {
-            0
-        } else {
-            convert_display_to_internal(target_score_display)
-        };
-        if target_score > max_possible_score {
-            return Err(UpgradePolicySolverError::TargetScoreImpossible {
-                max_possible_score,
-                target_score,
-            });
-        }
+        let target_score = normalize_target_score(target_score_display)?;
+        let ScorePmfAnalysis {
+            score_pmfs,
+            buff_min_score,
+            buff_max_score,
+            pmf_len,
+            max_possible_score,
+        } = analyze_score_pmfs(scorer, blend_data)?;
+        validate_target_score(target_score, max_possible_score)?;
 
         let mut caches: Vec<MaskCache> = Vec::with_capacity(NUM_PARTIAL_MASKS);
 
@@ -435,20 +474,8 @@ impl UpgradePolicySolver {
         &mut self,
         new_target_score_display: f64,
     ) -> Result<(), UpgradePolicySolverError> {
-        if new_target_score_display.is_nan() | new_target_score_display.is_infinite() {
-            return Err(UpgradePolicySolverError::InvalidScore);
-        }
-        let new_target_score = if new_target_score_display <= 0.0 {
-            0
-        } else {
-            convert_display_to_internal(new_target_score_display)
-        };
-        if new_target_score > self.max_possible_score {
-            return Err(UpgradePolicySolverError::TargetScoreImpossible {
-                max_possible_score: self.max_possible_score,
-                target_score: new_target_score,
-            });
-        }
+        let new_target_score = normalize_target_score(new_target_score_display)?;
+        validate_target_score(new_target_score, self.max_possible_score)?;
         self.clear_caches();
         self.target_score = new_target_score;
         Ok(())

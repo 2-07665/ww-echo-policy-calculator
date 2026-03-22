@@ -3,7 +3,8 @@
 本项目使用动态规划计算《鸣潮》声骸强化与使用频整器重抽词条的最优决策。
 
 仓库结构：
-- `crates/echo_policy/`：核心求解器 crate（可直接命令行运行示例）。由人工编写与维护。
+- `crates/echo_policy/`：核心求解器 crate（可直接命令行运行示例）。核心库与主 CLI 由人工编写与维护。
+- `crates/echo_policy/src/bin/target_score_sweep.rs`：用于批量扫描 `target_score` 并输出 Mathematica / Wolfram Language 数据的辅助 CLI。该入口由 Codex 管理与维护。
 - `apps/desktop/`：桌面应用（Tauri 2，前端资源已内置，无需 Node/npm）。当前由 Codex 全量管理与维护。
 
 ## 环境要求
@@ -25,11 +26,25 @@ cargo run --release --manifest-path crates/echo_policy/Cargo.toml --bin cli
 cargo run --release --manifest-path apps/desktop/src-tauri/Cargo.toml
 ```
 
-### 3. OCR 集成（Windows Only）
+### 3. 批量扫描 `target_score`（Codex-managed helper）
+
+该入口用于固定评分器和成本模型后，批量扫描一组 `target_score`，输出适合 Mathematica / Wolfram Language 读取的结果。
+
+说明：
+- 该工具是辅助脚本式入口，由 Codex 管理与维护。
+- 示例配置见 [`crates/echo_policy/examples/target_score_sweep.json`](crates/echo_policy/examples/target_score_sweep.json)。
+
+```bash
+cargo run --release --manifest-path crates/echo_policy/Cargo.toml --bin target_score_sweep -- \
+  crates/echo_policy/examples/target_score_sweep.json \
+  crates/echo_policy/examples/output.wl
+```
+
+### 4. OCR 集成（Windows Only）
 
 - OCR 方案依赖 `ok-wuthering-waves` 项目：
   https://github.com/ok-oldking/ok-wuthering-waves
-- 使用方式：将 `apps/ocr/add_ocr_task.ps1` 与 `EchoOCRTask.py` 放在同一目录后运行脚本，脚本会将任务注入到本地 `ok-ww` 的任务配置中。
+- 使用方式：双击运行 `将OCR任务加入ok-ww.cmd`。启动 `ok-ww` 后运行 `Echo OCR` 任务。
 
 ## 构建
 

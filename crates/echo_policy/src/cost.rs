@@ -36,6 +36,7 @@ pub enum CostModelError {
     InvalidExpRefundRatio { value: f64 },
 }
 
+#[derive(Clone, Copy)]
 pub struct CostModel {
     weight_echo: f64,
     weight_tuner: f64,
