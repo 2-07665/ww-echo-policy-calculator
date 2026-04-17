@@ -1,6 +1,8 @@
-# ⚠️ Archived Project
+# ⚠️ Archived Project / 项目已归档
 
-This project is no longer maintained and is kept for reference only.  
+This project is no longer maintained and is kept for reference only. 
+
+本项目已停止维护，仅供参考。  
 
 # 鸣潮声骸强化策略计算器
 
