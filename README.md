@@ -1,3 +1,7 @@
+# ⚠️ Archived Project
+
+This project is no longer maintained and is kept for reference only.  
+
 # 鸣潮声骸强化策略计算器
 
 本项目使用动态规划计算《鸣潮》声骸强化与使用频整器重抽词条的最优决策。
