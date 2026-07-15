@@ -1,17 +1,11 @@
-# ⚠️ Archived Project / 项目已归档
-
-This project is no longer maintained and is kept for reference only. 
-
-本项目已停止维护，仅供参考。  
-
 # 鸣潮声骸强化策略计算器
 
-本项目使用动态规划计算《鸣潮》声骸强化与使用频整器重抽词条的最优决策。
+本项目使用动态规划计算《鸣潮》声骸强化开词条与使用频整器重抽词条的最优策略，以便在强化前计算期望资源消耗，以及在强化时实时辅助决策。
 
 仓库结构：
-- `crates/echo_policy/`：核心求解器 crate（可直接命令行运行示例）。核心库与主 CLI 由人工编写与维护。
-- `crates/echo_policy/src/bin/target_score_sweep.rs`：用于批量扫描 `target_score` 并输出 Mathematica / Wolfram Language 数据的辅助 CLI。该入口由 Codex 管理与维护。
-- `apps/desktop/`：桌面应用（Tauri 2，前端资源已内置，无需 Node/npm）。当前由 Codex 全量管理与维护。
+- `crates/echo_policy/`：核心求解器 crate（可直接命令行运行示例）。
+- `crates/echo_policy/src/bin/target_score_sweep.rs`：用于批量扫描 `target_score` 并输出 Mathematica / Wolfram Language 数据的辅助 CLI。由 Codex 管理。
+- `apps/desktop/`：桌面应用（Tauri 2，前端资源已内置，无需 Node/npm）。由 Codex 管理。
 
 ## 环境要求
 
@@ -32,13 +26,9 @@ cargo run --release --manifest-path crates/echo_policy/Cargo.toml --bin cli
 cargo run --release --manifest-path apps/desktop/src-tauri/Cargo.toml
 ```
 
-### 3. 批量扫描 `target_score`（Codex-managed helper）
+### 3. 批量扫描 `target_score`
 
 该入口用于固定评分器和成本模型后，批量扫描一组 `target_score`，输出适合 Mathematica / Wolfram Language 读取的结果。
-
-说明：
-- 该工具是辅助脚本式入口，由 Codex 管理与维护。
-- 示例配置见 [`crates/echo_policy/examples/target_score_sweep.json`](crates/echo_policy/examples/target_score_sweep.json)。
 
 ```bash
 cargo run --release --manifest-path crates/echo_policy/Cargo.toml --bin target_score_sweep -- \
@@ -67,14 +57,13 @@ cd apps/desktop/src-tauri
 cargo tauri build
 ```
 
-## 致谢（Acknowledgements）
+## 致谢
 
 ### 赞助
 特别感谢 Bilibili **[@冬葳蕤](https://space.bilibili.com/58999432)** 自发组织的库洛游戏二创激励计划为本项目提供的赞助。
 
 ### 词条统计数据来源
-本项目使用的副词条产出统计数据来自：
-- Bilibili **[@IceHe何瀚清](https://space.bilibili.com/13378662)**
+本项目曾使用 **[@IceHe何瀚清](https://space.bilibili.com/13378662)** 统计的副词条产出数据。
 
 ### 内置评分预设来源
 桌面应用内置的评分预设转换来源如下：
