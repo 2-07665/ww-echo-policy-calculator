@@ -323,6 +323,13 @@ body {
 .field-group.cost-weights {
   display: grid;
   gap: 0.4rem;
+}
+
+.field-group.policy-primary-row {
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+}
+
+.field-group.cost-weights {
   grid-template-columns: repeat(3, minmax(120px, 1fr));
 }
 
@@ -333,22 +340,9 @@ body {
   gap: 0.2rem;
 }
 
-.field-group.policy-primary-row > div select,
 .field-group.policy-primary-row > div input[type='number'],
 .field-group.cost-weights > div input[type='number'] {
   width: 100%;
-}
-
-.field-group.policy-primary-row > div select {
-  line-height: 1.2;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  padding-right: 2rem;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.65rem center;
-  background-size: 12px;
 }
 
 .field-group.policy-primary-row > div label,

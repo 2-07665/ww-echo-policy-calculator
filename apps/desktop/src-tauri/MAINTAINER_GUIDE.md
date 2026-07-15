@@ -84,7 +84,6 @@ This keeps `preview_upgrade_score` and `compute_policy` aligned.
 The existing `UpgradePolicySolver` is reused when all of these are unchanged:
 
 - scorer config (`UpgradeScorerConfig`)
-- `blend_data`
 - cost weights
 - exp refund ratio
 
@@ -112,7 +111,6 @@ If weights change, rebuild solver.
 - displayed `target_score`
 - `scorer_config` (for reuse comparison)
 - `query_scorer` (for `policy_suggestion` internal score queries)
-- `blend_data`
 - cost weights
 - exp refund ratio
 

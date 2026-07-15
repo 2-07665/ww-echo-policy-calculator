@@ -61,13 +61,8 @@ impl CostModelChoice {
                 weight_tuner,
                 weight_exp,
                 exp_refund_ratio,
-            } => CostModel::new(
-                *weight_echo,
-                *weight_tuner,
-                *weight_exp,
-                *exp_refund_ratio,
-            )
-            .map_err(|err| format!("invalid custom cost model: {err:?}")),
+            } => CostModel::new(*weight_echo, *weight_tuner, *weight_exp, *exp_refund_ratio)
+                .map_err(|err| format!("invalid custom cost model: {err:?}")),
         }
     }
 
@@ -136,7 +131,7 @@ fn run() -> Result<(), String> {
     println!("目标分数: {target_score:.2}");
     println!();
 
-    let mut solver = UpgradePolicySolver::new(&scorer, false, solver_target_score, cost_model)
+    let mut solver = UpgradePolicySolver::new(&scorer, solver_target_score, cost_model)
         .map_err(|err| format!("failed to build upgrade policy solver: {err:?}"))?;
     let lambda = solver
         .lambda_search(LAMBDA_TOLERANCE, LAMBDA_MAX_ITER)
@@ -190,7 +185,8 @@ fn prompt_weights() -> io::Result<[f64; 13]> {
     let mut weights = [0.0; 13];
     println!("请输入各副词条权重 (默认 0，至少一个大于 0)。");
     for (index, weight) in weights.iter_mut().enumerate() {
-        *weight = prompt_nonnegative_f64(&format!("{:>2}. {}", index + 1, BUFF_LABELS[index]), None)?;
+        *weight =
+            prompt_nonnegative_f64(&format!("{:>2}. {}", index + 1, BUFF_LABELS[index]), None)?;
     }
     if !weights.iter().any(|&weight| weight > 0.0) {
         return Err(io::Error::new(
@@ -260,8 +256,8 @@ fn build_scorer(
         ScorerChoice::Default => LinearScorer::default(weights)
             .map_err(|err| format!("invalid Default scorer weights: {err:?}")),
         ScorerChoice::QqBot => {
-            let main_buff_score = qq_main_buff_score
-                .ok_or_else(|| "missing QQ Bot main buff score".to_string())?;
+            let main_buff_score =
+                qq_main_buff_score.ok_or_else(|| "missing QQ Bot main buff score".to_string())?;
             LinearScorer::qq_bot_scorer(weights, main_buff_score)
                 .map_err(|err| format!("invalid QQ Bot scorer configuration: {err:?}"))
         }
@@ -297,10 +293,10 @@ fn prompt_f64_in_range(
     loop {
         let input = prompt_line(prompt, hint)?;
         let trimmed = input.trim();
-        if trimmed.is_empty() {
-            if let Some(value) = default {
-                return Ok(value);
-            }
+        if trimmed.is_empty()
+            && let Some(value) = default
+        {
+            return Ok(value);
         }
         match trimmed.parse::<f64>() {
             Ok(value) if value.is_finite() && (min..=max).contains(&value) => return Ok(value),

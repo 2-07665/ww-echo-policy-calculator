@@ -97,17 +97,16 @@ fn build_upgrade_scorer(config: &UpgradeScorerConfig) -> Result<UpgradeScorer, S
 
 fn build_upgrade_solver(
     scorer: &UpgradeScorer,
-    blend_data: bool,
     target_score_display: f64,
     cost_model: CostModel,
 ) -> Result<UpgradePolicySolver, String> {
     match scorer {
         UpgradeScorer::Linear(linear) => {
-            UpgradePolicySolver::new(linear, blend_data, target_score_display, cost_model)
+            UpgradePolicySolver::new(linear, target_score_display, cost_model)
                 .map_err(|err| format!("Failed to create solver: {err:?}"))
         }
         UpgradeScorer::Fixed(fixed) => {
-            UpgradePolicySolver::new(fixed, blend_data, target_score_display, cost_model)
+            UpgradePolicySolver::new(fixed, target_score_display, cost_model)
                 .map_err(|err| format!("Failed to create solver: {err:?}"))
         }
     }
@@ -160,13 +159,10 @@ fn resolve_target_scores(
 fn can_reuse_upgrade_solver(
     session: &SolverSession,
     scorer: &UpgradeScorerConfig,
-    blend_data: bool,
     cost_weights: &CostWeightsOutput,
     exp_refund_ratio: f64,
 ) -> bool {
     scorer_configs_equal(&session.scorer_config, scorer)
-        && session.blend_data == blend_data
         && cost_weights_equal(&session.cost_weights, cost_weights)
         && f64_bits_equal(session.exp_refund_ratio, exp_refund_ratio)
 }
-

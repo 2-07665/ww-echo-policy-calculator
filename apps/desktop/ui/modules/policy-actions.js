@@ -71,7 +71,6 @@ export function createPolicyActions({
         wExp: state.costWeights.wExp,
       },
       expRefundRatio: state.expRefundRatio,
-      blendData: state.blendData,
       lambdaTolerance: 1e-6,
       lambdaMaxIter: 120,
     };

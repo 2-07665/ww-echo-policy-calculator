@@ -99,7 +99,6 @@ export function initialiseAppState({
     : getNormalizedMaxScore(state.scorerType);
 
   state.expRefundRatio = Number(data.defaultExpRefundRatio || 0.66);
-  state.blendData = false;
   state.costWeights = {
     wEcho: Number(data.defaultCostWeights?.wEcho || 0),
     wTuner: Number(data.defaultCostWeights?.wTuner || 1),
@@ -146,6 +145,5 @@ export function initialiseAppState({
   elements.costWEchoInput.value = state.costWeights.wEcho.toFixed(1);
   elements.costWTunerInput.value = state.costWeights.wTuner.toFixed(1);
   elements.costWExpInput.value = state.costWeights.wExp.toFixed(1);
-  elements.blendDataSelect.value = state.blendData ? 'true' : 'false';
   elements.expRefundInput.value = state.expRefundRatio.toFixed(2);
 }

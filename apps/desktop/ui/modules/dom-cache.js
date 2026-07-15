@@ -27,7 +27,6 @@ export function cacheDomElements(elements) {
   elements.normalizedMaxScoreInput = document.getElementById('normalized-max-score-input');
   elements.scorerConfigHelp = document.getElementById('scorer-config-help');
   elements.targetScoreInput = document.getElementById('target-score-input');
-  elements.blendDataSelect = document.getElementById('blend-data-select');
   elements.costWEchoInput = document.getElementById('cost-w-echo');
   elements.costWTunerInput = document.getElementById('cost-w-tuner');
   elements.costWExpInput = document.getElementById('cost-w-exp');

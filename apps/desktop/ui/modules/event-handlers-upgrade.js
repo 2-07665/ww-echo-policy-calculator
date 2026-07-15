@@ -128,11 +128,6 @@ export function createEventHandlersUpgrade({
       resetPolicyResult();
     });
 
-    elements.blendDataSelect.addEventListener('change', () => {
-      state.blendData = elements.blendDataSelect.value === 'true';
-      resetPolicyResult();
-    });
-
     elements.costWEchoInput.addEventListener('change', () => {
       state.costWeights.wEcho = Math.max(
         0,

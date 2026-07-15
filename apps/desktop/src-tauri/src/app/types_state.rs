@@ -33,7 +33,6 @@ struct SolverSession {
     target_score: f64,
     scorer_config: UpgradeScorerConfig,
     query_scorer: UpgradeScorer,
-    blend_data: bool,
     cost_weights: CostWeightsOutput,
     exp_refund_ratio: f64,
 }

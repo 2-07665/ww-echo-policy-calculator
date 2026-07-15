@@ -67,9 +67,8 @@ fn validate_target_score(
 
 fn analyze_score_pmfs<S: InternalScorer>(
     scorer: &S,
-    blend_data: bool,
 ) -> Result<ScorePmfAnalysis, UpgradePolicySolverError> {
-    let score_pmfs = scorer.build_score_pmfs(blend_data);
+    let score_pmfs = scorer.build_score_pmfs();
     if score_pmfs.len() != NUM_BUFFS {
         return Err(UpgradePolicySolverError::InvalidScorePmfCount {
             count: score_pmfs.len(),
@@ -418,7 +417,6 @@ impl UpgradePolicySolver {
 impl UpgradePolicySolver {
     pub fn new<S: InternalScorer>(
         scorer: &S,
-        blend_data: bool,
         target_score_display: f64,
         cost_model: CostModel,
     ) -> Result<Self, UpgradePolicySolverError> {
@@ -429,7 +427,7 @@ impl UpgradePolicySolver {
             buff_max_score,
             pmf_len,
             max_possible_score,
-        } = analyze_score_pmfs(scorer, blend_data)?;
+        } = analyze_score_pmfs(scorer)?;
         validate_target_score(target_score, max_possible_score)?;
 
         let mut caches: Vec<MaskCache> = Vec::with_capacity(NUM_PARTIAL_MASKS);

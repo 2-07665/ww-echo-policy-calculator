@@ -45,7 +45,6 @@ export function createInitialAppState({
     targetScore: 60,
 
     expRefundRatio: 0.66,
-    blendData: false,
     costWeights: { wEcho: 0.0, wTuner: 1.0, wExp: 0.0 },
 
     activeTab: 'upgrade',

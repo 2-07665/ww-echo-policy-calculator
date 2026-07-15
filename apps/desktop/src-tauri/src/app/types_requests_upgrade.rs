@@ -13,8 +13,6 @@ struct ComputePolicyRequest {
     #[serde(default)]
     cost_weights: CostWeightsInput,
     exp_refund_ratio: Option<f64>,
-    #[serde(default)]
-    blend_data: bool,
     #[serde(default = "default_lambda_tolerance")]
     lambda_tolerance: f64,
     #[serde(default = "default_lambda_max_iter")]

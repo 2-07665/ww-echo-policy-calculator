@@ -40,8 +40,6 @@ const RESULT_COLUMNS: [&str; 7] = [
 
 #[derive(Deserialize)]
 struct SweepConfig {
-    #[serde(default)]
-    blend_data: bool,
     #[serde(default = "default_lambda_tolerance")]
     lambda_tolerance: f64,
     #[serde(default = "default_lambda_max_iter")]
@@ -84,11 +82,7 @@ impl ScorerConfig {
         }
     }
 
-    fn resolve_solver_target_score(
-        &self,
-        scorer: &LinearScorer,
-        display_target_score: f64,
-    ) -> f64 {
+    fn resolve_solver_target_score(&self, scorer: &LinearScorer, display_target_score: f64) -> f64 {
         match self {
             Self::Default { .. } | Self::McBoostAssistant { .. } => {
                 (display_target_score - scorer.main_buff_score()).max(0.0)
@@ -126,7 +120,6 @@ impl CostModelConfig {
         )
         .map_err(|err| format!("invalid cost model: {err:?}"))
     }
-
 }
 
 #[derive(Deserialize)]
@@ -177,7 +170,7 @@ fn main() {
             0
         }
         Err(RunError::Execution(message)) => {
-        eprintln!("error: {message}");
+            eprintln!("error: {message}");
             1
         }
     };
@@ -193,7 +186,9 @@ enum RunError {
 
 fn run() -> Result<(), RunError> {
     let mut args = env::args();
-    let program = args.next().unwrap_or_else(|| "target_score_sweep".to_string());
+    let program = args
+        .next()
+        .unwrap_or_else(|| "target_score_sweep".to_string());
     let config_path = args
         .next()
         .ok_or_else(|| RunError::Usage(format!("usage: {program} <config.json> [output.wl]")))?;
@@ -204,10 +199,12 @@ fn run() -> Result<(), RunError> {
         )));
     }
 
-    let config_text = fs::read_to_string(&config_path)
-        .map_err(|err| RunError::Execution(format!("failed to read config {config_path}: {err}")))?;
-    let config: SweepConfig = serde_json::from_str(&config_text)
-        .map_err(|err| RunError::Execution(format!("failed to parse config {config_path}: {err}")))?;
+    let config_text = fs::read_to_string(&config_path).map_err(|err| {
+        RunError::Execution(format!("failed to read config {config_path}: {err}"))
+    })?;
+    let config: SweepConfig = serde_json::from_str(&config_text).map_err(|err| {
+        RunError::Execution(format!("failed to parse config {config_path}: {err}"))
+    })?;
 
     validate_scan_config(&config.scan).map_err(RunError::Execution)?;
 
@@ -215,19 +212,18 @@ fn run() -> Result<(), RunError> {
     let cost_model = config.cost_model.build().map_err(RunError::Execution)?;
     let target_scores = build_target_scores(&config.scan).map_err(RunError::Execution)?;
     if target_scores.is_empty() {
-        return Err(RunError::Execution("scan produced no target scores".to_string()));
+        return Err(RunError::Execution(
+            "scan produced no target scores".to_string(),
+        ));
     }
 
     let first_solver_target = config
         .scorer
         .resolve_solver_target_score(&scorer, target_scores[0]);
-    let mut solver = UpgradePolicySolver::new(
-        &scorer,
-        config.blend_data,
-        first_solver_target,
-        cost_model,
-    )
-    .map_err(|err| RunError::Execution(format!("failed to build upgrade policy solver: {err:?}")))?;
+    let mut solver =
+        UpgradePolicySolver::new(&scorer, first_solver_target, cost_model).map_err(|err| {
+            RunError::Execution(format!("failed to build upgrade policy solver: {err:?}"))
+        })?;
 
     let mut rows = Vec::with_capacity(target_scores.len());
     for (index, target_score) in target_scores.into_iter().enumerate() {
@@ -251,20 +247,16 @@ fn run() -> Result<(), RunError> {
                     "lambda_search failed for target_score={target_score}: {err:?}"
                 ))
             })?;
-        let weighted_expected_cost = solver
-            .weighted_expected_cost()
-            .map_err(|err| {
-                RunError::Execution(format!(
-                    "failed to read weighted expected cost for target_score={target_score}: {err:?}"
-                ))
-            })?;
-        let expected_cost = solver
-            .calculate_expected_resources()
-            .map_err(|err| {
-                RunError::Execution(format!(
-                    "failed to calculate expected resources for target_score={target_score}: {err:?}"
-                ))
-            })?;
+        let weighted_expected_cost = solver.weighted_expected_cost().map_err(|err| {
+            RunError::Execution(format!(
+                "failed to read weighted expected cost for target_score={target_score}: {err:?}"
+            ))
+        })?;
+        let expected_cost = solver.calculate_expected_resources().map_err(|err| {
+            RunError::Execution(format!(
+                "failed to calculate expected resources for target_score={target_score}: {err:?}"
+            ))
+        })?;
 
         rows.push(SweepRow {
             target_score,
@@ -403,8 +395,7 @@ fn format_config(config: &SweepConfig) -> String {
     );
 
     format!(
-        "<|\"blendData\" -> {}, \"lambdaTolerance\" -> {}, \"lambdaMaxIter\" -> {}, \"resultColumns\" -> {}, \"scorer\" -> {}, \"costModel\" -> {}, \"scan\" -> <|\"start\" -> {}, \"end\" -> {}, \"step\" -> {}|>|>",
-        if config.blend_data { "True" } else { "False" },
+        "<|\"lambdaTolerance\" -> {}, \"lambdaMaxIter\" -> {}, \"resultColumns\" -> {}, \"scorer\" -> {}, \"costModel\" -> {}, \"scan\" -> <|\"start\" -> {}, \"end\" -> {}, \"step\" -> {}|>|>",
         format_number(config.lambda_tolerance),
         config.lambda_max_iter,
         format_result_columns(),

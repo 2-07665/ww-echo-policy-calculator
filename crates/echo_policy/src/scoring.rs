@@ -2,9 +2,6 @@ use std::collections::BTreeMap;
 
 use crate::data::{BUFF_FIXED_VALUE_INDEX, BUFF_MAX_VALUES, BUFF_TYPES, NUM_BUFFS, NUM_ECHO_SLOTS};
 
-const BLEND_GROUP_CRIT: [usize; 2] = [0, 1];
-const BLEND_GROUP_MAIN: [usize; 9] = [2, 3, 4, 7, 8, 9, 10, 11, 12];
-
 pub const SCORE_MULTIPLIER: f64 = 100.0;
 const MAX_DISPLAY_SCORE: f64 = u16::MAX as f64 / SCORE_MULTIPLIER;
 
@@ -63,8 +60,8 @@ pub trait InternalScorer {
         Ok(sum)
     }
 
-    fn build_score_pmfs(&self, blend_data: bool) -> Vec<Vec<(u16, f64)>> {
-        build_score_pmfs(self, blend_data)
+    fn build_score_pmfs(&self) -> Vec<Vec<(u16, f64)>> {
+        build_score_pmfs(self)
     }
 }
 
@@ -294,21 +291,9 @@ impl InternalScorer for LinearScorer {
     }
 }
 
-pub fn build_score_pmfs<S: InternalScorer + ?Sized>(
-    scorer: &S,
-    blend_data: bool,
-) -> Vec<Vec<(u16, f64)>> {
-    if blend_data {
-        let blended_storage = build_blended_histograms();
-        let histograms: Vec<&[(u16, u32)]> = blended_storage
-            .iter()
-            .map(|histogram| histogram.as_slice())
-            .collect();
-        build_score_pmfs_from_histograms(scorer, &histograms)
-    } else {
-        let histograms: Vec<&[(u16, u32)]> = BUFF_TYPES.iter().map(|buff| buff.histogram).collect();
-        build_score_pmfs_from_histograms(scorer, &histograms)
-    }
+pub fn build_score_pmfs<S: InternalScorer + ?Sized>(scorer: &S) -> Vec<Vec<(u16, f64)>> {
+    let histograms: Vec<&[(u16, u32)]> = BUFF_TYPES.iter().map(|buff| buff.histogram).collect();
+    build_score_pmfs_from_histograms(scorer, &histograms)
 }
 
 fn build_score_pmfs_from_histograms<S: InternalScorer + ?Sized>(
@@ -328,31 +313,4 @@ fn build_score_pmfs_from_histograms<S: InternalScorer + ?Sized>(
         score_pmfs.push(map.into_iter().collect());
     }
     score_pmfs
-}
-
-fn build_blended_histograms() -> Vec<Vec<(u16, u32)>> {
-    let mut blended: Vec<Vec<(u16, u32)>> = BUFF_TYPES
-        .iter()
-        .map(|buff| buff.histogram.to_vec())
-        .collect();
-    blend_group(&mut blended, &BLEND_GROUP_CRIT);
-    blend_group(&mut blended, &BLEND_GROUP_MAIN);
-    blended
-}
-
-fn blend_group(blended: &mut [Vec<(u16, u32)>], group: &[usize]) {
-    let len = BUFF_TYPES[group[0]].histogram.len();
-    let mut counts: Vec<u32> = vec![0; len];
-
-    for &buff_index in group.iter() {
-        for (value_index, &(_, count)) in BUFF_TYPES[buff_index].histogram.iter().enumerate() {
-            counts[value_index] += count;
-        }
-    }
-
-    for &buff_index in group.iter() {
-        for (value_index, (_, count)) in blended[buff_index].iter_mut().enumerate() {
-            *count = counts[value_index];
-        }
-    }
 }

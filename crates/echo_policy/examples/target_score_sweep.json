@@ -1,5 +1,4 @@
 {
-  "blend_data": false,
   "lambda_tolerance": 1e-7,
   "lambda_max_iter": 200,
   "scorer": {

@@ -44,7 +44,6 @@ fn compute_policy(
         can_reuse_upgrade_solver(
             session,
             &scorer_config,
-            payload.blend_data,
             &cost_weights,
             exp_refund_ratio,
         )
@@ -60,14 +59,12 @@ fn compute_policy(
             .map_err(|err| format!("Failed to update target score: {err:?}"))?;
         session.target_score = summary_target_score;
     } else {
-        let solver =
-            build_upgrade_solver(&scorer, payload.blend_data, solver_target_score, cost_model)?;
+        let solver = build_upgrade_solver(&scorer, solver_target_score, cost_model)?;
         *current_upgrade = Some(SolverSession {
             solver,
             target_score: summary_target_score,
             scorer_config,
             query_scorer: scorer,
-            blend_data: payload.blend_data,
             cost_weights,
             exp_refund_ratio,
         });
@@ -160,4 +157,3 @@ fn policy_suggestion(
         mask_bits: mask_to_bits(mask).to_vec(),
     })
 }
-

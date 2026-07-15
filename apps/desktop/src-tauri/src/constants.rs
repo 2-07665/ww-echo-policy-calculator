@@ -21,10 +21,8 @@ pub(crate) const DEFAULT_WUWA_ECHO_TOOL_PRESETS_JSON: &str =
     include_str!("../default-presets/wuwa_echo_tool.json");
 pub(crate) const DEFAULT_MC_BOOST_ASSISTANT_PRESETS_JSON: &str =
     include_str!("../default-presets/mc_boost_assistant.json");
-pub(crate) const DEFAULT_QQ_BOT_PRESETS_JSON: &str =
-    include_str!("../default-presets/qq_bot.json");
-pub(crate) const DEFAULT_FIXED_PRESETS_JSON: &str =
-    include_str!("../default-presets/fixed.json");
+pub(crate) const DEFAULT_QQ_BOT_PRESETS_JSON: &str = include_str!("../default-presets/qq_bot.json");
+pub(crate) const DEFAULT_FIXED_PRESETS_JSON: &str = include_str!("../default-presets/fixed.json");
 
 pub(crate) const DEFAULT_LINEAR_MAIN_BUFF_SCORE: f64 = 0.0;
 pub(crate) const DEFAULT_LINEAR_NORMALIZED_MAX_SCORE: f64 = 100.0;
