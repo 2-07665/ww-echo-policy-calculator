@@ -6,6 +6,7 @@ After=network.target
 Type=simple
 DynamicUser=true
 ExecStart=/opt/echo-studio/echo_server
+Environment=ECHO_DATA_FILE=/opt/echo-studio/data/echo-data.json
 Environment=ECHO_BIND=127.0.0.1:3000
 Environment=ECHO_TRUSTED_PROXIES=127.0.0.1,::1
 Environment=ECHO_CACHE_MIB=512

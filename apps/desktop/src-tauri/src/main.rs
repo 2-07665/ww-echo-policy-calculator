@@ -1,12 +1,15 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 
+mod data;
 mod ocr;
 use echo_app::{AppError, Preview, Service, SolveRequest, SolveResponse};
 use std::sync::{Arc, Mutex};
+use tauri::Manager;
 
 #[tauri::command]
-fn bootstrap() -> serde_json::Value {
-    echo_app::bootstrap()
+fn bootstrap(state: tauri::State<'_, Arc<echo_app::data::DataStore>>) -> serde_json::Value {
+    let (pack, status) = state.snapshot();
+    echo_app::bootstrap_with_data(&pack, status)
 }
 #[tauri::command]
 fn preview(payload: SolveRequest) -> Result<Preview, AppError> {
@@ -31,8 +34,15 @@ fn main() {
     tauri::Builder::default()
         .manage(Arc::new(Mutex::new(Service::default())))
         .manage(ocr::Listener::default())
+        .setup(|app| {
+            let path = app.path().app_data_dir()?.join("echo-data.json");
+            app.manage(Arc::new(echo_app::data::DataStore::cached(path)));
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             bootstrap,
+            data::data_download,
+            data::data_install,
             preview,
             solve,
             ocr::toggle_ocr

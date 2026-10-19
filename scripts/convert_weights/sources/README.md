@@ -67,3 +67,8 @@ The existing linear Wuwa Echo Tool scorer is preserved. This import does not add
 upstream full-loadout normalization, total Energy Regen thresholds or live HP
 inputs. Models are sampled with upstream defaults: zero extra Energy Regen and
 40,000 reference HP.
+
+After refreshing source weights, regenerate the independently deployable data pack
+with `python3 scripts/build-data-pack.py --version <new-version>`. Add any new
+character/variant translations to `data/catalog.json` first. See
+[publication instructions](../../../data/README.md).

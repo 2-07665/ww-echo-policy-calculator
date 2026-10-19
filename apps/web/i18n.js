@@ -2,6 +2,19 @@
 export let language = 'zh-CN';
 try { language = localStorage.getItem('echo-studio-language') === 'en' ? 'en' : 'zh-CN'; } catch { /* Storage is optional. */ }
 export const messages = {
+  "角色数据": "Character data",
+  "数据版本：{version}": "Data version: {version}",
+  "数据更新地址": "Data update URL",
+  "或导入数据包": "Or import a data pack",
+  "更新数据": "Update data",
+  "更新后，重新选择预设即可应用新权重。当前配置不会改变。": "Select a preset again after updating to apply its new weights. Your current configuration will stay unchanged.",
+  "正在更新数据…": "Updating data\u2026",
+  "数据已更新。": "Data updated.",
+  "当前数据已是最新版本。": "Your data is up to date.",
+  "数据包无效或版本不兼容，已保留原数据。": "The data pack is invalid or incompatible. Your previous data has been kept.",
+  "无法读取或保存数据包，已保留原数据。": "Could not read or save the data pack. Your previous data has been kept.",
+  "数据下载失败，请检查地址和网络；已保留原数据。": "Data download failed. Check the URL and connection. Your previous data has been kept.",
+
   "访问密钥":"Access key",
   "输入访问密钥":"Enter access key",
   "管理员密钥可绕过个人用量配额。密钥仅保存在当前浏览器标签页的会话中。":"An administrator key bypasses personal usage quotas. The key is stored only for this browser tab’s session.",
@@ -134,11 +147,10 @@ export const messages = {
   '仅重抽模式支持候选比较。':'Candidate comparison is only available in Reroll mode.',
   '资源权重必须是有限非负数。':'Resource weights must be finite and nonnegative.',
   '求解服务需要重启。':'The solver service must be restarted.', '求解任务异常结束。':'The solver task failed unexpectedly.',
-  '权重提取自猫眼石攻略组对01爱琳莫标准轴的拉表计算。每1%暴击、暴伤、攻击、解放，分别对应单轮9667、3623、4476、3518总伤提升。共鸣效率为手动设置。':'Source: Maoyanshi guide group’s 0+1 Aemeath–Lynae–Mornye rotation spreadsheet. Each 1% Crit. Rate, Crit. DMG, ATK, and Resonance Liberation DMG adds 9667, 3623, 4476, and 3518 damage per rotation, respectively. Energy Regen was set manually.',
-  '该权重由脚本自动转换，请注意鉴别。':'These weights were converted automatically by a script; verify their suitability.',
 };
+function lookup(table,key) { return Object.hasOwn(table,key) ? table[key] : undefined; }
 export function t(key, values = {}) {
-  const template = language === 'en' ? (messages[key] ?? key) : key;
+  const template = language === 'en' ? (lookup(messages,key) ?? lookup(dataDescriptions,key) ?? key) : key;
   return template.replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? `{${k}}`));
 }
 export function setLanguage(value) {
@@ -152,22 +164,15 @@ export function translatePage() {
   document.querySelectorAll('[data-i18n-aria]').forEach(e => { e.setAttribute('aria-label',t(e.dataset.i18nAria)); });
 }
 export const statNames = ['Crit. Rate','Crit. DMG','ATK%','DEF%','HP%','ATK','DEF','HP','Energy Regen','Basic Attack DMG Bonus','Heavy Attack DMG Bonus','Resonance Skill DMG Bonus','Resonance Liberation DMG Bonus'];
-export const characterNames = {
-  '绯雪':'Hiyuki','洛瑟菈':'Lucilla','穗穗':'Suisui','达妮娅':'Denia','景燃':'Jingran','丽贝卡':'Rebecca','雷主':'Rover: Electro','心':'Hsin','锁暝':'Suoming','西格莉卡':'Sigrika','清宵':'Qingxiao','陆·赫斯':'Luuk Herssen','露西':'Lucy','秧秧·玄翎':'Yangyang: Xuanling','角色':'Generic','炽霞':'Chixia','桃祈':'Taoqi',
-  '今汐':'Jinhsi','长离':'Changli','忌炎':'Jiyan','安可':'Encore','暗主':'Rover: Havoc','光主':'Rover: Spectro',
-  '维里奈':'Verina','吟霖':'Yinlin','鉴心':'Jianxin','卡卡罗':'Calcharo','雪豹':'Lingyang','凌阳':'Lingyang','莫特斐':'Mortefi','白芷':'Baizhi','渊武':'Yuanwu',
-  '秧秧':'Yangyang','赤霞':'Chixia','丹瑾':'Danjin','秋水':'Aalto','散华':'Sanhua','桃祁':'Taoqi','折枝':'Zhezhi','相里要':'Xiangli Yao',
-  '守岸人':'Shorekeeper','釉瑚':'Youhu','椿':'Camellya','灯灯':'Lumi','珂莱塔':'Carlotta','洛可可':'Roccia','赞妮':'Zani','菲比':'Phoebe','布兰特':'Brant',
-  '坎特雷拉':'Cantarella','坎特蕾拉':'Cantarella','风主':'Rover: Aero','夏空':'Ciaccona','卡提希娅':'Cartethyia','露帕':'Lupa','弗洛洛':'Phrolova',
-  '奥古斯塔':'Augusta','尤诺':'Iuno','嘉贝莉娜':'Galbrena','仇远':'Qiuyuan','千咲':'Chisa','卜灵':'Buling','琳奈':'Lynae','莫宁':'Mornye','爱弥斯':'Aemeath',
-};
-export function characterName(name) { return language === 'en' ? (characterNames[name] ?? name) : name; }
-const variantTerms = {"震谐模式":"Tune Rupture","聚爆模式":"Fusion Burst","集谐模式":"Tune Strain","速切模式":"Quick swap","临界共鸣模式":"Critical Resonance","循环模式":"Rotation","辅助模式":"Support","输出模式":"Damage","持续模式":"Sustained","起手模式":"Opening","同奏模式":"Unison","电磁模式":"Electro mode",'主/副c':'Main/Sub DPS','小维版':'XWUID','霜渐':'Glacio Chafe','羽落':'Song of Feathered Trace','声骸':'Echo','属性伤害加成':'Elemental DMG Bonus','防御':'DEF','共鸣效率':'Energy Regen','暴击伤害':'Crit. DMG','暴击':'Crit. Rate','治疗效果加成':'Healing Bonus','攻击':'ATK','生命':'HP','冷凝':'Glacio','热熔':'Fusion','导电':'Electro','气动':'Aero','湮灭':'Havoc','衍射':'Spectro','默认':'Default'};
-export function variantName(name) {
-  if (language !== 'en') return name;
-  name = name.replace(/(\d(?:-\d)?)链/g, 'Sequence $1');
-  return Object.entries(variantTerms).reduce((text,[zh,en]) => text.replaceAll(zh,en),name).replace(/\b(\d)C /g,'$1-Cost ');
+export let characterNames = {};
+let variantNames = {}, dataDescriptions = {};
+export function setDataTranslations(data) {
+  characterNames = Object.fromEntries(Object.entries(data.characters).map(([name,info]) => [name,info.en]));
+  variantNames = data.variant_names;
+  dataDescriptions = data.descriptions;
 }
+export function characterName(name) { return language === 'en' ? (lookup(characterNames,name) ?? name) : name; }
+export function variantName(name) { return language === 'en' ? (lookup(variantNames,name) ?? name) : name; }
 export function errorText(error) {
   if (error?.retryAfter) return `${errorText({message:error.message})} ${t('请在 {seconds} 秒后重试。', {seconds:error.retryAfter})}`;
   const message = error?.message || String(error);

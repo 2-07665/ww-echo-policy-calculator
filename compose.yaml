@@ -5,6 +5,7 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     environment:
+      ECHO_DATA_FILE: "/data/echo-data.json"
       ECHO_BIND: "0.0.0.0:3000"
       ECHO_ADMIN_KEY_HASHES: "${ECHO_ADMIN_KEY_HASHES:-}"
       ECHO_TRUSTED_PROXIES: "172.30.77.1"
@@ -14,6 +15,8 @@ services:
       ECHO_QUOTA_JOINT: "4"
       ECHO_MAX_STATES: "750000"
       ECHO_MAX_TRANSITIONS: "24000000"
+    volumes:
+      - ./data:/data:ro
     mem_limit: 2g
     cpus: 2
     security_opt:

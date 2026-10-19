@@ -1,5 +1,6 @@
 //! Transport-independent application API. Every query carries its complete configuration;
 //! the single-entry cache never acts as a caller's implicit session.
+pub mod data;
 pub mod metadata;
 
 use echo_policy::*;
@@ -524,15 +525,18 @@ impl Service {
 }
 
 pub fn bootstrap() -> serde_json::Value {
+    bootstrap_with_data(
+        &data::DataPack::builtin(),
+        serde_json::json!({"source":"builtin","warning":null}),
+    )
+}
+pub fn bootstrap_with_data(pack: &data::DataPack, status: serde_json::Value) -> serde_json::Value {
     use metadata::*;
     serde_json::json!({"defaults":Config::default(),"stats":(0..13).map(|i|serde_json::json!({
         "id":BUFF_TYPES[i],"label":BUFF_LABELS[i],"values":BUFF_VALUE_OPTIONS[i],"percent":!(5..=7).contains(&i)
-    })).collect::<Vec<_>>(),"presets": {
-        "linear":serde_json::from_str::<serde_json::Value>(include_str!("../presets/linear_default.json")).unwrap(),
-        "fixed":serde_json::from_str::<serde_json::Value>(include_str!("../presets/fixed.json")).unwrap(),
-        "wuwa_echo_tool":serde_json::from_str::<serde_json::Value>(include_str!("../presets/wuwa_echo_tool.json")).unwrap(),
-        "mc_boost_assistant":serde_json::from_str::<serde_json::Value>(include_str!("../presets/mc_boost_assistant.json")).unwrap(),
-        "qq_bot":serde_json::from_str::<serde_json::Value>(include_str!("../presets/qq_bot.json")).unwrap()
+    })).collect::<Vec<_>>(), "presets":pack.value["presets"], "data": {
+        "version":pack.value["version"],"revision":pack.revision,"status":status,
+        "characters":pack.value["characters"],"variant_names":pack.value["variant_names"],"descriptions":pack.value["descriptions"]
     }})
 }
 

@@ -117,6 +117,13 @@ async fn preview(
     }
 }
 fn app(state: Arc<Scheduler>) -> Router {
+    let data = Arc::new(echo_app::data::DataStore::new(
+        std::env::var_os("ECHO_DATA_FILE").map(Into::into),
+    ));
+    app_with_data(state, data)
+}
+fn app_with_data(state: Arc<Scheduler>, data: Arc<echo_app::data::DataStore>) -> Router {
+    let export_data = data.clone();
     Router::new()
         .route(
             "/api/health",
@@ -126,7 +133,33 @@ fn app(state: Arc<Scheduler>) -> Router {
         )
         .route(
             "/api/bootstrap",
-            get(|| async { Json(echo_app::bootstrap()) }),
+            get(move || {
+                let data = data.clone();
+                async move {
+                    let (pack, status) = tokio::task::spawn_blocking(move || data.snapshot())
+                        .await
+                        .expect("data loader");
+                    (
+                        [(header::CACHE_CONTROL, "no-store")],
+                        Json(echo_app::bootstrap_with_data(&pack, status)),
+                    )
+                }
+            }),
+        )
+        .route(
+            "/api/data-pack",
+            get(move || {
+                let data = export_data.clone();
+                async move {
+                    let (pack, _) = tokio::task::spawn_blocking(move || data.snapshot())
+                        .await
+                        .expect("data loader");
+                    (
+                        [(header::CACHE_CONTROL, "no-store")],
+                        Json(pack.value.clone()),
+                    )
+                }
+            }),
         )
         .route("/api/preview", post(preview))
         .route("/api/solve", post(solve))
@@ -207,6 +240,23 @@ fn asset(content_type: &'static str, body: &'static str) -> impl IntoResponse {
 async fn main() {
     if std::env::args().nth(1).as_deref() == Some("generate-key") {
         access::generate_key();
+        return;
+    }
+    if std::env::args().nth(1).as_deref() == Some("validate-data") {
+        let Some(path) = std::env::args_os().nth(2) else {
+            eprintln!("Usage: echo_server validate-data <echo-data.json>");
+            std::process::exit(2);
+        };
+        match echo_app::data::DataPack::from_file(std::path::Path::new(&path)) {
+            Ok(pack) => println!(
+                "Valid data pack {} ({})",
+                pack.value["version"], pack.revision
+            ),
+            Err(error) => {
+                eprintln!("{}", error.message);
+                std::process::exit(1);
+            }
+        }
         return;
     }
     let address = std::env::var("ECHO_BIND").unwrap_or_else(|_| "127.0.0.1:3000".into());

@@ -1,6 +1,6 @@
 # Localization references
 
-Checked on 2026-10-19. `i18n.js` is shared by the web UI and the desktop UI. Simplified Chinese is the default; the selected language is stored locally. Game terminology is taken from the references below. Application terms such as “joint policy”, “weighted expected cost”, and “linear scoring” describe this calculator, rather than in-game UI labels.
+Checked on 2026-10-19. Character names, full variant translations, preset descriptions and release dates now live in [data/catalog.json](../../data/catalog.json) and ship in the independently updatable [data pack](../../data/README.md). `i18n.js` is shared by the web UI and the desktop UI. Simplified Chinese is the default; the selected language is stored locally. Game terminology is taken from the references below. Application terms such as “joint policy”, “weighted expected cost”, and “linear scoring” describe this calculator, rather than in-game UI labels.
 
 | Chinese | English in this UI | Reference |
 | --- | --- | --- |

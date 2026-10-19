@@ -4,7 +4,7 @@
 <body>
 <div class="shell">
   <main>
-    <header class="topbar"><a class="brand" href="./" aria-label="Echo Studio 首页" data-i18n-aria="Echo Studio 首页">Echo Studio<span data-i18n="声骸策略工坊">声骸策略工坊</span></a><div class="header-actions"><button class="text-button" id="access-open" hidden data-i18n="访问密钥">访问密钥</button><button class="text-button" id="guide-open" data-i18n="使用说明">使用说明</button><div id="language" role="group" aria-label="语言 / Language"><button type="button" data-language="zh-CN" aria-pressed="true">中文</button><button type="button" data-language="en" aria-pressed="false">EN</button></div></div></header>
+    <header class="topbar"><a class="brand" href="./" aria-label="Echo Studio 首页" data-i18n-aria="Echo Studio 首页">Echo Studio<span data-i18n="声骸策略工坊">声骸策略工坊</span></a><div class="header-actions"><button class="text-button" id="data-open" data-i18n="角色数据">角色数据</button><button class="text-button" id="access-open" hidden data-i18n="访问密钥">访问密钥</button><button class="text-button" id="guide-open" data-i18n="使用说明">使用说明</button><div id="language" role="group" aria-label="语言 / Language"><button type="button" data-language="zh-CN" aria-pressed="true">中文</button><button type="button" data-language="en" aria-pressed="false">EN</button></div></div></header>
     <div class="mode-bar"><span class="nav-label" data-i18n="求解模式">求解模式</span><nav aria-label="求解模式" id="modes" data-i18n-aria="求解模式"><button data-mode="upgrade" data-i18n="强化策略">强化策略</button><button data-mode="reroll" data-i18n="重抽策略">重抽策略</button><button data-mode="joint" class="active" data-i18n="联合策略">联合策略</button></nav></div>
     <section class="page-heading"><div><h1 id="mode-title"><span data-i18n="联合策略">联合策略</span></h1><p id="mode-description"><span data-i18n="同时优化强化和重抽的资源消耗。">同时优化强化和重抽的资源消耗。</span></p></div></section>
     <div id="notice" class="notice" role="alert" hidden></div>
@@ -33,6 +33,17 @@
     <footer><span>Echo Studio · v3.0</span></footer>
   </main>
 </div>
+<dialog id="data-dialog">
+  <div class="section-heading"><h2 data-i18n="角色数据">角色数据</h2><button class="text-button" id="data-close" data-i18n="关闭 ×">关闭 ×</button></div>
+  <p id="data-version"></p>
+  <div id="data-desktop" hidden>
+    <label><span data-i18n="数据更新地址">数据更新地址</span><input id="data-url" type="url" spellcheck="false" autocomplete="off"></label>
+    <label class="data-import-label"><span data-i18n="或导入数据包">或导入数据包</span><input id="data-import" type="file" accept=".json,application/json"></label>
+  </div>
+  <p class="field-hint" data-i18n="更新后，重新选择预设即可应用新权重。当前配置不会改变。">更新后，重新选择预设即可应用新权重。当前配置不会改变。</p>
+  <p id="data-warning" role="status"></p><p id="data-message" role="status"></p>
+  <button class="primary" id="data-update" data-i18n="更新数据">更新数据</button>
+</dialog>
 <dialog id="access-dialog">
   <div class="section-heading"><h2 data-i18n="访问密钥">访问密钥</h2><button class="text-button" id="access-close" data-i18n="关闭 ×">关闭 ×</button></div>
   <p class="field-hint" data-i18n="管理员密钥可绕过个人用量配额。密钥仅保存在当前浏览器标签页的会话中。">管理员密钥可绕过个人用量配额。密钥仅保存在当前浏览器标签页的会话中。</p>

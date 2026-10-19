@@ -3,6 +3,7 @@ WORKDIR /source
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 COPY apps ./apps
+COPY data ./data
 RUN cargo build --locked --release -p echo_server
 
 FROM debian:bookworm-slim

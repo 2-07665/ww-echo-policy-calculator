@@ -1,0 +1,409 @@
+{
+  "characters": {
+    "绯雪": {
+      "en": "Hiyuki",
+      "release_date": "2026-04-30"
+    },
+    "洛瑟菈": {
+      "en": "Lucilla",
+      "release_date": "2026-06-13"
+    },
+    "穗穗": {
+      "en": "Suisui",
+      "release_date": "2026-07-30"
+    },
+    "达妮娅": {
+      "en": "Denia",
+      "release_date": "2026-05-21"
+    },
+    "景燃": {
+      "en": "Jingran",
+      "release_date": "2026-09-10"
+    },
+    "丽贝卡": {
+      "en": "Rebecca",
+      "release_date": "2026-06-08"
+    },
+    "雷主": {
+      "en": "Rover: Electro",
+      "release_date": "2026-07-10"
+    },
+    "心": {
+      "en": "Hsin",
+      "release_date": "2026-09-30"
+    },
+    "锁暝": {
+      "en": "Suoming",
+      "release_date": "2026-10-22"
+    },
+    "西格莉卡": {
+      "en": "Sigrika",
+      "release_date": "2026-03-19"
+    },
+    "清宵": {
+      "en": "Qingxiao",
+      "release_date": "2026-08-20"
+    },
+    "陆·赫斯": {
+      "en": "Luuk Herssen",
+      "release_date": "2026-02-26"
+    },
+    "露西": {
+      "en": "Lucy",
+      "release_date": "2026-06-08"
+    },
+    "秧秧·玄翎": {
+      "en": "Yangyang: Xuanling",
+      "release_date": "2026-07-10"
+    },
+    "角色": {
+      "en": "Generic",
+      "release_date": ""
+    },
+    "炽霞": {
+      "en": "Chixia",
+      "release_date": "2024-05-23"
+    },
+    "桃祈": {
+      "en": "Taoqi",
+      "release_date": "2024-05-23"
+    },
+    "今汐": {
+      "en": "Jinhsi",
+      "release_date": "2024-06-28"
+    },
+    "长离": {
+      "en": "Changli",
+      "release_date": "2024-07-22"
+    },
+    "忌炎": {
+      "en": "Jiyan",
+      "release_date": "2024-05-23"
+    },
+    "安可": {
+      "en": "Encore",
+      "release_date": "2024-05-23"
+    },
+    "暗主": {
+      "en": "Rover: Havoc",
+      "release_date": "2024-05-23"
+    },
+    "光主": {
+      "en": "Rover: Spectro",
+      "release_date": "2024-05-23"
+    },
+    "维里奈": {
+      "en": "Verina",
+      "release_date": "2024-05-23"
+    },
+    "吟霖": {
+      "en": "Yinlin",
+      "release_date": "2024-06-06"
+    },
+    "鉴心": {
+      "en": "Jianxin",
+      "release_date": "2024-05-23"
+    },
+    "卡卡罗": {
+      "en": "Calcharo",
+      "release_date": "2024-05-23"
+    },
+    "雪豹": {
+      "en": "Lingyang",
+      "release_date": "2024-05-23"
+    },
+    "凌阳": {
+      "en": "Lingyang",
+      "release_date": "2024-05-23"
+    },
+    "莫特斐": {
+      "en": "Mortefi",
+      "release_date": "2024-05-23"
+    },
+    "白芷": {
+      "en": "Baizhi",
+      "release_date": "2024-05-23"
+    },
+    "渊武": {
+      "en": "Yuanwu",
+      "release_date": "2024-05-23"
+    },
+    "秧秧": {
+      "en": "Yangyang",
+      "release_date": "2024-05-23"
+    },
+    "赤霞": {
+      "en": "Chixia",
+      "release_date": "2024-05-23"
+    },
+    "丹瑾": {
+      "en": "Danjin",
+      "release_date": "2024-05-23"
+    },
+    "秋水": {
+      "en": "Aalto",
+      "release_date": "2024-05-23"
+    },
+    "散华": {
+      "en": "Sanhua",
+      "release_date": "2024-05-23"
+    },
+    "桃祁": {
+      "en": "Taoqi",
+      "release_date": "2024-05-23"
+    },
+    "折枝": {
+      "en": "Zhezhi",
+      "release_date": "2024-08-15"
+    },
+    "相里要": {
+      "en": "Xiangli Yao",
+      "release_date": "2024-09-07"
+    },
+    "守岸人": {
+      "en": "Shorekeeper",
+      "release_date": "2024-09-29"
+    },
+    "釉瑚": {
+      "en": "Youhu",
+      "release_date": "2024-10-24"
+    },
+    "椿": {
+      "en": "Camellya",
+      "release_date": "2024-11-14"
+    },
+    "灯灯": {
+      "en": "Lumi",
+      "release_date": "2024-12-12"
+    },
+    "珂莱塔": {
+      "en": "Carlotta",
+      "release_date": "2025-01-02"
+    },
+    "洛可可": {
+      "en": "Roccia",
+      "release_date": "2025-01-23"
+    },
+    "赞妮": {
+      "en": "Zani",
+      "release_date": "2025-04-29"
+    },
+    "菲比": {
+      "en": "Phoebe",
+      "release_date": "2025-02-13"
+    },
+    "布兰特": {
+      "en": "Brant",
+      "release_date": "2025-03-06"
+    },
+    "坎特雷拉": {
+      "en": "Cantarella",
+      "release_date": "2025-03-27"
+    },
+    "坎特蕾拉": {
+      "en": "Cantarella",
+      "release_date": "2025-03-27"
+    },
+    "风主": {
+      "en": "Rover: Aero",
+      "release_date": "2025-03-27"
+    },
+    "夏空": {
+      "en": "Ciaccona",
+      "release_date": "2025-05-22"
+    },
+    "卡提希娅": {
+      "en": "Cartethyia",
+      "release_date": "2025-06-12"
+    },
+    "露帕": {
+      "en": "Lupa",
+      "release_date": "2025-07-03"
+    },
+    "弗洛洛": {
+      "en": "Phrolova",
+      "release_date": "2025-07-24"
+    },
+    "奥古斯塔": {
+      "en": "Augusta",
+      "release_date": "2025-08-28"
+    },
+    "尤诺": {
+      "en": "Iuno",
+      "release_date": "2025-09-17"
+    },
+    "嘉贝莉娜": {
+      "en": "Galbrena",
+      "release_date": "2025-10-09"
+    },
+    "仇远": {
+      "en": "Qiuyuan",
+      "release_date": "2025-10-30"
+    },
+    "千咲": {
+      "en": "Chisa",
+      "release_date": "2025-11-20"
+    },
+    "卜灵": {
+      "en": "Buling",
+      "release_date": "2025-12-11"
+    },
+    "琳奈": {
+      "en": "Lynae",
+      "release_date": "2025-12-25"
+    },
+    "莫宁": {
+      "en": "Mornye",
+      "release_date": "2026-01-15"
+    },
+    "爱弥斯": {
+      "en": "Aemeath",
+      "release_date": "2026-02-05"
+    }
+  },
+  "variant_names": {
+    "0+1": "0+1",
+    "0链": "Sequence 0",
+    "1链": "Sequence 1",
+    "2链": "Sequence 2",
+    "3链": "Sequence 3",
+    "4链": "Sequence 4",
+    "5链": "Sequence 5",
+    "6链": "Sequence 6",
+    "1-2链": "Sequence 1-2",
+    "5-6链": "Sequence 5-6",
+    "0-6链": "Sequence 0-6",
+    "0-1链": "Sequence 0-1",
+    "0-2链": "Sequence 0-2",
+    "0-5链": "Sequence 0-5",
+    "3-4链": "Sequence 3-4",
+    "3-5链": "Sequence 3-5",
+    "3-6链": "Sequence 3-6",
+    "4-5链": "Sequence 4-5",
+    "1-4链": "Sequence 1-4",
+    "0链 · 震谐模式": "Sequence 0 · Tune Rupture",
+    "1链 · 震谐模式": "Sequence 1 · Tune Rupture",
+    "2链 · 震谐模式": "Sequence 2 · Tune Rupture",
+    "3链 · 震谐模式": "Sequence 3 · Tune Rupture",
+    "4-5链 · 震谐模式": "Sequence 4-5 · Tune Rupture",
+    "6链 · 震谐模式": "Sequence 6 · Tune Rupture",
+    "0链 · 聚爆模式": "Sequence 0 · Fusion Burst",
+    "1链 · 聚爆模式": "Sequence 1 · Fusion Burst",
+    "2链 · 聚爆模式": "Sequence 2 · Fusion Burst",
+    "3链 · 聚爆模式": "Sequence 3 · Fusion Burst",
+    "4-5链 · 聚爆模式": "Sequence 4-5 · Fusion Burst",
+    "6链 · 聚爆模式": "Sequence 6 · Fusion Burst",
+    "4链 · 聚爆模式": "Sequence 4 · Fusion Burst",
+    "5链 · 聚爆模式": "Sequence 5 · Fusion Burst",
+    "0链 · 集谐模式": "Sequence 0 · Tune Strain",
+    "1链 · 集谐模式": "Sequence 1 · Tune Strain",
+    "2链 · 集谐模式": "Sequence 2 · Tune Strain",
+    "3链 · 集谐模式": "Sequence 3 · Tune Strain",
+    "4链 · 集谐模式": "Sequence 4 · Tune Strain",
+    "5链 · 集谐模式": "Sequence 5 · Tune Strain",
+    "6链 · 集谐模式": "Sequence 6 · Tune Strain",
+    "0-1链 · 速切模式": "Sequence 0-1 · Quick swap",
+    "2链 · 速切模式": "Sequence 2 · Quick swap",
+    "3链 · 速切模式": "Sequence 3 · Quick swap",
+    "4-6链 · 速切模式": "Sequence 4-6 · Quick swap",
+    "0-1链 · 临界共鸣模式": "Sequence 0-1 · Critical Resonance",
+    "2链 · 临界共鸣模式": "Sequence 2 · Critical Resonance",
+    "3链 · 临界共鸣模式": "Sequence 3 · Critical Resonance",
+    "4链 · 临界共鸣模式": "Sequence 4 · Critical Resonance",
+    "5链 · 临界共鸣模式": "Sequence 5 · Critical Resonance",
+    "6链 · 临界共鸣模式": "Sequence 6 · Critical Resonance",
+    "0链 · 循环模式": "Sequence 0 · Rotation",
+    "1链 · 循环模式": "Sequence 1 · Rotation",
+    "2链 · 循环模式": "Sequence 2 · Rotation",
+    "3链 · 循环模式": "Sequence 3 · Rotation",
+    "4-5链 · 循环模式": "Sequence 4-5 · Rotation",
+    "6链 · 循环模式": "Sequence 6 · Rotation",
+    "0-6链 · 辅助模式": "Sequence 0-6 · Support",
+    "0-1链 · 输出模式": "Sequence 0-1 · Damage",
+    "2链 · 输出模式": "Sequence 2 · Damage",
+    "3-4链 · 输出模式": "Sequence 3-4 · Damage",
+    "5链 · 输出模式": "Sequence 5 · Damage",
+    "6链 · 输出模式": "Sequence 6 · Damage",
+    "0链 · 持续模式": "Sequence 0 · Sustained",
+    "1链 · 持续模式": "Sequence 1 · Sustained",
+    "2链 · 持续模式": "Sequence 2 · Sustained",
+    "3链 · 持续模式": "Sequence 3 · Sustained",
+    "4链 · 持续模式": "Sequence 4 · Sustained",
+    "5链 · 持续模式": "Sequence 5 · Sustained",
+    "6链 · 持续模式": "Sequence 6 · Sustained",
+    "0链 · 起手模式": "Sequence 0 · Opening",
+    "1链 · 起手模式": "Sequence 1 · Opening",
+    "2链 · 起手模式": "Sequence 2 · Opening",
+    "3链 · 起手模式": "Sequence 3 · Opening",
+    "4链 · 起手模式": "Sequence 4 · Opening",
+    "5链 · 起手模式": "Sequence 5 · Opening",
+    "6链 · 起手模式": "Sequence 6 · Opening",
+    "4-5链 · 持续模式": "Sequence 4-5 · Sustained",
+    "4-5链 · 起手模式": "Sequence 4-5 · Opening",
+    "0链 · 同奏模式": "Sequence 0 · Unison",
+    "1链 · 同奏模式": "Sequence 1 · Unison",
+    "2链 · 同奏模式": "Sequence 2 · Unison",
+    "3链 · 同奏模式": "Sequence 3 · Unison",
+    "4-5链 · 同奏模式": "Sequence 4-5 · Unison",
+    "6链 · 同奏模式": "Sequence 6 · Unison",
+    "0链 · 电磁模式": "Sequence 0 · Electro mode",
+    "1链 · 电磁模式": "Sequence 1 · Electro mode",
+    "2链 · 电磁模式": "Sequence 2 · Electro mode",
+    "3链 · 电磁模式": "Sequence 3 · Electro mode",
+    "4-5链 · 电磁模式": "Sequence 4-5 · Electro mode",
+    "6链 · 电磁模式": "Sequence 6 · Electro mode",
+    "默认": "Default",
+    "主/副c · 4C 暴击/暴击伤害": "Main/Sub DPS · 4-Cost Crit. Rate/Crit. DMG",
+    "主/副c · 4C 攻击": "Main/Sub DPS · 4-Cost ATK",
+    "主/副c · 3C 属性伤害加成/攻击": "Main/Sub DPS · 3-Cost Elemental DMG Bonus/ATK",
+    "主/副c · 1C 攻击": "Main/Sub DPS · 1-Cost ATK",
+    "4C 治疗效果加成/生命": "4-Cost Healing Bonus/HP",
+    "3C 共鸣效率": "3-Cost Energy Regen",
+    "3C 攻击/生命": "3-Cost ATK/HP",
+    "1C 生命": "1-Cost HP",
+    "4C 暴击/暴击伤害": "4-Cost Crit. Rate/Crit. DMG",
+    "4C 攻击": "4-Cost ATK",
+    "3C 属性伤害加成/攻击": "3-Cost Elemental DMG Bonus/ATK",
+    "1C 攻击": "1-Cost ATK",
+    "4C 治疗效果加成": "4-Cost Healing Bonus",
+    "4C 攻击/暴击伤害": "4-Cost ATK/Crit. DMG",
+    "4C 暴击": "4-Cost Crit. Rate",
+    "霜渐 · 4C 暴击/暴击伤害": "Glacio Chafe · 4-Cost Crit. Rate/Crit. DMG",
+    "霜渐 · 4C 攻击": "Glacio Chafe · 4-Cost ATK",
+    "霜渐 · 3C 属性伤害加成/攻击": "Glacio Chafe · 3-Cost Elemental DMG Bonus/ATK",
+    "霜渐 · 1C 攻击": "Glacio Chafe · 1-Cost ATK",
+    "霜渐-羽落 · 4C 暴击/暴击伤害": "Glacio Chafe-Song of Feathered Trace · 4-Cost Crit. Rate/Crit. DMG",
+    "霜渐-羽落 · 4C 攻击": "Glacio Chafe-Song of Feathered Trace · 4-Cost ATK",
+    "霜渐-羽落 · 3C 属性伤害加成/攻击": "Glacio Chafe-Song of Feathered Trace · 3-Cost Elemental DMG Bonus/ATK",
+    "霜渐-羽落 · 1C 攻击": "Glacio Chafe-Song of Feathered Trace · 1-Cost ATK",
+    "声骸 · 4C 暴击伤害": "Echo · 4-Cost Crit. DMG",
+    "声骸 · 4C 攻击": "Echo · 4-Cost ATK",
+    "声骸 · 4C 暴击": "Echo · 4-Cost Crit. Rate",
+    "声骸 · 3C 属性伤害加成/攻击": "Echo · 3-Cost Elemental DMG Bonus/ATK",
+    "声骸 · 1C 攻击": "Echo · 1-Cost ATK",
+    "声骸-羽落 · 4C 暴击伤害": "Echo-Song of Feathered Trace · 4-Cost Crit. DMG",
+    "声骸-羽落 · 4C 攻击": "Echo-Song of Feathered Trace · 4-Cost ATK",
+    "声骸-羽落 · 4C 暴击": "Echo-Song of Feathered Trace · 4-Cost Crit. Rate",
+    "声骸-羽落 · 3C 属性伤害加成/攻击": "Echo-Song of Feathered Trace · 3-Cost Elemental DMG Bonus/ATK",
+    "声骸-羽落 · 1C 攻击": "Echo-Song of Feathered Trace · 1-Cost ATK",
+    "4C 生命": "4-Cost HP",
+    "4C 暴击伤害": "4-Cost Crit. DMG",
+    "3C 生命": "3-Cost HP",
+    "3C 属性伤害加成": "3-Cost Elemental DMG Bonus",
+    "3C 攻击": "3-Cost ATK",
+    "4C 防御": "4-Cost DEF",
+    "3C 防御": "3-Cost DEF",
+    "1C 防御": "1-Cost DEF",
+    "4C 攻击/暴击/暴击伤害": "4-Cost ATK/Crit. Rate/Crit. DMG",
+    "3C 属性伤害加成/生命": "3-Cost Elemental DMG Bonus/HP",
+    "小维版 · 4C 攻击/治疗效果加成": "XWUID · 4-Cost ATK/Healing Bonus",
+    "小维版 · 3C 共鸣效率": "XWUID · 3-Cost Energy Regen",
+    "小维版 · 3C 攻击": "XWUID · 3-Cost ATK",
+    "小维版 · 1C 攻击": "XWUID · 1-Cost ATK",
+    "4C 攻击/治疗效果加成": "4-Cost ATK/Healing Bonus"
+  },
+  "descriptions": {
+    "权重提取自猫眼石攻略组对01爱琳莫标准轴的拉表计算。每1%暴击、暴伤、攻击、解放，分别对应单轮9667、3623、4476、3518总伤提升。共鸣效率为手动设置。": "Source: Maoyanshi guide group’s 0+1 Aemeath–Lynae–Mornye rotation spreadsheet. Each 1% Crit. Rate, Crit. DMG, ATK, and Resonance Liberation DMG adds 9667, 3623, 4476, and 3518 damage per rotation, respectively. Energy Regen was set manually.",
+    "该权重由脚本自动转换，请注意鉴别。": "These weights were converted automatically by a script; verify their suitability."
+  }
+}

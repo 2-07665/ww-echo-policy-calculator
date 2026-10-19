@@ -1,5 +1,5 @@
-import { buildPresetList, importPresetList, upcoming } from './preset-data.js';
-import { t, language, setLanguage, translatePage, statNames, characterNames, characterName, variantName, errorText } from './i18n.js';
+import { buildPresetList, importPresetList, upcoming, setCharacterData } from './preset-data.js';
+import { t, language, setLanguage, translatePage, statNames, characterNames, characterName, variantName, errorText, setDataTranslations } from './i18n.js';
 import { api, desktop, hasAccessKey, setAccessKey } from './api.js';
 const $ = id => document.getElementById(id);
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -90,7 +90,7 @@ function dirty(kind = 'config') {
     $('locks-panel').hidden = true;
   }
   notice();
-  try { config = collect(); saveStorage('echo-studio-session-v3', { config, echo, selectedPreset }); } catch { /* Keep the last valid session. */ }
+  try { config = collect(); saveStorage('echo-studio-session-v3', { config, echo, selectedPreset, dataRevision:boot.data.revision }); } catch { /* Keep the last valid session. */ }
   clearTimeout(timer);
   // Cached policy queries return the score and recommendation together.
   if (!refreshing) timer = setTimeout(updatePreview, 160);
@@ -169,7 +169,7 @@ async function updatePreview() {
   const token = ++previewRevision;
   try {
     config = collect();
-    saveStorage('echo-studio-session-v3', { config, echo, selectedPreset });
+    saveStorage('echo-studio-session-v3', { config, echo, selectedPreset, dataRevision:boot.data.revision });
     const result = await api('preview', { config, echo });
     if (token !== previewRevision) return;
     renderPreview(result);
@@ -423,6 +423,7 @@ function changeLanguage(value) {
   setLanguage(value);
   renderLanguageButtons();
   translatePage();
+  renderDataStatus();
   // Keep partially edited numeric fields; only relabel the existing weight inputs.
   document.querySelectorAll('[data-weight]').forEach((input,i) => { input.parentElement.firstChild.textContent = statLabel(boot.stats[i]); });
   renderMode(); renderPresets(); renderSlots('echo'); renderSlots('candidate');
@@ -522,6 +523,26 @@ function setup() {
     void solve();
   });
   $('solve').addEventListener('click', () => solve());
+  $('data-open').addEventListener('click', () => {
+    renderDataStatus(); $('data-dialog').showModal();
+  });
+  $('data-close').addEventListener('click', () => $('data-dialog').close());
+  $('data-desktop').hidden = !desktop;
+  $('data-url').value = readStorage('echo-studio-data-url', 'https://raw.githubusercontent.com/2-07665/ww-echo-policy-calculator/main/data/echo-data.json');
+  $('data-update').addEventListener('click', () => updateData(async () => {
+    if (!desktop) return api('bootstrap');
+    const url = $('data-url').value.trim();
+    const next = await api('data_download', {url});
+    saveStorage('echo-studio-data-url',url); return next;
+  }));
+  $('data-import').addEventListener('change', e => {
+    const file=e.target.files[0]; e.target.value='';
+    if (!file) return;
+    updateData(async () => {
+      if (file.size > 8 * 1024 * 1024) throw new Error('数据包无效或版本不兼容，已保留原数据。');
+      return api('data_install',{content:await file.text()});
+    });
+  });
   $('access-open').hidden = desktop;
   $('access-open').addEventListener('click', () => {
     $('access-key').value = '';
@@ -559,7 +580,7 @@ function setup() {
       saveStorage('echo-studio-presets-v3',custom);
       selectedPreset = `custom:${c.scoring}:${name}`;
       renderPresets();
-      saveStorage('echo-studio-session-v3', {config:c,echo,selectedPreset});
+      saveStorage('echo-studio-session-v3', {config:c,echo,selectedPreset,dataRevision:boot.data.revision});
       $('delete-preset').hidden = false;
       $('preset-name').value = '';
     } catch (e) { notice(() => errorText(e)); }
@@ -599,15 +620,44 @@ function setup() {
     window.__TAURI__.event.listen('ocr-echo', ({ payload }) => { echo = payload; renderSlots('echo'); dirty('echo'); }).catch(e => notice(() => t('OCR 事件连接失败：{error}', {error:errorText(e)})));
   }
 }
+let dataMessage = null;
+function renderDataStatus() {
+  if (!boot?.data) return;
+  $('data-version').textContent = t('数据版本：{version}', {version:boot.data.version});
+  $('data-warning').textContent = boot.data.status.warning ? errorText({message:boot.data.status.warning}) : '';
+  const message = dataMessage ? dataMessage() : '';
+  $('data-message').textContent = message === $('data-warning').textContent ? '' : message;
+}
+async function updateData(load) {
+  if ($('data-update').disabled) return;
+  $('data-update').disabled = true; $('data-import').disabled = true;
+  dataMessage = () => t('正在更新数据…'); renderDataStatus();
+  try {
+    const next = await load();
+    if (next.data.status.warning) {
+      boot.data.status = next.data.status;
+      throw new Error(next.data.status.warning);
+    }
+    const changed = next.data.revision !== boot.data.revision;
+    boot.presets = next.presets; boot.data = next.data;
+    setCharacterData(boot.data.characters); setDataTranslations(boot.data);
+    // Updating the catalog must not change a running policy or partially edited inputs.
+    if (changed && selectedPreset.startsWith('builtin:')) selectedPreset = '';
+    renderPresets();
+    dataMessage = () => t(changed ? '数据已更新。' : '当前数据已是最新版本。');
+  } catch (error) { dataMessage = () => errorText(error); }
+  finally { $('data-update').disabled = false; $('data-import').disabled = false; renderDataStatus(); }
+}
 async function init() {
   translatePage();
   renderLanguageButtons();
   try {
     boot = await api('bootstrap');
+    setCharacterData(boot.data.characters); setDataTranslations(boot.data); renderDataStatus();
     config = structuredClone(boot.defaults);
     const saved = readStorage('echo-studio-session-v3',null);
     if (saved?.config && Object.hasOwn(modes,saved.config.mode) && Object.hasOwn(scorerDefaults,saved.config.scoring)) {
-      try { await api('preview', { config:saved.config, echo:saved.echo }); config = saved.config; echo = saved.echo; selectedPreset = saved.selectedPreset || ''; } catch { /* Ignore invalid / older local sessions. */ }
+      try { await api('preview', { config:saved.config, echo:saved.echo }); config = saved.config; echo = saved.echo; selectedPreset = saved.selectedPreset || ''; if (selectedPreset.startsWith('builtin:') && saved.dataRevision !== boot.data.revision) selectedPreset = ''; } catch { /* Ignore invalid / older local sessions. */ }
     }
     const stored = readStorage('echo-studio-presets-v3',[]);
     custom = Array.isArray(stored) ? stored.filter(validCustom) : [];

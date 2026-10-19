@@ -40,7 +40,7 @@ cargo tauri build
 
 ## VPS 部署
 
-仓库提供 Docker Compose 与不依赖 Docker 的单二进制部署。页面资源嵌入二进制，运行时不需额外静态文件、数据库或 Node。
+仓库提供 Docker Compose 与不依赖 Docker 的单二进制部署。页面资源嵌入二进制，角色和权重可从外部数据包加载；运行时不需数据库或 Node。
 
 ### Docker Compose
 
@@ -65,12 +65,24 @@ ssh -L 3000:127.0.0.1:3000 user@your-vps
 在目标 Linux 架构编译 `cargo build --release --locked -p echo_server`，将 `target/release/echo_server` 放到 `/opt/echo-studio/echo_server`。安装 [deploy/echo-studio.service](deploy/echo-studio.service) 后启动服务：
 
 ```bash
+sudo install -d /opt/echo-studio/data
+sudo install -m 644 data/echo-data.json /opt/echo-studio/data/echo-data.json
 sudo cp deploy/echo-studio.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now echo-studio
 ```
 
 然后使用同一份 Caddy 配置。macOS 编译的二进制不能直接复制到 Linux；Docker 构建应在 VPS 或相应 Linux 构建环境运行。
+
+### 角色和权重更新
+
+角色名称、英文翻译、实装日期及所有预设权重放在独立的 [data/echo-data.json](data/echo-data.json) 中。完成这次应用升级后，后续普通数据更新无需重新编译：
+
+- 网页端通过 `ECHO_DATA_FILE` 指定数据包路径。校验并原子替换文件后，用户刷新页面或点击“角色数据 → 更新数据”即可加载，无须重启服务。Compose 和 systemd 示例已配置该路径。
+- 桌面端在“角色数据”中在线更新或导入 JSON，校验成功后缓存到本地，离线启动仍可使用。
+- 无效更新保留原数据；更新不会修改当前计算配置，重新选择预设才应用新权重。
+
+数据格式、发布步骤和故障回退见 [数据包维护说明](data/README.md)。
 
 ### 多人访问、容量与配额
 
@@ -152,13 +164,14 @@ XutheringWavesUID 权重已按指定仓库更新，包含 61 组、278 个变体
 ```text
 apps/web/                  共享响应式界面（HTML / CSS / JS）
   api.js                   Tauri IPC / 同源 HTTP 传输选择
-crates/echo_app/            DTO、校验、评分转换、三求解器适配、缓存、预设
+data/                      独立发布包、角色译名和实装日期
+crates/echo_app/            DTO、数据包校验/缓存、评分转换、三求解器适配
 crates/echo_policy/         数学求解核心（本次重构未修改算法）
 apps/server/               Axum HTTP 服务、嵌入静态页面、计算准入限制
 apps/desktop/src-tauri/     Tauri 桌面外壳、后台求解、OCR
 ```
 
-API：`GET /api/health`、`GET /api/bootstrap`、`POST /api/preview`、`POST /api/solve`。请求结构见 `echo_app::SolveRequest`；每次传完整 `config`、`echo: [[类型索引, 原始数值], ...]`，重抽模式可附带 `candidate`。错误格式为 `{code, message}`。预设编辑、页面配置保存均在客户端完成。
+API：`GET /api/health`、`GET /api/bootstrap`、`GET /api/data-pack`、`POST /api/preview`、`POST /api/solve`。请求结构见 `echo_app::SolveRequest`；每次传完整 `config`、`echo: [[类型索引, 原始数值], ...]`，重抽模式可附带 `candidate`。错误格式为 `{code, message}`。预设编辑、页面配置保存均在客户端完成。
 
 ```bash
 cargo test -p echo_app -p echo_server -p echo_policy
@@ -166,6 +179,7 @@ cargo check -p echo_calculator_app
 cargo test -p echo_calculator_app
 bash scripts/check-ui-node.sh
 node scripts/test-i18n.mjs
+python3 scripts/test-data-pack.py
 node scripts/test-presets.mjs
 python3 scripts/convert_weights/test_xwuid_presets.py
 cargo fmt --all -- --check
@@ -174,6 +188,7 @@ node scripts/test-upgrade-workflow.mjs
 node scripts/test-reroll-workflow.mjs
 node scripts/test-joint-workflow.mjs
 node scripts/test-ui.mjs
+node scripts/test-data-updates.mjs
 ```
 
 浏览器测试应顺序执行，覆盖三模式、即时缓存查询、无闪烁刷新、候选接受、联合到重抽的衔接、过期请求、无效输入、自定义预设持久化和手机横向溢出。`NODE_BIN` 可覆盖语法检查的 Node 路径，`PLAYWRIGHT_MODULE` 可指定已有的 Playwright 模块路径。

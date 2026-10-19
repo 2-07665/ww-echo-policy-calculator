@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {buildPresetList,importPresetList,releaseDate,upcoming} from '../apps/web/preset-data.js';
-const sources = {};
-for (const [scoring,file] of Object.entries({linear:'linear_default',fixed:'fixed',wuwa_echo_tool:'wuwa_echo_tool',mc_boost_assistant:'mc_boost_assistant',qq_bot:'qq_bot'})) {
-  sources[scoring] = JSON.parse(await readFile(new URL(`../crates/echo_app/presets/${file}.json`,import.meta.url),'utf8'));
-}
+import {buildPresetList,importPresetList,releaseDate,upcoming,setCharacterData} from '../apps/web/preset-data.js';
+const pack = JSON.parse(await readFile(new URL('../data/echo-data.json',import.meta.url),'utf8'));
+const sources = pack.presets;
+setCharacterData(pack.characters);
 const presets = buildPresetList(sources);
 assert.equal(presets.length,578);
 assert.equal(new Set(presets.map(p => p.id)).size,578);

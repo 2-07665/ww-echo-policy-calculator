@@ -187,3 +187,7 @@ dialog li { margin: 18px 0; }
 .guide-mode h3 { margin: 0 0 12px; font-size: 18px; }
 .guide-mode ol { margin: 0; padding-left: 24px; }
 .guide-mode li + li { margin-top: 10px; }
+
+.data-import-label { margin-top: 16px; }
+#data-warning { color: var(--danger, #b3261e); }
+#data-url { width: 100%; }
