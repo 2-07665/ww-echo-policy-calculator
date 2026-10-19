@@ -223,10 +223,27 @@ fn app_with_data(state: Arc<Scheduler>, data: Arc<echo_app::data::DataStore>) ->
         .with_state(state)
 }
 fn asset(content_type: &'static str, body: &'static str) -> impl IntoResponse {
+    // Keep HTML and its complete ES module graph on the same release, even when
+    // a browser or CDN still holds resources from a previous deployment.
+    static REVISION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    let revision = REVISION.get_or_init(|| {
+        access::digest(concat!(
+            include_str!("../../web/index.html"),
+            include_str!("../../web/app.js"),
+            include_str!("../../web/api.js"),
+            include_str!("../../web/i18n.js"),
+            include_str!("../../web/preset-data.js"),
+            include_str!("../../web/styles.css"),
+        ))
+    });
+    let mut body = body.to_owned();
+    for name in ["app.js", "api.js", "i18n.js", "preset-data.js", "styles.css"] {
+        body = body.replace(&format!("./{name}"), &format!("./{name}?v={revision}"));
+    }
     (
         [
             (header::CONTENT_TYPE, content_type),
-            (header::CACHE_CONTROL, "no-cache"),
+            (header::CACHE_CONTROL, "no-store"),
             (header::X_CONTENT_TYPE_OPTIONS, "nosniff"),
             (
                 header::CONTENT_SECURITY_POLICY,
