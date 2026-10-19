@@ -40,3 +40,5 @@ temp/
 
 # python
 __pycache__/
+# Tauri regenerates these platform schemas during builds
+/apps/desktop/src-tauri/gen/schemas/

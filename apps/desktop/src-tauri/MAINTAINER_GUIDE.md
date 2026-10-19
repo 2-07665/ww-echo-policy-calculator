@@ -12,3 +12,5 @@ Heavy solves use a blocking worker, not the UI thread. The solver mutex uses `tr
 The product identifier is unchanged so the desktop keeps its existing webview origin. Legacy user preset files are not deleted. Import them using the shared UI, after selecting their scoring system; see the root README.
 
 Check with `cargo check -p echo_calculator_app`, `cargo test -p echo_calculator_app` and `bash scripts/check-ui-node.sh`. Test shared numerical behavior with `cargo test -p echo_app`. Keep platform-specific capabilities in this adapter; do not reintroduce separate scoring or solver implementations here.
+
+`gen/schemas/` contains Tauri-generated permission and editor schemas. Builds regenerate these files; keep them local and out of Git. `capabilities/default.json` remains the maintained permission configuration.
