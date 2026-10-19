@@ -1834,7 +1834,7 @@
           }
         },
         {
-          "variantName": "5链",
+          "variantName": "6链",
           "weights": {
             "Crit_Rate": 113.4,
             "Crit_Damage": 113.4,
@@ -2180,7 +2180,7 @@
       "presetName": "莫宁",
       "variants": [
         {
-          "variantName": "0-6链",
+          "variantName": "0-1链",
           "weights": {
             "Crit_Rate": 0.0,
             "Crit_Damage": 0.0,
@@ -2191,12 +2191,76 @@
             "Defence_Flat": 70.0,
             "HP_Flat": 52.2,
             "ER": 173.6,
-            "Basic_Attack_Damage": 0.81,
-            "Heavy_Attack_Damage": 1.04,
-            "Skill_Damage": 0.46,
-            "Ult_Damage": 9.28
+            "Basic_Attack_Damage": 0.58,
+            "Heavy_Attack_Damage": 2.9,
+            "Skill_Damage": 2.9,
+            "Ult_Damage": 4.64
           },
           "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "2链",
+          "weights": {
+            "Defence": 196.98,
+            "HP": 102.08,
+            "Defence_Flat": 67.2,
+            "HP_Flat": 51.04,
+            "ER": 161.2,
+            "Heavy_Attack_Damage": 2.67,
+            "Ult_Damage": 4.87
+          }
+        },
+        {
+          "variantName": "3链",
+          "weights": {
+            "Defence": 188.16,
+            "HP": 99.76,
+            "Defence_Flat": 64.4,
+            "HP_Flat": 49.88,
+            "ER": 148.8,
+            "Heavy_Attack_Damage": 2.55,
+            "Skill_Damage": 3.25
+          }
+        },
+        {
+          "variantName": "4链",
+          "weights": {
+            "Defence": 179.34,
+            "HP": 97.44,
+            "Defence_Flat": 61.6,
+            "HP_Flat": 48.72,
+            "ER": 136.4,
+            "Heavy_Attack_Damage": 2.32,
+            "Ult_Damage": 5.22
+          }
+        },
+        {
+          "variantName": "5链",
+          "weights": {
+            "Defence": 170.52,
+            "HP": 95.12,
+            "Defence_Flat": 58.8,
+            "HP_Flat": 47.56,
+            "ER": 124.0,
+            "Basic_Attack_Damage": 0.46,
+            "Heavy_Attack_Damage": 1.86,
+            "Skill_Damage": 2.32,
+            "Ult_Damage": 6.38
+          }
+        },
+        {
+          "variantName": "6链",
+          "weights": {
+            "Defence": 161.7,
+            "HP": 92.8,
+            "Defence_Flat": 56.0,
+            "HP_Flat": 46.4,
+            "ER": 111.6,
+            "Basic_Attack_Damage": 0.35,
+            "Heavy_Attack_Damage": 1.39,
+            "Skill_Damage": 1.74,
+            "Ult_Damage": 7.54
+          }
         }
       ]
     },
@@ -2204,7 +2268,242 @@
       "presetName": "爱弥斯",
       "variants": [
         {
-          "variantName": "0-2链",
+          "variantName": "0链 · 震谐模式",
+          "weights": {
+            "Crit_Rate": 189.0,
+            "Crit_Damage": 189.0,
+            "Attack": 116.0,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 60.0,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 9.28,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 2.32,
+            "Ult_Damage": 81.2
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "1链 · 震谐模式",
+          "weights": {
+            "Crit_Rate": 213.14,
+            "Crit_Damage": 164.7,
+            "Attack": 118.63,
+            "Attack_Flat": 61.36,
+            "Basic_Attack_Damage": 8.09,
+            "Skill_Damage": 2.02,
+            "Ult_Damage": 85.67
+          }
+        },
+        {
+          "variantName": "2链 · 震谐模式",
+          "weights": {
+            "Crit_Rate": 199.78,
+            "Crit_Damage": 162.78,
+            "Attack": 113.31,
+            "Attack_Flat": 58.61,
+            "Basic_Attack_Damage": 6.18,
+            "Skill_Damage": 1.54,
+            "Ult_Damage": 84.73
+          }
+        },
+        {
+          "variantName": "3链 · 震谐模式",
+          "weights": {
+            "Crit_Rate": 203.22,
+            "Crit_Damage": 171.86,
+            "Attack": 116.84,
+            "Attack_Flat": 60.43,
+            "Basic_Attack_Damage": 5.24,
+            "Skill_Damage": 1.31,
+            "Ult_Damage": 89.5
+          }
+        },
+        {
+          "variantName": "4-5链 · 震谐模式",
+          "weights": {
+            "Crit_Rate": 205.91,
+            "Crit_Damage": 174.13,
+            "Attack": 118.39,
+            "Attack_Flat": 61.23,
+            "Basic_Attack_Damage": 5.3,
+            "Skill_Damage": 1.33,
+            "Ult_Damage": 90.68
+          }
+        },
+        {
+          "variantName": "6链 · 震谐模式",
+          "weights": {
+            "Crit_Rate": 167.88,
+            "Crit_Damage": 141.27,
+            "Attack": 96.35,
+            "Attack_Flat": 49.83,
+            "Basic_Attack_Damage": 3.17,
+            "Skill_Damage": 0.79,
+            "Ult_Damage": 75.94
+          }
+        },
+        {
+          "variantName": "0链 · 聚爆模式",
+          "weights": {
+            "Crit_Rate": 171.82,
+            "Crit_Damage": 171.82,
+            "Attack": 105.45,
+            "Attack_Flat": 54.55,
+            "Basic_Attack_Damage": 8.44,
+            "Skill_Damage": 2.11,
+            "Ult_Damage": 73.82
+          }
+        },
+        {
+          "variantName": "1链 · 聚爆模式",
+          "weights": {
+            "Crit_Rate": 196.06,
+            "Crit_Damage": 151.5,
+            "Attack": 109.12,
+            "Attack_Flat": 56.44,
+            "Basic_Attack_Damage": 7.44,
+            "Skill_Damage": 1.86,
+            "Ult_Damage": 78.81
+          }
+        },
+        {
+          "variantName": "2链 · 聚爆模式",
+          "weights": {
+            "Crit_Rate": 182.66,
+            "Crit_Damage": 148.83,
+            "Attack": 103.6,
+            "Attack_Flat": 53.59,
+            "Basic_Attack_Damage": 5.65,
+            "Skill_Damage": 1.41,
+            "Ult_Damage": 77.47
+          }
+        },
+        {
+          "variantName": "3链 · 聚爆模式",
+          "weights": {
+            "Crit_Rate": 188.26,
+            "Crit_Damage": 159.21,
+            "Attack": 108.24,
+            "Attack_Flat": 55.99,
+            "Basic_Attack_Damage": 4.85,
+            "Skill_Damage": 1.21,
+            "Ult_Damage": 82.91
+          }
+        },
+        {
+          "variantName": "4-5链 · 聚爆模式",
+          "weights": {
+            "Crit_Rate": 191.87,
+            "Crit_Damage": 162.26,
+            "Attack": 110.31,
+            "Attack_Flat": 57.06,
+            "Basic_Attack_Damage": 4.94,
+            "Skill_Damage": 1.24,
+            "Ult_Damage": 84.5
+          }
+        },
+        {
+          "variantName": "6链 · 聚爆模式",
+          "weights": {
+            "Crit_Rate": 147.11,
+            "Crit_Damage": 123.79,
+            "Attack": 84.43,
+            "Attack_Flat": 43.67,
+            "Basic_Attack_Damage": 2.78,
+            "Skill_Damage": 0.7,
+            "Ult_Damage": 66.55
+          }
+        }
+      ]
+    },
+    {
+      "presetName": "陆·赫斯",
+      "variants": [
+        {
+          "variantName": "0-1链",
+          "weights": {
+            "Crit_Rate": 189.0,
+            "Crit_Damage": 189.0,
+            "Attack": 116.0,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 60.0,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 95.12,
+            "Heavy_Attack_Damage": 2.32,
+            "Skill_Damage": 4.64,
+            "Ult_Damage": 8.12
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "2链",
+          "weights": {
+            "Attack": 113.68,
+            "Attack_Flat": 58.8,
+            "Basic_Attack_Damage": 95.49,
+            "Heavy_Attack_Damage": 2.27,
+            "Skill_Damage": 3.41,
+            "Ult_Damage": 6.82
+          }
+        },
+        {
+          "variantName": "3链",
+          "weights": {
+            "Attack": 111.36,
+            "Attack_Flat": 57.6,
+            "Basic_Attack_Damage": 95.77,
+            "Heavy_Attack_Damage": 2.23,
+            "Skill_Damage": 3.34,
+            "Ult_Damage": 4.45
+          }
+        },
+        {
+          "variantName": "4链",
+          "weights": {
+            "Attack": 109.04,
+            "Attack_Flat": 56.4,
+            "Basic_Attack_Damage": 95.96,
+            "Heavy_Attack_Damage": 1.09,
+            "Skill_Damage": 2.18,
+            "Ult_Damage": 4.36
+          }
+        },
+        {
+          "variantName": "5链",
+          "weights": {
+            "Attack": 106.72,
+            "Attack_Flat": 55.2,
+            "Basic_Attack_Damage": 96.05,
+            "Heavy_Attack_Damage": 1.07,
+            "Skill_Damage": 2.13,
+            "Ult_Damage": 2.13
+          }
+        },
+        {
+          "variantName": "6链",
+          "weights": {
+            "Attack": 104.4,
+            "Attack_Flat": 54.0,
+            "Basic_Attack_Damage": 96.05,
+            "Heavy_Attack_Damage": 1.04,
+            "Skill_Damage": 1.04,
+            "Ult_Damage": 1.04
+          }
+        }
+      ]
+    },
+    {
+      "presetName": "西格莉卡",
+      "variants": [
+        {
+          "variantName": "0链",
           "weights": {
             "Crit_Rate": 189.0,
             "Crit_Damage": 189.0,
@@ -2216,38 +2515,1167 @@
             "HP_Flat": 0.0,
             "ER": 62.0,
             "Basic_Attack_Damage": 5.8,
-            "Heavy_Attack_Damage": 5.8,
-            "Skill_Damage": 11.6,
-            "Ult_Damage": 92.8
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 1.16,
+            "Ult_Damage": 0.0
           },
           "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
         },
         {
-          "variantName": "3-4链",
+          "variantName": "1链",
           "weights": {
-            "Basic_Attack_Damage": 4.64,
-            "Heavy_Attack_Damage": 4.64,
-            "Skill_Damage": 9.28,
-            "Ult_Damage": 97.44
+            "Basic_Attack_Damage": 5.22,
+            "Skill_Damage": 1.04
+          }
+        },
+        {
+          "variantName": "2链",
+          "weights": {
+            "Basic_Attack_Damage": 3.76,
+            "Skill_Damage": 0.75
+          }
+        },
+        {
+          "variantName": "3链",
+          "weights": {
+            "Basic_Attack_Damage": 3.0,
+            "Skill_Damage": 0.6
+          }
+        },
+        {
+          "variantName": "4链",
+          "weights": {
+            "Attack": 107.41,
+            "Attack_Flat": 55.56,
+            "Basic_Attack_Damage": 3.0,
+            "Skill_Damage": 0.6
           }
         },
         {
           "variantName": "5链",
           "weights": {
-            "Basic_Attack_Damage": 3.48,
-            "Heavy_Attack_Damage": 3.48,
-            "Skill_Damage": 6.96,
-            "Ult_Damage": 102.08
+            "Attack": 107.41,
+            "Attack_Flat": 55.56,
+            "Basic_Attack_Damage": 2.95,
+            "Skill_Damage": 0.59
           }
         },
         {
           "variantName": "6链",
           "weights": {
-            "Basic_Attack_Damage": 2.32,
-            "Heavy_Attack_Damage": 2.32,
-            "Skill_Damage": 5.8,
-            "Ult_Damage": 105.56
+            "Attack": 107.41,
+            "Attack_Flat": 55.56,
+            "Basic_Attack_Damage": 2.17,
+            "Skill_Damage": 0.43
           }
+        }
+      ]
+    },
+    {
+      "presetName": "绯雪",
+      "variants": [
+        {
+          "variantName": "0链",
+          "weights": {
+            "Crit_Rate": 189.0,
+            "Crit_Damage": 189.0,
+            "Attack": 116.0,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 60.0,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 2.32,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 8.12,
+            "Ult_Damage": 93.96
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "1链",
+          "weights": {
+            "Crit_Rate": 190.28,
+            "Crit_Damage": 190.28,
+            "Attack": 116.78,
+            "Attack_Flat": 60.41,
+            "Basic_Attack_Damage": 1.95,
+            "Skill_Damage": 6.84,
+            "Ult_Damage": 96.7
+          }
+        },
+        {
+          "variantName": "2链",
+          "weights": {
+            "Crit_Rate": 192.91,
+            "Crit_Damage": 192.91,
+            "Attack": 118.4,
+            "Attack_Flat": 61.24,
+            "Basic_Attack_Damage": 1.61,
+            "Skill_Damage": 5.65,
+            "Ult_Damage": 100.05
+          }
+        },
+        {
+          "variantName": "3链",
+          "weights": {
+            "Crit_Rate": 179.95,
+            "Crit_Damage": 179.95,
+            "Attack": 110.44,
+            "Attack_Flat": 57.13,
+            "Basic_Attack_Damage": 1.27,
+            "Skill_Damage": 4.43,
+            "Ult_Damage": 94.65
+          }
+        },
+        {
+          "variantName": "4链",
+          "weights": {
+            "Crit_Rate": 182.0,
+            "Crit_Damage": 182.0,
+            "Attack": 111.7,
+            "Attack_Flat": 57.78,
+            "Basic_Attack_Damage": 1.28,
+            "Skill_Damage": 4.48,
+            "Ult_Damage": 95.73
+          }
+        },
+        {
+          "variantName": "5链",
+          "weights": {
+            "Crit_Rate": 182.7,
+            "Crit_Damage": 182.7,
+            "Attack": 112.14,
+            "Attack_Flat": 58.0,
+            "Basic_Attack_Damage": 1.24,
+            "Skill_Damage": 7.82,
+            "Ult_Damage": 92.86
+          }
+        },
+        {
+          "variantName": "6链",
+          "weights": {
+            "Crit_Rate": 224.29,
+            "Crit_Damage": 136.76,
+            "Attack": 115.64,
+            "Attack_Flat": 59.82,
+            "Basic_Attack_Damage": 1.05,
+            "Skill_Damage": 6.62,
+            "Ult_Damage": 97.67
+          }
+        }
+      ]
+    },
+    {
+      "presetName": "达妮娅",
+      "variants": [
+        {
+          "variantName": "0链 · 聚爆模式",
+          "weights": {
+            "Crit_Rate": 189.0,
+            "Crit_Damage": 189.0,
+            "Attack": 116.0,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 60.0,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 124.0,
+            "Basic_Attack_Damage": 5.8,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 17.4,
+            "Ult_Damage": 87.0
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "1链 · 聚爆模式",
+          "weights": {
+            "Crit_Rate": 200.75,
+            "Crit_Damage": 172.07
+          }
+        },
+        {
+          "variantName": "2链 · 聚爆模式",
+          "weights": {
+            "Crit_Rate": 200.75,
+            "Crit_Damage": 172.07,
+            "Basic_Attack_Damage": 5.53,
+            "Skill_Damage": 21.92,
+            "Ult_Damage": 83.02
+          }
+        },
+        {
+          "variantName": "3链 · 聚爆模式",
+          "weights": {
+            "Crit_Rate": 200.75,
+            "Crit_Damage": 172.07,
+            "Basic_Attack_Damage": 1.65,
+            "Skill_Damage": 13.84,
+            "Ult_Damage": 96.39
+          }
+        },
+        {
+          "variantName": "4链 · 聚爆模式",
+          "weights": {
+            "Crit_Rate": 200.75,
+            "Crit_Damage": 172.07,
+            "Basic_Attack_Damage": 1.57,
+            "Skill_Damage": 13.22,
+            "Ult_Damage": 97.28
+          }
+        },
+        {
+          "variantName": "5链 · 聚爆模式",
+          "weights": {
+            "Crit_Rate": 200.75,
+            "Crit_Damage": 172.07,
+            "Basic_Attack_Damage": 1.47,
+            "Skill_Damage": 12.38,
+            "Ult_Damage": 98.47
+          }
+        },
+        {
+          "variantName": "6链 · 聚爆模式",
+          "weights": {
+            "Crit_Rate": 193.76,
+            "Crit_Damage": 166.08,
+            "Attack": 90.29,
+            "Attack_Flat": 46.7,
+            "Basic_Attack_Damage": 1.42,
+            "Skill_Damage": 11.94,
+            "Ult_Damage": 95.04
+          }
+        },
+        {
+          "variantName": "0链 · 集谐模式",
+          "weights": {}
+        },
+        {
+          "variantName": "1链 · 集谐模式",
+          "weights": {
+            "Crit_Rate": 200.75,
+            "Crit_Damage": 172.07
+          }
+        },
+        {
+          "variantName": "2链 · 集谐模式",
+          "weights": {
+            "Crit_Rate": 200.75,
+            "Crit_Damage": 172.07,
+            "Basic_Attack_Damage": 5.53,
+            "Skill_Damage": 21.92,
+            "Ult_Damage": 83.02
+          }
+        },
+        {
+          "variantName": "3链 · 集谐模式",
+          "weights": {
+            "Crit_Rate": 200.75,
+            "Crit_Damage": 172.07,
+            "Basic_Attack_Damage": 1.65,
+            "Skill_Damage": 13.84,
+            "Ult_Damage": 96.39
+          }
+        },
+        {
+          "variantName": "4链 · 集谐模式",
+          "weights": {
+            "Crit_Rate": 200.75,
+            "Crit_Damage": 172.07,
+            "Basic_Attack_Damage": 1.57,
+            "Skill_Damage": 13.22,
+            "Ult_Damage": 97.28
+          }
+        },
+        {
+          "variantName": "5链 · 集谐模式",
+          "weights": {
+            "Crit_Rate": 200.75,
+            "Crit_Damage": 172.07,
+            "Basic_Attack_Damage": 1.47,
+            "Skill_Damage": 12.38,
+            "Ult_Damage": 98.47
+          }
+        },
+        {
+          "variantName": "6链 · 集谐模式",
+          "weights": {
+            "Crit_Rate": 200.75,
+            "Crit_Damage": 172.07,
+            "Attack": 93.55,
+            "Attack_Flat": 48.39,
+            "Basic_Attack_Damage": 1.47,
+            "Skill_Damage": 12.38,
+            "Ult_Damage": 98.47
+          }
+        }
+      ]
+    },
+    {
+      "presetName": "露西",
+      "variants": [
+        {
+          "variantName": "0-6链",
+          "weights": {
+            "Crit_Rate": 189.0,
+            "Crit_Damage": 189.0,
+            "Attack": 116.0,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 60.0,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 95.12,
+            "Heavy_Attack_Damage": 2.32,
+            "Skill_Damage": 4.64,
+            "Ult_Damage": 8.12
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        }
+      ]
+    },
+    {
+      "presetName": "丽贝卡",
+      "variants": [
+        {
+          "variantName": "0-6链",
+          "weights": {
+            "Crit_Rate": 189.0,
+            "Crit_Damage": 189.0,
+            "Attack": 116.0,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 60.0,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 95.12,
+            "Heavy_Attack_Damage": 2.32,
+            "Skill_Damage": 4.64,
+            "Ult_Damage": 8.12
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        }
+      ]
+    },
+    {
+      "presetName": "洛瑟菈",
+      "variants": [
+        {
+          "variantName": "0-6链",
+          "weights": {
+            "Crit_Rate": 189.0,
+            "Crit_Damage": 189.0,
+            "Attack": 116.0,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 60.0,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 95.12,
+            "Heavy_Attack_Damage": 2.32,
+            "Skill_Damage": 4.64,
+            "Ult_Damage": 8.12
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        }
+      ]
+    },
+    {
+      "presetName": "雷主",
+      "variants": [
+        {
+          "variantName": "0-1链 · 速切模式",
+          "weights": {
+            "Crit_Rate": 181.54,
+            "Crit_Damage": 161.37,
+            "Attack": 108.75,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 56.25,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 21.75,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 72.5,
+            "Ult_Damage": 32.63
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "2链 · 速切模式",
+          "weights": {
+            "Crit_Rate": 176.04,
+            "Crit_Damage": 156.48,
+            "Attack": 105.45,
+            "Attack_Flat": 54.55,
+            "Basic_Attack_Damage": 21.09,
+            "Skill_Damage": 70.3,
+            "Ult_Damage": 31.64
+          }
+        },
+        {
+          "variantName": "3链 · 速切模式",
+          "weights": {
+            "Crit_Rate": 177.31,
+            "Crit_Damage": 157.61,
+            "Attack": 106.21,
+            "Attack_Flat": 54.94,
+            "Basic_Attack_Damage": 19.57,
+            "Skill_Damage": 75.68,
+            "Ult_Damage": 29.36
+          }
+        },
+        {
+          "variantName": "4-6链 · 速切模式",
+          "weights": {
+            "Crit_Rate": 177.95,
+            "Crit_Damage": 158.17,
+            "Attack": 106.59,
+            "Attack_Flat": 55.14,
+            "Basic_Attack_Damage": 18.81,
+            "Skill_Damage": 72.74,
+            "Ult_Damage": 33.86
+          }
+        },
+        {
+          "variantName": "0-1链 · 临界共鸣模式",
+          "weights": {
+            "Crit_Rate": 186.23,
+            "Crit_Damage": 165.54,
+            "Attack": 111.56,
+            "Attack_Flat": 57.7,
+            "Basic_Attack_Damage": 6.67,
+            "Skill_Damage": 101.11,
+            "Ult_Damage": 20.0
+          }
+        },
+        {
+          "variantName": "2链 · 临界共鸣模式",
+          "weights": {
+            "Crit_Rate": 182.73,
+            "Crit_Damage": 162.42,
+            "Attack": 109.46,
+            "Attack_Flat": 56.62,
+            "Basic_Attack_Damage": 6.54,
+            "Skill_Damage": 99.21,
+            "Ult_Damage": 19.62
+          }
+        },
+        {
+          "variantName": "3链 · 临界共鸣模式",
+          "weights": {
+            "Crit_Rate": 183.23,
+            "Crit_Damage": 162.87,
+            "Attack": 109.76,
+            "Attack_Flat": 56.77,
+            "Basic_Attack_Damage": 6.24,
+            "Skill_Damage": 101.31,
+            "Ult_Damage": 18.72
+          }
+        },
+        {
+          "variantName": "4链 · 临界共鸣模式",
+          "weights": {
+            "Crit_Rate": 183.49,
+            "Crit_Damage": 163.1,
+            "Attack": 109.92,
+            "Attack_Flat": 56.85,
+            "Basic_Attack_Damage": 6.08,
+            "Skill_Damage": 98.76,
+            "Ult_Damage": 21.9
+          }
+        },
+        {
+          "variantName": "5链 · 临界共鸣模式",
+          "weights": {
+            "Crit_Rate": 187.4,
+            "Crit_Damage": 158.7,
+            "Attack": 110.08,
+            "Attack_Flat": 56.94,
+            "Basic_Attack_Damage": 5.92,
+            "Skill_Damage": 99.65,
+            "Ult_Damage": 21.31
+          }
+        },
+        {
+          "variantName": "6链 · 临界共鸣模式",
+          "weights": {
+            "Crit_Rate": 188.57,
+            "Crit_Damage": 158.93,
+            "Attack": 110.56,
+            "Attack_Flat": 57.18,
+            "Basic_Attack_Damage": 5.44,
+            "Skill_Damage": 102.25,
+            "Ult_Damage": 19.59
+          }
+        }
+      ]
+    },
+    {
+      "presetName": "秧秧·玄翎",
+      "variants": [
+        {
+          "variantName": "0链 · 循环模式",
+          "weights": {
+            "Crit_Rate": 239.38,
+            "Crit_Damage": 108.2,
+            "Attack": 114.51,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 59.23,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 7.44,
+            "Heavy_Attack_Damage": 112.45,
+            "Skill_Damage": 1.86,
+            "Ult_Damage": 16.74
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "1链 · 循环模式",
+          "weights": {
+            "Crit_Rate": 236.3,
+            "Crit_Damage": 112.51,
+            "Attack": 114.61,
+            "Attack_Flat": 59.28,
+            "Basic_Attack_Damage": 6.94,
+            "Heavy_Attack_Damage": 114.64,
+            "Skill_Damage": 1.73,
+            "Ult_Damage": 15.61
+          }
+        },
+        {
+          "variantName": "2链 · 循环模式",
+          "weights": {
+            "Crit_Rate": 246.32,
+            "Crit_Damage": 101.68,
+            "Attack": 115.17,
+            "Attack_Flat": 59.57,
+            "Basic_Attack_Damage": 4.17,
+            "Heavy_Attack_Damage": 126.75,
+            "Skill_Damage": 1.04,
+            "Ult_Damage": 9.39
+          }
+        },
+        {
+          "variantName": "3链 · 循环模式",
+          "weights": {
+            "Crit_Rate": 240.19,
+            "Crit_Damage": 108.5,
+            "Attack": 114.88,
+            "Attack_Flat": 59.42,
+            "Basic_Attack_Damage": 3.74,
+            "Heavy_Attack_Damage": 113.49,
+            "Skill_Damage": 0.93,
+            "Ult_Damage": 23.11
+          }
+        },
+        {
+          "variantName": "4-5链 · 循环模式",
+          "weights": {
+            "Crit_Rate": 240.36,
+            "Crit_Damage": 108.58,
+            "Attack": 106.45,
+            "Attack_Flat": 55.06,
+            "Basic_Attack_Damage": 3.74,
+            "Heavy_Attack_Damage": 113.57,
+            "Skill_Damage": 0.93,
+            "Ult_Damage": 23.13
+          }
+        },
+        {
+          "variantName": "6链 · 循环模式",
+          "weights": {
+            "Crit_Rate": 219.59,
+            "Crit_Damage": 113.11,
+            "Attack": 106.75,
+            "Attack_Flat": 55.22,
+            "Basic_Attack_Damage": 2.56,
+            "Heavy_Attack_Damage": 123.46,
+            "Skill_Damage": 0.64,
+            "Ult_Damage": 15.85
+          }
+        }
+      ]
+    },
+    {
+      "presetName": "穗穗",
+      "variants": [
+        {
+          "variantName": "0-6链 · 辅助模式",
+          "weights": {
+            "Crit_Rate": 0.0,
+            "Crit_Damage": 0.0,
+            "Attack": 0.0,
+            "Defence": 0.0,
+            "HP": 116.0,
+            "Attack_Flat": 0.0,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 34.71,
+            "ER": 148.8,
+            "Basic_Attack_Damage": 0.0,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 0.0,
+            "Ult_Damage": 0.0
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "0-1链 · 输出模式",
+          "weights": {
+            "Crit_Rate": 42.13,
+            "Crit_Damage": 179.06,
+            "Attack": 25.24,
+            "HP": 104.58,
+            "Attack_Flat": 13.05,
+            "HP_Flat": 31.29,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 17.35,
+            "Heavy_Attack_Damage": 3.94,
+            "Skill_Damage": 6.31
+          }
+        },
+        {
+          "variantName": "2链 · 输出模式",
+          "weights": {
+            "Crit_Rate": 45.99,
+            "Crit_Damage": 152.97,
+            "Attack": 25.1,
+            "HP": 105.3,
+            "Attack_Flat": 12.98,
+            "HP_Flat": 31.51,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 17.25,
+            "Heavy_Attack_Damage": 3.92,
+            "Skill_Damage": 6.27
+          }
+        },
+        {
+          "variantName": "3-4链 · 输出模式",
+          "weights": {
+            "Crit_Rate": 40.4,
+            "Crit_Damage": 153.14,
+            "Attack": 22.05,
+            "HP": 108.83,
+            "Attack_Flat": 11.4,
+            "HP_Flat": 32.56,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 12.97,
+            "Heavy_Attack_Damage": 4.05,
+            "Skill_Damage": 6.48
+          }
+        },
+        {
+          "variantName": "5链 · 输出模式",
+          "weights": {
+            "Crit_Rate": 53.72,
+            "Crit_Damage": 152.73,
+            "Attack": 29.31,
+            "HP": 100.41,
+            "Attack_Flat": 15.16,
+            "HP_Flat": 30.04,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 19.44,
+            "Heavy_Attack_Damage": 7.48,
+            "Skill_Damage": 5.98
+          }
+        },
+        {
+          "variantName": "6链 · 输出模式",
+          "weights": {
+            "Crit_Rate": 25.6,
+            "Crit_Damage": 72.78,
+            "Attack": 13.97,
+            "HP": 120.33,
+            "Attack_Flat": 7.23,
+            "HP_Flat": 36.0,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 9.26,
+            "Heavy_Attack_Damage": 3.56,
+            "Skill_Damage": 2.85
+          }
+        }
+      ]
+    },
+    {
+      "presetName": "清宵",
+      "variants": [
+        {
+          "variantName": "0链 · 持续模式",
+          "weights": {
+            "Crit_Rate": 193.65,
+            "Crit_Damage": 172.13,
+            "Attack": 116.0,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 60.0,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 43.19,
+            "Heavy_Attack_Damage": 65.92,
+            "Skill_Damage": 4.84,
+            "Ult_Damage": 28.02
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "1链 · 持续模式",
+          "weights": {
+            "Crit_Rate": 173.2,
+            "Crit_Damage": 184.75
+          }
+        },
+        {
+          "variantName": "2链 · 持续模式",
+          "weights": {
+            "Crit_Rate": 173.2,
+            "Crit_Damage": 184.75,
+            "Basic_Attack_Damage": 41.24,
+            "Heavy_Attack_Damage": 70.46,
+            "Skill_Damage": 3.74,
+            "Ult_Damage": 27.22
+          }
+        },
+        {
+          "variantName": "3链 · 持续模式",
+          "weights": {
+            "Crit_Rate": 178.24,
+            "Crit_Damage": 175.47,
+            "Basic_Attack_Damage": 31.37,
+            "Heavy_Attack_Damage": 81.01,
+            "Skill_Damage": 2.85,
+            "Ult_Damage": 28.0
+          }
+        },
+        {
+          "variantName": "4链 · 持续模式",
+          "weights": {
+            "Crit_Rate": 178.24,
+            "Crit_Damage": 175.47,
+            "Attack": 107.41,
+            "Attack_Flat": 55.56,
+            "Basic_Attack_Damage": 31.37,
+            "Heavy_Attack_Damage": 81.01,
+            "Skill_Damage": 2.85,
+            "Ult_Damage": 28.0
+          }
+        },
+        {
+          "variantName": "5链 · 持续模式",
+          "weights": {
+            "Crit_Rate": 178.14,
+            "Crit_Damage": 175.64,
+            "Attack": 107.41,
+            "Attack_Flat": 55.56,
+            "Basic_Attack_Damage": 30.77,
+            "Heavy_Attack_Damage": 79.45,
+            "Skill_Damage": 5.59,
+            "Ult_Damage": 27.46
+          }
+        },
+        {
+          "variantName": "6链 · 持续模式",
+          "weights": {
+            "Crit_Rate": 177.98,
+            "Crit_Damage": 175.95,
+            "Attack": 107.41,
+            "Attack_Flat": 55.56,
+            "Basic_Attack_Damage": 36.63,
+            "Heavy_Attack_Damage": 76.78,
+            "Skill_Damage": 3.86,
+            "Ult_Damage": 26.53
+          }
+        },
+        {
+          "variantName": "0链 · 起手模式",
+          "weights": {}
+        },
+        {
+          "variantName": "1链 · 起手模式",
+          "weights": {
+            "Crit_Rate": 173.2,
+            "Crit_Damage": 184.75,
+            "Basic_Attack_Damage": 48.56,
+            "Heavy_Attack_Damage": 62.45,
+            "Skill_Damage": 4.59,
+            "Ult_Damage": 26.54
+          }
+        },
+        {
+          "variantName": "2链 · 起手模式",
+          "weights": {
+            "Crit_Rate": 173.2,
+            "Crit_Damage": 184.75,
+            "Basic_Attack_Damage": 45.52,
+            "Heavy_Attack_Damage": 67.55,
+            "Skill_Damage": 3.59,
+            "Ult_Damage": 26.1
+          }
+        },
+        {
+          "variantName": "3链 · 起手模式",
+          "weights": {
+            "Crit_Rate": 178.08,
+            "Crit_Damage": 175.76,
+            "Basic_Attack_Damage": 34.97,
+            "Heavy_Attack_Damage": 78.44,
+            "Skill_Damage": 2.76,
+            "Ult_Damage": 27.11
+          }
+        },
+        {
+          "variantName": "4链 · 起手模式",
+          "weights": {
+            "Crit_Rate": 178.08,
+            "Crit_Damage": 175.76,
+            "Attack": 107.41,
+            "Attack_Flat": 55.56,
+            "Basic_Attack_Damage": 34.97,
+            "Heavy_Attack_Damage": 78.44,
+            "Skill_Damage": 2.76,
+            "Ult_Damage": 27.11
+          }
+        },
+        {
+          "variantName": "5链 · 起手模式",
+          "weights": {
+            "Crit_Rate": 177.99,
+            "Crit_Damage": 175.93,
+            "Attack": 107.41,
+            "Attack_Flat": 55.56,
+            "Basic_Attack_Damage": 34.32,
+            "Heavy_Attack_Damage": 76.98,
+            "Skill_Damage": 5.41,
+            "Ult_Damage": 26.6
+          }
+        },
+        {
+          "variantName": "6链 · 起手模式",
+          "weights": {
+            "Crit_Rate": 177.98,
+            "Crit_Damage": 175.95,
+            "Attack": 107.41,
+            "Attack_Flat": 55.56,
+            "Basic_Attack_Damage": 36.63,
+            "Heavy_Attack_Damage": 76.78,
+            "Skill_Damage": 3.86,
+            "Ult_Damage": 26.53
+          }
+        }
+      ]
+    },
+    {
+      "presetName": "景燃",
+      "variants": [
+        {
+          "variantName": "0链 · 持续模式",
+          "weights": {
+            "Crit_Rate": 193.65,
+            "Crit_Damage": 172.13,
+            "Attack": 73.6,
+            "Defence": 0.0,
+            "HP": 170.7,
+            "Attack_Flat": 38.07,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 55.51,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 2.17,
+            "Heavy_Attack_Damage": 97.05,
+            "Skill_Damage": 8.69,
+            "Ult_Damage": 0.0
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "1链 · 持续模式",
+          "weights": {
+            "HP": 164.58,
+            "HP_Flat": 53.52,
+            "Basic_Attack_Damage": 2.05,
+            "Heavy_Attack_Damage": 91.36,
+            "Skill_Damage": 14.73
+          }
+        },
+        {
+          "variantName": "2链 · 持续模式",
+          "weights": {
+            "HP": 179.77,
+            "HP_Flat": 58.46,
+            "Basic_Attack_Damage": 1.62,
+            "Heavy_Attack_Damage": 95.58,
+            "Skill_Damage": 11.65
+          }
+        },
+        {
+          "variantName": "3链 · 持续模式",
+          "weights": {
+            "Attack": 64.44,
+            "HP": 188.57,
+            "Attack_Flat": 33.33,
+            "HP_Flat": 61.32,
+            "Basic_Attack_Damage": 1.62,
+            "Heavy_Attack_Damage": 95.58,
+            "Skill_Damage": 11.65
+          }
+        },
+        {
+          "variantName": "4-5链 · 持续模式",
+          "weights": {
+            "Attack": 64.44,
+            "HP": 186.73,
+            "Attack_Flat": 33.33,
+            "HP_Flat": 60.73,
+            "Basic_Attack_Damage": 1.5,
+            "Heavy_Attack_Damage": 88.75,
+            "Skill_Damage": 10.82
+          }
+        },
+        {
+          "variantName": "6链 · 持续模式",
+          "weights": {
+            "Attack": 64.44,
+            "HP": 166.73,
+            "Attack_Flat": 33.33,
+            "HP_Flat": 54.22,
+            "Basic_Attack_Damage": 0.88,
+            "Heavy_Attack_Damage": 94.85,
+            "Skill_Damage": 6.36
+          }
+        },
+        {
+          "variantName": "0链 · 起手模式",
+          "weights": {}
+        },
+        {
+          "variantName": "1链 · 起手模式",
+          "weights": {
+            "HP": 164.58,
+            "HP_Flat": 53.52,
+            "Basic_Attack_Damage": 2.05,
+            "Heavy_Attack_Damage": 91.36,
+            "Skill_Damage": 14.73
+          }
+        },
+        {
+          "variantName": "2链 · 起手模式",
+          "weights": {
+            "HP": 192.98,
+            "HP_Flat": 62.76,
+            "Basic_Attack_Damage": 1.25,
+            "Heavy_Attack_Damage": 99.25,
+            "Skill_Damage": 8.97
+          }
+        },
+        {
+          "variantName": "3链 · 起手模式",
+          "weights": {
+            "Attack": 64.44,
+            "HP": 201.78,
+            "Attack_Flat": 33.33,
+            "HP_Flat": 65.62,
+            "Basic_Attack_Damage": 1.25,
+            "Heavy_Attack_Damage": 99.25,
+            "Skill_Damage": 8.97
+          }
+        },
+        {
+          "variantName": "4-5链 · 起手模式",
+          "weights": {
+            "Attack": 64.44,
+            "HP": 199.94,
+            "Attack_Flat": 33.33,
+            "HP_Flat": 65.02,
+            "Basic_Attack_Damage": 1.16,
+            "Heavy_Attack_Damage": 92.16,
+            "Skill_Damage": 8.33
+          }
+        },
+        {
+          "variantName": "6链 · 起手模式",
+          "weights": {
+            "Attack": 64.44,
+            "HP": 182.02,
+            "Attack_Flat": 33.33,
+            "HP_Flat": 59.19,
+            "Basic_Attack_Damage": 0.71,
+            "Heavy_Attack_Damage": 96.57,
+            "Skill_Damage": 5.11
+          }
+        }
+      ]
+    },
+    {
+      "presetName": "心",
+      "variants": [
+        {
+          "variantName": "0链 · 同奏模式",
+          "weights": {
+            "Crit_Rate": 193.65,
+            "Crit_Damage": 172.13,
+            "Attack": 96.67,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 50.0,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 17.4,
+            "Heavy_Attack_Damage": 0.0,
+            "Skill_Damage": 100.05,
+            "Ult_Damage": 8.7
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
+        },
+        {
+          "variantName": "1链 · 同奏模式",
+          "weights": {
+            "Basic_Attack_Damage": 16.44,
+            "Skill_Damage": 94.52,
+            "Ult_Damage": 8.22
+          }
+        },
+        {
+          "variantName": "2链 · 同奏模式",
+          "weights": {
+            "Basic_Attack_Damage": 13.78,
+            "Skill_Damage": 102.68,
+            "Ult_Damage": 6.89
+          }
+        },
+        {
+          "variantName": "3链 · 同奏模式",
+          "weights": {
+            "Crit_Rate": 201.62,
+            "Crit_Damage": 161.93,
+            "Basic_Attack_Damage": 11.39,
+            "Skill_Damage": 110.03,
+            "Ult_Damage": 5.69
+          }
+        },
+        {
+          "variantName": "4-5链 · 同奏模式",
+          "weights": {
+            "Crit_Rate": 201.62,
+            "Crit_Damage": 161.93,
+            "Basic_Attack_Damage": 10.35,
+            "Skill_Damage": 100.03,
+            "Ult_Damage": 5.18
+          }
+        },
+        {
+          "variantName": "6链 · 同奏模式",
+          "weights": {
+            "Crit_Rate": 204.16,
+            "Crit_Damage": 158.67,
+            "Basic_Attack_Damage": 7.13,
+            "Skill_Damage": 109.14,
+            "Ult_Damage": 3.57
+          }
+        },
+        {
+          "variantName": "0链 · 电磁模式",
+          "weights": {
+            "Crit_Rate": 166.94,
+            "Crit_Damage": 148.39,
+            "Attack": 100.0,
+            "Attack_Flat": 51.72,
+            "Basic_Attack_Damage": 17.0,
+            "Skill_Damage": 69.0,
+            "Ult_Damage": 6.0
+          }
+        },
+        {
+          "variantName": "1链 · 电磁模式",
+          "weights": {
+            "Crit_Rate": 162.46,
+            "Crit_Damage": 144.41,
+            "Attack": 97.32,
+            "Attack_Flat": 50.34,
+            "Basic_Attack_Damage": 16.54,
+            "Skill_Damage": 67.15,
+            "Ult_Damage": 5.84
+          }
+        },
+        {
+          "variantName": "2链 · 电磁模式",
+          "weights": {
+            "Crit_Rate": 167.01,
+            "Crit_Damage": 148.46,
+            "Attack": 100.05,
+            "Attack_Flat": 51.75,
+            "Basic_Attack_Damage": 14.13,
+            "Skill_Damage": 74.29,
+            "Ult_Damage": 4.99
+          }
+        },
+        {
+          "variantName": "3链 · 电磁模式",
+          "weights": {
+            "Crit_Rate": 156.33,
+            "Crit_Damage": 138.96,
+            "Attack": 93.65,
+            "Attack_Flat": 48.44,
+            "Basic_Attack_Damage": 11.54,
+            "Skill_Damage": 72.6,
+            "Ult_Damage": 4.07
+          }
+        },
+        {
+          "variantName": "4-5链 · 电磁模式",
+          "weights": {
+            "Crit_Rate": 158.6,
+            "Crit_Damage": 140.98,
+            "Attack": 95.0,
+            "Attack_Flat": 49.14,
+            "Basic_Attack_Damage": 10.84,
+            "Skill_Damage": 68.19,
+            "Ult_Damage": 3.83
+          }
+        },
+        {
+          "variantName": "6链 · 电磁模式",
+          "weights": {
+            "Crit_Rate": 147.25,
+            "Crit_Damage": 130.89,
+            "Attack": 88.2,
+            "Attack_Flat": 45.62,
+            "Basic_Attack_Damage": 7.04,
+            "Skill_Damage": 68.84,
+            "Ult_Damage": 2.48
+          }
+        }
+      ]
+    },
+    {
+      "presetName": "锁暝",
+      "variants": [
+        {
+          "variantName": "0-6链",
+          "weights": {
+            "Crit_Rate": 189.0,
+            "Crit_Damage": 189.0,
+            "Attack": 116.0,
+            "Defence": 0.0,
+            "HP": 0.0,
+            "Attack_Flat": 60.0,
+            "Defence_Flat": 0.0,
+            "HP_Flat": 0.0,
+            "ER": 62.0,
+            "Basic_Attack_Damage": 95.12,
+            "Heavy_Attack_Damage": 2.32,
+            "Skill_Damage": 4.64,
+            "Ult_Damage": 8.12
+          },
+          "presetIntro": "该权重由脚本自动转换，请注意鉴别。"
         }
       ]
     }

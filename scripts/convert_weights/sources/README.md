@@ -33,3 +33,37 @@ The application keeps `qq_bot` internally for saved-preset compatibility and dis
 substats to 50 using solver quantization. Upstream uses its own per-cost `score_max`
 and truncates each contribution, so exact displayed scores can differ. The upstream
 maximum remains available in each generated variant as `sourceScoreMax`.
+
+# Wuwa Echo Tool weight snapshot
+
+`wuwa_echo_tool.json` records the runtime scoring coefficients from
+[WuwaEchoTool at 8f292f5](https://github.com/2-07665/WuwaEchoTool/blob/8f292f50f0df479689a57221dcc25c6b840aefcb/js/base.js),
+refreshed on 2026-10-19. Provenance includes the commit, source-file SHA-256 and
+model defaults. Mode labels come from that checkout's `js/i18n-dictionaries.js`.
+The snapshot contains 64 source roles; four identical Rover pairs are merged,
+resulting in 60 character groups and 284 sequence/mode variants.
+
+Refresh and verify from the repository root:
+
+```sh
+node scripts/convert_weights/extract_wuwa_echo_tool.cjs /path/to/WuwaEchoTool
+python3 scripts/convert_weights/generate_wuwa_echo_tool_presets.py
+python3 scripts/convert_weights/test_wuwa_echo_tool_presets.py
+```
+
+Review the upstream scoring definitions before extraction. The extractor evaluates
+only selected scoring definitions, without page/UI code. Node's VM is not a
+security boundary for untrusted code. Subsequent generation uses the checked-in
+JSON offline and needs only Python.
+
+Runtime coefficient lookup is required: newer characters use computed models,
+mode-specific profiles and explicit damage-type coefficients. Reading only the
+literal role arrays or damage shares would miss those weights. Each per-unit
+coefficient is multiplied by its maximum substat roll, display-unit scale and 10,
+then rounded half up to two decimals. Consecutive equal sequence profiles merge
+within a mode; sparse variants inherit from the group's first variant.
+
+The existing linear Wuwa Echo Tool scorer is preserved. This import does not add
+upstream full-loadout normalization, total Energy Regen thresholds or live HP
+inputs. Models are sampled with upstream defaults: zero extra Energy Regen and
+40,000 reference HP.

@@ -26,15 +26,24 @@ Some older Wiki prose still describes pre-3.1 mechanics. Only terminology was ad
 
 ## Preset coverage
 
-XutheringWavesUID weights were refreshed from the source snapshot below; the other bundled preset files are unchanged. The preset picker shows character groups for the current scoring system, with a separate variant picker. Characters are sorted by first release date, newest first; see [release sources](CHARACTER_RELEASES.md). Global search above it lists matching presets from every source; clicking a result also selects its scoring system:
+XutheringWavesUID and Wuwa Echo Tool weights were refreshed from the source snapshots documented below. The preset picker shows character groups for the current scoring system, with a separate variant picker. Characters are sorted by first release date, newest first; see [release sources](CHARACTER_RELEASES.md). Global search above it lists matching presets from every source; clicking a result also selects its scoring system:
 
 - Linear: 1 variant.
-- Wuwa Echo Tool: 173 variants across 46 character groups.
+- Wuwa Echo Tool: 284 variants across 60 character groups.
 - MC Boost Assistant: 15 variants.
 - XutheringWavesUID: 278 variants across 61 character groups (64 distinct templates; 4 duplicate Rover templates merged).
 - Fixed: no bundled named variants (default weights remain available).
 
-Total: **467 built-in variants**. Search accepts either Chinese or English character names. Custom presets are also searchable and stay separate from the built-ins.
+Total: **578 built-in variants**. Search accepts either Chinese or English character names. Custom presets are also searchable and stay separate from the built-ins.
+
+Wuwa Echo Tool mode labels follow `register.mode.*` in the upstream
+[8f292f5 dictionary](https://github.com/2-07665/WuwaEchoTool/blob/8f292f50f0df479689a57221dcc25c6b840aefcb/js/i18n-dictionaries.js).
+Game mechanic names use Tune Rupture / Fusion Burst from
+[Aemeath's combat description](https://wutheringwaves.fandom.com/wiki/Aemeath/Combat)
+and Tune Strain from [Denia's combat description](https://wutheringwaves.fandom.com/wiki/Denia/Combat).
+Sequence and mode labels translate together, for example `0链 · 震谐模式` →
+`Sequence 0 · Tune Rupture`. See the [snapshot and conversion notes](../../scripts/convert_weights/sources/README.md)
+for model defaults and reproducible updates.
 
 
 ### XutheringWavesUID snapshot (2026-10-19)

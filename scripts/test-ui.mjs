@@ -109,7 +109,7 @@ try {
   assert.deepEqual(await page.locator('[data-weight]').evaluateAll(es => es.map(e => e.value)),valuesBefore);
   assert.equal(await page.locator('[data-kind=echo][data-slot="0"][data-field=type]').getAttribute('aria-label'),'Current Echo Substat 1 type');
   await page.locator('#preset-search').fill('');
-  assert.equal(await page.locator('#preset option[value^="builtin:"]').count(),46);
+  assert.equal(await page.locator('#preset option[value^="builtin:"]').count(),60);
   assert.equal(await page.locator('#compute-hint').innerText(),'Confirm scoring and target, then solve the policy');
   await page.locator('#preset-search').fill('今汐');
   assert.ok(await page.locator('#preset-results button').count() > 1);
@@ -131,10 +131,10 @@ try {
   await page.locator('#preset-search').fill('phantom');
   assert.equal(await page.locator('#preset-results button').count(),0, 'Variant names must not match preset searches');
   await page.locator('#preset-search').fill('Lucilla');
-  assert.equal(await page.locator('#preset-results button').count(),1);
-  assert.equal(await page.locator('#preset-results button span').innerText(),'Lucilla');
+  assert.equal(await page.locator('#preset-results button').count(),2);
+  assert.deepEqual(await page.locator('#preset-results button span').allTextContents(),['Lucilla','Lucilla']);
   const phantom = 'builtin:qq_bot:xwuid:1109:phantom:4:暴击伤害';
-  await page.locator('#preset-results button').click();
+  await page.locator('#preset-results button[data-preset-id^="builtin:qq_bot:"]').click();
   await page.locator('#preset-variant').selectOption(phantom);
   assert.equal(await page.locator('#scoring').inputValue(),'qq_bot');
   assert.equal(await page.locator('#scoring option:checked').innerText(),'XutheringWavesUID');

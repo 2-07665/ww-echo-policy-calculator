@@ -162,10 +162,10 @@ export const characterNames = {
   '奥古斯塔':'Augusta','尤诺':'Iuno','嘉贝莉娜':'Galbrena','仇远':'Qiuyuan','千咲':'Chisa','卜灵':'Buling','琳奈':'Lynae','莫宁':'Mornye','爱弥斯':'Aemeath',
 };
 export function characterName(name) { return language === 'en' ? (characterNames[name] ?? name) : name; }
-const variantTerms = {'主/副c':'Main/Sub DPS','小维版':'XWUID','霜渐':'Glacio Chafe','羽落':'Song of Feathered Trace','声骸':'Echo','属性伤害加成':'Elemental DMG Bonus','防御':'DEF','共鸣效率':'Energy Regen','暴击伤害':'Crit. DMG','暴击':'Crit. Rate','治疗效果加成':'Healing Bonus','攻击':'ATK','生命':'HP','冷凝':'Glacio','热熔':'Fusion','导电':'Electro','气动':'Aero','湮灭':'Havoc','衍射':'Spectro','默认':'Default'};
+const variantTerms = {"震谐模式":"Tune Rupture","聚爆模式":"Fusion Burst","集谐模式":"Tune Strain","速切模式":"Quick swap","临界共鸣模式":"Critical Resonance","循环模式":"Rotation","辅助模式":"Support","输出模式":"Damage","持续模式":"Sustained","起手模式":"Opening","同奏模式":"Unison","电磁模式":"Electro mode",'主/副c':'Main/Sub DPS','小维版':'XWUID','霜渐':'Glacio Chafe','羽落':'Song of Feathered Trace','声骸':'Echo','属性伤害加成':'Elemental DMG Bonus','防御':'DEF','共鸣效率':'Energy Regen','暴击伤害':'Crit. DMG','暴击':'Crit. Rate','治疗效果加成':'Healing Bonus','攻击':'ATK','生命':'HP','冷凝':'Glacio','热熔':'Fusion','导电':'Electro','气动':'Aero','湮灭':'Havoc','衍射':'Spectro','默认':'Default'};
 export function variantName(name) {
   if (language !== 'en') return name;
-  if (/^\d(?:-\d)?链$/.test(name)) return `Sequence ${name.replace('链','')}`;
+  name = name.replace(/(\d(?:-\d)?)链/g, 'Sequence $1');
   return Object.entries(variantTerms).reduce((text,[zh,en]) => text.replaceAll(zh,en),name).replace(/\b(\d)C /g,'$1-Cost ');
 }
 export function errorText(error) {

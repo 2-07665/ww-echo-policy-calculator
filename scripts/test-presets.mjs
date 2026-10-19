@@ -6,8 +6,8 @@ for (const [scoring,file] of Object.entries({linear:'linear_default',fixed:'fixe
   sources[scoring] = JSON.parse(await readFile(new URL(`../crates/echo_app/presets/${file}.json`,import.meta.url),'utf8'));
 }
 const presets = buildPresetList(sources);
-assert.equal(presets.length,467);
-assert.equal(new Set(presets.map(p => p.id)).size,467);
+assert.equal(presets.length,578);
+assert.equal(new Set(presets.map(p => p.id)).size,578);
 for (const scoring of Object.keys(sources)) {
   const items = presets.filter(p => p.scoring === scoring);
   assert.equal(new Set(items.map(p => p.groupId)).size,sources[scoring].presets.length);
