@@ -1,0 +1,20 @@
+[Unit]
+Description=Echo Studio solver web service
+After=network.target
+
+[Service]
+Type=simple
+DynamicUser=true
+ExecStart=/opt/echo-studio/echo_server
+Environment=ECHO_BIND=127.0.0.1:3000
+Environment=ECHO_MAX_STATES=750000
+Environment=ECHO_MAX_TRANSITIONS=24000000
+Restart=on-failure
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+MemoryMax=2G
+
+[Install]
+WantedBy=multi-user.target

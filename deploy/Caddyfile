@@ -1,0 +1,5 @@
+# Replace with your domain; point its DNS A/AAAA records to the VPS.
+echo.example.com {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:3000
+}

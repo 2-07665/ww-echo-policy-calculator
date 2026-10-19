@@ -1,0 +1,15 @@
+services:
+  echo:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      ECHO_BIND: "0.0.0.0:3000"
+      ECHO_MAX_STATES: "750000"
+      ECHO_MAX_TRANSITIONS: "24000000"
+    mem_limit: 2g
+    cpus: 2
+    security_opt:
+      - no-new-privileges:true
+    read_only: true

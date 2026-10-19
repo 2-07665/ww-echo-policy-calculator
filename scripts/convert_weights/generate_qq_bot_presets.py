@@ -4,29 +4,19 @@ from __future__ import annotations
 
 import json
 import sys
-from decimal import Decimal, ROUND_DOWN
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
-DEFAULT_INPUT_MAP_ROOT = ROOT_DIR / "tmp/WutheringWavesUID/WutheringWavesUID/utils/map"
-DEFAULT_OUTPUT_JSON = ROOT_DIR / "apps/desktop/src-tauri/default-presets/qq_bot.json"
-AUTO_CONVERTED_HINT = "该权重由脚本自动转换，请注意鉴别。"
+DEFAULT_INPUT_SNAPSHOT = Path(__file__).parent / "sources/xwuid.json"
+DEFAULT_OUTPUT_JSON = ROOT_DIR / "crates/echo_app/presets/qq_bot.json"
 
 ROVER_NAME_ALIASES = {
     "漂泊者·湮灭": "暗主",
     "漂泊者·衍射": "光主",
     "漂泊者·气动": "风主",
-}
-
-ATTRIBUTE_ID_TO_NAME = {
-    1: "冷凝",
-    2: "热熔",
-    3: "导电",
-    4: "气动",
-    5: "衍射",
-    6: "湮灭",
 }
 
 BUFF_NAMES = [
@@ -85,33 +75,12 @@ def decimal_from_any(value: Any) -> Decimal:
     return Decimal("0")
 
 
-def floor_decimal(value: Decimal, digits: int = 3) -> Decimal:
-    quant = Decimal("1") if digits <= 0 else Decimal(f"1e-{digits}")
-    return value.quantize(quant, rounding=ROUND_DOWN)
-
-
 def to_json_number(value: Decimal) -> float:
     return float(format(value.normalize(), "f"))
 
 
 def normalize_preset_name(name: str) -> str:
     return ROVER_NAME_ALIASES.get(name, name)
-
-
-def build_attribute_name_by_char_id(map_root: Path) -> dict[int, str]:
-    out: dict[int, str] = {}
-    detail_char_dir = map_root / "detail_json" / "char"
-    if not detail_char_dir.is_dir():
-        return out
-    for item in detail_char_dir.glob("*.json"):
-        try:
-            char_id = int(item.stem)
-            data = load_json(item)
-            attribute_id = int(data.get("attributeId", 0))
-            out[char_id] = ATTRIBUTE_ID_TO_NAME.get(attribute_id, "")
-        except Exception:
-            continue
-    return out
 
 
 def main_label(main_name: str, attribute_name: str) -> str:
@@ -181,12 +150,13 @@ def build_cost_variants(
         if first_main not in MAIN_VALUE_TABLE:
             continue
         first_value = decimal_from_any(MAIN_VALUE_TABLE[first_main][value_index])
-        total_score = floor_decimal(first_weight * first_value + fixed_score, digits=3)
+        total_score = first_weight * first_value + fixed_score
         candidates.append(
             {
                 "order": index,
                 "score": total_score,
                 "label": main_label(first_main, attribute_name),
+                "main": first_main,
             }
         )
 
@@ -197,15 +167,18 @@ def build_cost_variants(
     merged: list[dict[str, Any]] = []
     current_score = candidates[0]["score"]
     current_labels: list[str] = [candidates[0]["label"]]
+    current_mains = [candidates[0]["main"]]
 
     for item in candidates[1:]:
         if item["score"] == current_score:
             current_labels.append(item["label"])
+            current_mains.append(item["main"])
             continue
-        merged.append({"score": current_score, "labels": current_labels})
+        merged.append({"score": current_score, "labels": current_labels, "mains": current_mains})
         current_score = item["score"]
         current_labels = [item["label"]]
-    merged.append({"score": current_score, "labels": current_labels})
+        current_mains = [item["main"]]
+    merged.append({"score": current_score, "labels": current_labels, "mains": current_mains})
 
     variants: list[dict[str, Any]] = []
     for item in merged:
@@ -221,6 +194,8 @@ def build_cost_variants(
             {
                 "variantName": variant_name,
                 "mainBuffScore": to_json_number(item["score"]),
+                "cost": cost,
+                "mainStats": item["mains"],
             }
         )
 
@@ -234,59 +209,40 @@ def build_variants(calc_map: dict[str, Any], attribute_name: str) -> list[dict[s
     return out
 
 
-def build_presets(map_root: Path) -> dict[str, Any]:
-    limit_data = load_json(map_root / "limit.json")
-    char_list = limit_data.get("charList", [])
-    if not isinstance(char_list, list):
-        raise ValueError("Invalid limit.json: charList is not a list")
-
-    attribute_name_by_char_id = build_attribute_name_by_char_id(map_root)
-    presets: list[dict[str, Any]] = []
-    seen_preset_names: set[str] = set()
-
-    for entry in char_list:
-        if not isinstance(entry, dict):
-            continue
-        raw_name = str(entry.get("name", "")).strip()
-        calc_file = str(entry.get("calcFile", "")).strip()
-        if not raw_name or not calc_file:
-            continue
-        preset_name = normalize_preset_name(raw_name)
-        if preset_name in seen_preset_names:
-            continue
-
-        calc_path = map_root / "character" / raw_name / calc_file
-        calc_map = load_json(calc_path)
-        weights = build_weights(calc_map)
-
-        char_id = int(entry.get("charId"))
-        attribute_name = attribute_name_by_char_id.get(char_id, "")
-        variants = build_variants(calc_map, attribute_name)
-        if not variants:
-            raise ValueError(f"No variants generated for {raw_name} ({char_id}) from {calc_path}")
-
-        base_variant = dict(variants[0])
-        base_variant["weights"] = {buff: weights[buff] for buff in BUFF_NAMES}
-        base_variant["presetIntro"] = AUTO_CONVERTED_HINT
-        final_variants = [base_variant]
-        final_variants.extend(variants[1:])
-
-        presets.append(
-            {
-                "presetName": preset_name,
-                "variants": final_variants,
-            }
-        )
-        seen_preset_names.add(preset_name)
-
-    return {"presets": presets}
+def build_presets(snapshot_path: Path) -> dict[str, Any]:
+    snapshot = load_json(snapshot_path)
+    groups: dict[str, dict[str, Any]] = {}
+    seen_templates: set[str] = set()
+    for char_id, templates in snapshot["templates"].items():
+        for modal, template in templates.items():
+            # Male/female Rover snapshots are identical. Keep all distinct modes.
+            fingerprint = json.dumps(template, sort_keys=True, ensure_ascii=False)
+            if fingerprint in seen_templates:
+                continue
+            seen_templates.add(fingerprint)
+            character, _, mode_name = template["name"].partition("-")
+            character = normalize_preset_name(character)
+            group = groups.setdefault(character, {"presetName": character, "variants": []})
+            weights = build_weights(template)
+            for variant in build_variants(template, "属性伤害加成"):
+                variant["id"] = f"xwuid:{char_id}:{modal}:{variant['cost']}:{'+'.join(sorted(variant['mainStats']))}"
+                if mode_name and mode_name != "通用":
+                    variant["variantName"] = f"{mode_name} · {variant['variantName']}"
+                variant["weights"] = weights
+                variant["sourceTemplate"] = {"characterId": char_id, "modal": modal}
+                # Retained for provenance. The app keeps its existing normalization.
+                variant["sourceScoreMax"] = template["score_max"][(1, 3, 4).index(variant["cost"])]
+                group["variants"].append(variant)
+            if not group["variants"]:
+                raise ValueError(f"No variants generated for {template['name']}")
+    return {"source": snapshot["source"], "presets": list(groups.values())}
 
 
 def main() -> int:
-    input_map_root = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else DEFAULT_INPUT_MAP_ROOT
+    input_snapshot = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else DEFAULT_INPUT_SNAPSHOT
     output_json = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else DEFAULT_OUTPUT_JSON
 
-    output_obj = build_presets(input_map_root)
+    output_obj = build_presets(input_snapshot)
     output_json.parent.mkdir(parents=True, exist_ok=True)
     with output_json.open("w", encoding="utf-8") as handle:
         json.dump(output_obj, handle, ensure_ascii=False, indent=2)

@@ -1,0 +1,160 @@
+// Game terminology and character names: see TERMINOLOGY.md. User-authored preset names stay unchanged.
+export let language = 'zh-CN';
+try { language = localStorage.getItem('echo-studio-language') === 'en' ? 'en' : 'zh-CN'; } catch { /* Storage is optional. */ }
+export const messages = {
+  '确认评分与目标后，点击求解策略。之后修改当前声骸或重抽候选，会自动更新建议。':'Confirm scoring and target, then solve the policy. Subsequent edits to the current Echo or reroll candidate automatically update the advice.',
+  '更新中':'Updating',
+  '求解策略':'Solve policy', '待求解':'Policy required',
+  '确认评分与目标后，点击求解策略':'Confirm scoring and target, then solve the policy',
+  '确认评分与目标后，点击求解策略。之后修改当前词条会立即更新建议。':'Confirm scoring and target, then solve the policy. Subsequent Echo edits update the recommendation immediately.',
+  '设置评分与目标，填入当前词条后点击求解策略。':'Set scoring and the target, enter the current Substats, then click Solve policy.',
+
+  '等待输入':'Waiting for input',
+  '输入完整有效后，自动更新建议':'Recommendations update once all required inputs are valid',
+  '展开':'Expand', '收起':'Collapse',
+  'Echo Studio · 声骸策略工坊':'Echo Studio · Echo Policy Calculator',
+  'Echo Studio 首页':'Echo Studio home',
+  '声骸策略工坊':'Echo Policy Calculator',
+  '求解模式':'Solver', '强化策略':'Upgrade policy', '重抽策略':'Reroll policy', '联合策略':'Joint policy',
+  '通过强化获得达标声骸。':'Reach the target by upgrading Echoes.',
+  '使用频整器重抽声骸副词条。':'Use Transducers to reroll Echo Substats.',
+  '同时优化强化和重抽的资源消耗。':'Optimize resources across upgrades and rerolls.',
+  '评分与目标':'Scoring and target',  '评分体系':'Scoring system',
+  '线性数值评分':'Linear scoring', '固定词条评分':'Fixed stat scoring', '漂泊者强化助手':'MC Boost Assistant',
+  '变体':'Variant', '先选择预设':'Select a preset first', '未实装':'Upcoming',
+  '权重预设':'Weight preset', '搜索全部预设':'Search all presets',
+  '找到 {count} 个预设，点击即可应用。':'{count} presets found. Click to apply.',
+  '角色名或评分体系':'Resonator or scoring system',
+  '默认 / 手动配置':'Default / manual configuration', '默认权重':'Default weights', '默认':'Default', '自定义':'Custom',
+  '内置预设':'Built-in presets', '自定义预设':'Custom presets',
+  '没有匹配的预设':'No matching presets',
+  '目标总分':'Target score',
+  '调整词条权重':'Stat weights', '主词条原始分':'Raw Mainstat score', '归一化总满分':'Normalized maximum score',
+  '权重代表该词条最高档位的相对价值；实际数值越高，得分越高。':'Weights represent each Substat’s maximum-roll value. Higher rolls score higher.',
+  '固定评分只看类型，不看数值档位。权重与目标使用整数分数。':'Fixed scoring uses Substat types only. Weights and targets must be integers.',
+  'XutheringWavesUID 权重表示单位数值的价值；总分归一化为 50 分。':'XutheringWavesUID weights apply per unit of a stat. The total is normalized to 50 points.',
+  '自定义预设名称':'Custom preset name', '预设名称':'Preset name', '保存':'Save', '删除':'Delete',
+  '导出自定义预设':'Export custom presets', '导入预设':'Import presets',
+  '资源相对价值':'Relative resource values',
+  '为每单位资源设置相对价值。求解器最小化各资源「预期消耗 × 相对价值」之和；设为 0 表示不计入优化目标。':'Set a relative value per unit of each resource. The solver minimizes the sum of expected use × relative value. Set a value to 0 to exclude that resource from the objective.',
+  '例如：调谐器设为 1、特级密音筒设为 10，表示 1 个特级密音筒与 10 个调谐器等价。':'For example, setting Premium Tuners to 1 and Premium Sealed Tubes to 10 values one tube as ten tuners.',
+  '分解声骸时返还的经验比例；0.66 表示返还 66%。':'The fraction of EXP refunded when recycling an Echo; 0.66 means a 66% refund.',
+  '声骸胚子':'New Echoes', '调谐器':'Premium Tuners', '特级密音筒':'Premium Sealed Tubes', '频整器':'Transducers',
+  '经验返还比例':'EXP refund ratio', '当前声骸':'Current Echo', '清空':'Clear', '填入示例 ↗':'Load example ↗',
+  '未强化':'Unleveled', '未强化 · 0 / 5 词条':'Unleveled · 0 / 5 Substats',
+  '{level} · {count} / 5 词条':'{level} · {count} / 5 Substats',
+  '候选':'Candidate', '词条 {slot} 类型':'Substat {slot} type', '词条 {slot} 数值':'Substat {slot} value',
+  '尚未揭示':'Not yet tuned', '选择词条':'Select Substat', '当前评分':'Current score',
+  '输入已揭示的词条与实际数值':'Enter revealed Substats and their values',
+  '已达到评分目标':'Target reached', '距目标 {score} 分':'{score} points below target', '请检查评分配置':'Check the scoring configuration',
+  '开启 OCR 自动填入 · UDP 9999':'Enable OCR autofill · UDP 9999', 'OCR 已开启 · 点击停止':'OCR enabled · Stop',
+  '比较重抽候选':'Compare a reroll result', '接受还是保留？':'Accept or keep?',
+  '填入重抽得到的完整五条词条及数值，自动比较接受新结果还是保留原结果。':'Enter all five rerolled Substats and their values to automatically compare accepting the new result with keeping the original.',
+  '转到重抽策略':'Go to Reroll policy',
+  '先求解策略，再填入重抽候选进行比较。':'Solve the policy, then enter a reroll candidate to compare.',
+  '填入完整的五条重抽候选，查看接受或保留建议。':'Enter all five candidate Substats to see whether to accept or keep.',
+  '接受候选':'Accept candidate', '接受候选并继续重抽':'Accept candidate and continue rerolling',
+  '清空候选':'Clear candidate', '从当前声骸复制':'Copy current Echo',
+  '策略建议':'Recommended action', '策略结果':'Policy results', '等待计算':'Not calculated', '尚未计算':'Not calculated',
+  '达标成品的期望消耗':'Expected resources per successful Echo', '当前声骸的重抽期望':'Expected reroll cost for this Echo',
+  '到达目标所需频整器':'Transducers to target', '当前声骸评分':'Current Echo score',
+  '新胚子达标概率':'Success probability for a new Echo', '加权资源期望':'Weighted expected resources',
+  '个':'', '管':'', '分':'pts',
+  '锁定方案':'Lock options', '候选比较':'Candidate comparison',
+  '按频整器期望消耗从低到高，最多显示 5 种锁定方案。期望包含本次及后续重抽；概率为下一次重抽立即达标。':'Shows up to 5 lock options, ordered by expected Transducer cost from lowest to highest. Costs include this roll and future rerolls; probability is the chance of reaching the target on the next roll.',
+  '使用说明':'Instructions',  '关闭 ×':'Close ×', '关闭说明':'Close instructions',
+  "选择角色预设和变体，填写目标总分；按需调整词条权重和资源相对价值。":"Choose a Resonator preset and variant, then enter the target score. Adjust Stat weights and relative resource values as needed.",
+  "填入当前声骸已揭示的词条及数值；新胚子留空。点击「求解策略」。":"Enter the revealed Substats and their values, or leave them empty for a new Echo. Click “Solve policy”.",
+  "每次强化后更新词条，建议会立即刷新。建议放弃时，换一个胚子并点击「清空」；建议保留时，留下当前声骸。":"Update the Substats after each upgrade to refresh the advice immediately. If advised to discard, start a new Echo and click “Clear”. If advised to keep, keep the current Echo.",
+  "修改评分、目标或资源相对价值后，重新点击「求解策略」。":"After changing scoring, the target, or relative resource values, click “Solve policy” again.",
+  "选择角色预设和变体，填写目标总分，并填入当前声骸完整的五条副词条及数值。点击「求解策略」。":"Choose a Resonator preset and variant, enter the target score and all five current Echo Substats with their values, then click “Solve policy”.",
+  "按建议锁定词条，在游戏中使用频整器重抽，再将完整的五条结果填入重抽候选。候选比较会自动更新。":"Apply the suggested locks and use Transducers to reroll in the game. Enter all five resulting Substats as the candidate; the comparison updates automatically.",
+  "决定接受时，点击「接受候选并继续重抽」；已达标时按钮显示「接受候选」。候选会成为当前声骸，下一步建议自动更新。":"To accept, click “Accept candidate and continue rerolling”, or “Accept candidate” if the target is met. The candidate becomes the current Echo and the next recommendation updates automatically.",
+  "决定保留原结果时，点击「清空候选」，继续按当前声骸的建议重抽。达标后停止重抽。":"To keep the original result, click “Clear candidate” and reroll again using the current Echo’s advice. Stop rerolling once the target is met.",
+  "修改当前声骸或候选会自动更新建议；修改评分或目标后，重新点击「求解策略」。":"Editing the current Echo or candidate updates the advice automatically. After changing scoring or the target, click “Solve policy” again.",
+  "选择角色预设和变体，填写目标总分，设置资源相对价值，包括频整器。":"Choose a Resonator preset and variant, enter the target score, and set relative resource values, including Transducers.",
+  "按建议继续强化，每次强化后更新词条。建议放弃时，换一个胚子并点击「清空」；建议保留时，留下当前声骸。":"Follow the advice to upgrade and update the Substats after each upgrade. If advised to discard, start a new Echo and click “Clear”. If advised to keep, keep the current Echo.",
+  "建议重抽时，点击「转到重抽策略」。当前声骸、评分和目标会自动带入，接着按重抽模式的步骤操作。":"When rerolling is recommended, click “Go to Reroll policy”. The current Echo, scoring and target carry over automatically. Continue with the Reroll policy steps.",
+  '本地存储不可用或已满，本次配置仍可计算；请导出预设备份。':'Local storage is unavailable or full. Calculations still work; export your presets to back them up.',
+  '请填写有效数值，检查目标、评分参数和资源权重。':'Enter valid numbers for the target, scoring parameters, and resource weights.',
+  '待更新':'Out of date', '输入已更新':'Inputs changed',
+  '正在更新建议。下方数值为上次结果，仅供参考。':'Updating the recommendation. The resource values below belong to the previous calculation.',
+  '计算完成':'Calculated',
+  '继续强化':'Continue upgrading', '放弃，换下一个':'Discard and start over', '保留这个声骸':'Keep this Echo', '重抽':'Reroll',
+  '当前声骸保留概率':'Keep probability for this Echo',
+  '新胚子保留概率':'Keep probability for a new Echo',
+  '当前声骸达标概率':'Success probability for this Echo',
+  '精确求解':'Exact solve', '锁定 {names}':'Lock {names}', '不锁定任何词条':'Lock no Substats',
+  '本次 {cost} 个 · 单次达标 {p} · 额外期望 +{regret}':'This roll: {cost} · Success: {p} · Extra expected cost: +{regret}',
+  '接受新结果 ↗':'Accept result ↗', '保留原结果 ↶':'Keep original ↶',
+  '后续频整器：{from} → {to}':'Future Transducers: {from} → {to}', '候选评分：{score}':'Candidate score: {score}',
+  '按后续重抽成本比较，相同成本可接受。请确认候选来自实际重抽并保留了锁定词条。':'Compares future reroll costs; equal costs can be accepted. Enter the actual result with locked Substats preserved.',
+  '重抽模式需要完整的五条词条。请填写全部词条与实际数值。':'Reroll mode requires all five Substats and their values.',
+  '正在求解…':'Solving…', '计算中':'Solving', '正在精确求解 · {seconds} 秒':'Solving exactly · {seconds} s',
+  '未完成':'Failed', '计算失败':'Calculation failed', '本次未能得到有效策略，请查看页面上方的具体原因。':'No valid policy was produced. See the error above.',
+  '请先输入自定义预设名称。':'Enter a name for the custom preset.',
+  '预设文件不能超过 2 MB。':'Preset files must be no larger than 2 MB.', '无效的预设文件。':'Invalid preset file.',
+  '预设格式无效。旧版预设需先选择对应评分体系再导入。':'Invalid preset format. Select the matching scoring system before importing a legacy preset.',
+  '导入失败：{error}':'Import failed: {error}', 'OCR 事件连接失败：{error}':'OCR event connection failed: {error}',
+  '初始化失败：{error}。请检查服务后刷新页面。':'Initialization failed: {error}. Check the service and reload.',
+  '服务暂不可用（HTTP {status}）':'Service unavailable (HTTP {status})',
+  '请求失败，请检查输入或重试。':'Request failed. Check your input or try again.',
+  '网络连接失败，请检查求解服务。':'Connection failed. Check the solver service.',
+  '求解器正在处理另一项计算，请稍后重试。':'The solver is busy. Try again shortly.',
+  '精确状态空间超过服务限制。请减少非零评分词条，或使用固定评分；服务管理员也可调整规模限制。':'The exact state space exceeds the service limit. Reduce nonzero stat weights, use fixed scoring, or ask the administrator to adjust the limits.',
+  '当前评分规则无法达到这个目标，请降低目标分数。':'This target cannot be reached with the current scoring rules. Lower the target.',
+  '未能完成求解，请检查配置。':'The solver could not finish. Check the configuration.',
+  '计算结果超出有限数值范围，请调整目标或权重。':'The result is outside the finite numerical range. Adjust the target or weights.',
+  '评分参数必须是有限非负数。':'Scoring parameters must be finite and nonnegative.',
+  '目标分数必须非负，且内部副词条目标不能超过 65535。':'The target must be nonnegative and the internal Substat target must not exceed 65535.',
+  '固定评分的目标必须为整数。':'Fixed scoring requires an integer target.',
+  '固定评分权重必须是 0～65535 的整数。':'Fixed weights must be integers from 0 to 65535.',
+  '应用支持最多 20000 内部副词条分数，请降低归一化满分或固定权重。':'The app supports up to 20000 internal Substat points. Reduce the normalized maximum or fixed weights.',
+  '重抽需要完整的 5 条词条；强化状态允许 0～5 条。':'Rerolling requires five Substats. Upgrade states accept zero to five.',
+  '词条类型或数值档位无效。':'Invalid Substat type or roll value.', '同一声骸不能包含重复词条。':'An Echo cannot have duplicate Substat types.',
+  '仅重抽模式支持候选比较。':'Candidate comparison is only available in Reroll mode.',
+  '资源权重必须是有限非负数。':'Resource weights must be finite and nonnegative.',
+  '求解服务需要重启。':'The solver service must be restarted.', '求解任务异常结束。':'The solver task failed unexpectedly.',
+  '权重提取自猫眼石攻略组对01爱琳莫标准轴的拉表计算。每1%暴击、暴伤、攻击、解放，分别对应单轮9667、3623、4476、3518总伤提升。共鸣效率为手动设置。':'Source: Maoyanshi guide group’s 0+1 Aemeath–Lynae–Mornye rotation spreadsheet. Each 1% Crit. Rate, Crit. DMG, ATK, and Resonance Liberation DMG adds 9667, 3623, 4476, and 3518 damage per rotation, respectively. Energy Regen was set manually.',
+  '该权重由脚本自动转换，请注意鉴别。':'These weights were converted automatically by a script; verify their suitability.',
+};
+export function t(key, values = {}) {
+  const template = language === 'en' ? (messages[key] ?? key) : key;
+  return template.replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? `{${k}}`));
+}
+export function setLanguage(value) {
+  language = value === 'en' ? 'en' : 'zh-CN';
+  try { localStorage.setItem('echo-studio-language',language); } catch { /* Nonessential preference. */ }
+}
+export function translatePage() {
+  document.documentElement.lang = language;
+  document.querySelectorAll('[data-i18n]').forEach(e => { e.textContent = t(e.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(e => { e.placeholder = t(e.dataset.i18nPlaceholder); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(e => { e.setAttribute('aria-label',t(e.dataset.i18nAria)); });
+}
+export const statNames = ['Crit. Rate','Crit. DMG','ATK%','DEF%','HP%','ATK','DEF','HP','Energy Regen','Basic Attack DMG Bonus','Heavy Attack DMG Bonus','Resonance Skill DMG Bonus','Resonance Liberation DMG Bonus'];
+export const characterNames = {
+  '绯雪':'Hiyuki','洛瑟菈':'Lucilla','穗穗':'Suisui','达妮娅':'Denia','景燃':'Jingran','丽贝卡':'Rebecca','雷主':'Rover: Electro','心':'Hsin','锁暝':'Suoming','西格莉卡':'Sigrika','清宵':'Qingxiao','陆·赫斯':'Luuk Herssen','露西':'Lucy','秧秧·玄翎':'Yangyang: Xuanling','角色':'Generic','炽霞':'Chixia','桃祈':'Taoqi',
+  '今汐':'Jinhsi','长离':'Changli','忌炎':'Jiyan','安可':'Encore','暗主':'Rover: Havoc','光主':'Rover: Spectro',
+  '维里奈':'Verina','吟霖':'Yinlin','鉴心':'Jianxin','卡卡罗':'Calcharo','雪豹':'Lingyang','凌阳':'Lingyang','莫特斐':'Mortefi','白芷':'Baizhi','渊武':'Yuanwu',
+  '秧秧':'Yangyang','赤霞':'Chixia','丹瑾':'Danjin','秋水':'Aalto','散华':'Sanhua','桃祁':'Taoqi','折枝':'Zhezhi','相里要':'Xiangli Yao',
+  '守岸人':'Shorekeeper','釉瑚':'Youhu','椿':'Camellya','灯灯':'Lumi','珂莱塔':'Carlotta','洛可可':'Roccia','赞妮':'Zani','菲比':'Phoebe','布兰特':'Brant',
+  '坎特雷拉':'Cantarella','坎特蕾拉':'Cantarella','风主':'Rover: Aero','夏空':'Ciaccona','卡提希娅':'Cartethyia','露帕':'Lupa','弗洛洛':'Phrolova',
+  '奥古斯塔':'Augusta','尤诺':'Iuno','嘉贝莉娜':'Galbrena','仇远':'Qiuyuan','千咲':'Chisa','卜灵':'Buling','琳奈':'Lynae','莫宁':'Mornye','爱弥斯':'Aemeath',
+};
+export function characterName(name) { return language === 'en' ? (characterNames[name] ?? name) : name; }
+const variantTerms = {'主/副c':'Main/Sub DPS','小维版':'XWUID','霜渐':'Glacio Chafe','羽落':'Song of Feathered Trace','声骸':'Echo','属性伤害加成':'Elemental DMG Bonus','防御':'DEF','共鸣效率':'Energy Regen','暴击伤害':'Crit. DMG','暴击':'Crit. Rate','治疗效果加成':'Healing Bonus','攻击':'ATK','生命':'HP','冷凝':'Glacio','热熔':'Fusion','导电':'Electro','气动':'Aero','湮灭':'Havoc','衍射':'Spectro','默认':'Default'};
+export function variantName(name) {
+  if (language !== 'en') return name;
+  if (/^\d(?:-\d)?链$/.test(name)) return `Sequence ${name.replace('链','')}`;
+  return Object.entries(variantTerms).reduce((text,[zh,en]) => text.replaceAll(zh,en),name).replace(/\b(\d)C /g,'$1-Cost ');
+}
+export function errorText(error) {
+  const message = error?.message || String(error);
+  if (language !== 'en') return message;
+  if (Object.hasOwn(messages,message)) return t(message);
+  const prefix = message.split('（')[0];
+  if (Object.hasOwn(messages,prefix)) return t(prefix) + (message.includes('（') ? ` (${message.split('（').slice(1).join('（').replace(/）$/, '')})` : '');
+  if (/\p{Script=Han}/u.test(message)) return t('请求失败，请检查输入或重试。');
+  return message;
+}

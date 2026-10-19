@@ -12,7 +12,7 @@ from typing import Any
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_INPUT_JS = Path(__file__).resolve().parent / "base.js"
-DEFAULT_OUTPUT_JSON = ROOT_DIR / "apps/desktop/src-tauri/default-presets/wuwa_echo_tool.json"
+DEFAULT_OUTPUT_JSON = ROOT_DIR / "crates/echo_app/presets/wuwa_echo_tool.json"
 
 BUFF_NAMES = [
     "Crit_Rate",

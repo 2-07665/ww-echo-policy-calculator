@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#f5f5f7"><title data-i18n="Echo Studio · 声骸策略工坊">Echo Studio · 声骸策略工坊</title><link rel="stylesheet" href="./styles.css"><script type="module" src="./app.js"></script></head>
+<body>
+<div class="shell">
+  <main>
+    <header class="topbar"><a class="brand" href="./" aria-label="Echo Studio 首页" data-i18n-aria="Echo Studio 首页">Echo Studio<span data-i18n="声骸策略工坊">声骸策略工坊</span></a><div class="header-actions"><button class="text-button" id="guide-open" data-i18n="使用说明">使用说明</button><div id="language" role="group" aria-label="语言 / Language"><button type="button" data-language="zh-CN" aria-pressed="true">中文</button><button type="button" data-language="en" aria-pressed="false">EN</button></div></div></header>
+    <div class="mode-bar"><span class="nav-label" data-i18n="求解模式">求解模式</span><nav aria-label="求解模式" id="modes" data-i18n-aria="求解模式"><button data-mode="upgrade" data-i18n="强化策略">强化策略</button><button data-mode="reroll" data-i18n="重抽策略">重抽策略</button><button data-mode="joint" class="active" data-i18n="联合策略">联合策略</button></nav></div>
+    <section class="page-heading"><div><h1 id="mode-title"><span data-i18n="联合策略">联合策略</span></h1><p id="mode-description"><span data-i18n="同时优化强化和重抽的资源消耗。">同时优化强化和重抽的资源消耗。</span></p></div></section>
+    <div id="notice" class="notice" role="alert" hidden></div>
+    <div class="workspace">
+        <section class="panel config-panel"><div class="section-heading"><div><h2><span data-i18n="评分与目标">评分与目标</span></h2></div></div>
+          <div class="preset-search"><label class="preset-search-label"><span data-i18n="搜索全部预设">搜索全部预设</span><input id="preset-search" type="search" placeholder="角色名或评分体系" data-i18n-placeholder="角色名或评分体系" aria-controls="preset-results" aria-describedby="preset-count"></label><p id="preset-count" class="field-hint" role="status" hidden></p><div id="preset-results" class="preset-results" hidden></div></div>
+          <label><span data-i18n="评分体系">评分体系</span><select id="scoring"><option value="mc_boost_assistant" data-i18n="漂泊者强化助手">漂泊者强化助手</option><option value="qq_bot">XutheringWavesUID</option><option value="wuwa_echo_tool">Wuwa Echo Tool</option><option value="linear" data-i18n="线性数值评分">线性数值评分</option><option value="fixed" data-i18n="固定词条评分">固定词条评分</option></select></label>
+          <div class="two-fields preset-selectors"><label><span data-i18n="权重预设">权重预设</span><select id="preset"><option data-i18n="默认权重">默认权重</option></select></label><label><span data-i18n="变体">变体</span><select id="preset-variant" disabled><option value="" data-i18n="先选择预设">先选择预设</option></select></label></div>
+          <p id="preset-intro" class="field-hint" hidden></p>
+          <div class="target-block"><label for="target"><span data-i18n="目标总分">目标总分</span></label><div class="target-input"><input id="target" type="number" min="0" step="0.1" value="70" required><span id="max-label">/ 100</span></div></div>
+          <details id="weight-details"><summary><span data-i18n="调整词条权重">调整词条权重 </span><span class="disclosure-action"><span class="disclosure-closed" data-i18n="展开">展开</span><span class="disclosure-open" data-i18n="收起">收起</span><span class="disclosure-icon" aria-hidden="true"></span></span></summary><p class="field-hint" id="weight-hint"><span data-i18n="权重代表该词条最高档位的相对价值；实际数值越高，得分越高。">权重代表该词条最高档位的相对价值；实际数值越高，得分越高。</span></p><div class="weight-grid" id="weights"></div><div class="two-fields" id="normalization"><label><span data-i18n="主词条原始分">主词条原始分</span><input id="main-score" type="number" min="0" step="any" value="0"></label><label id="max-score-field"><span data-i18n="归一化总满分">归一化总满分</span><input id="max-score" type="number" min="0.01" max="200" step="any" value="100"></label></div><div class="preset-actions"><input id="preset-name" aria-label="自定义预设名称" placeholder="预设名称" maxlength="60" data-i18n-placeholder="预设名称" data-i18n-aria="自定义预设名称"><button class="secondary" id="save-preset"><span data-i18n="保存">保存</span></button><button class="text-button" id="delete-preset" hidden><span data-i18n="删除">删除</span></button></div><div class="preset-actions"><button class="text-button" id="export-presets"><span data-i18n="导出自定义预设">导出自定义预设</span></button><label class="text-button file-label"><span data-i18n="导入预设">导入预设</span><input id="import-presets" type="file" accept="application/json,.json" hidden></label></div></details>
+          <details id="cost-details"><summary><span data-i18n="资源相对价值">资源相对价值 </span><span class="disclosure-action"><span class="disclosure-closed" data-i18n="展开">展开</span><span class="disclosure-open" data-i18n="收起">收起</span><span class="disclosure-icon" aria-hidden="true"></span></span></summary><p class="field-hint"><span data-i18n="为每单位资源设置相对价值。求解器最小化各资源「预期消耗 × 相对价值」之和；设为 0 表示不计入优化目标。">为每单位资源设置相对价值。求解器最小化各资源「预期消耗 × 相对价值」之和；设为 0 表示不计入优化目标。</span></p><p class="field-hint" data-i18n="例如：调谐器设为 1、特级密音筒设为 10，表示 1 个特级密音筒与 10 个调谐器等价。">例如：调谐器设为 1、特级密音筒设为 10，表示 1 个特级密音筒与 10 个调谐器等价。</p><div class="weight-grid cost-grid"><label><span data-i18n="声骸胚子">声骸胚子</span><input data-cost="0" type="number" min="0" step="any" value="0"></label><label><span data-i18n="调谐器">调谐器</span><input data-cost="1" type="number" min="0" step="any" value="1"></label><label><span data-i18n="特级密音筒">特级密音筒</span><input data-cost="2" type="number" min="0" step="any" value="0"></label><label id="frequency-field"><span data-i18n="频整器">频整器</span><input data-cost="3" type="number" min="0" step="any" value="1000"></label><label><span data-i18n="经验返还比例">经验返还比例</span><input id="refund" type="number" min="0" max="0.75" step="0.01" value="0.66" aria-describedby="refund-hint"></label></div><p class="field-hint" id="refund-hint" data-i18n="分解声骸时返还的经验比例；0.66 表示返还 66%。">分解声骸时返还的经验比例；0.66 表示返还 66%。</p></details>
+        </section>
+      <div class="current-column">
+        <section class="panel echo-panel"><div class="section-heading"><div><h2><span data-i18n="当前声骸">当前声骸</span></h2></div><button class="text-button" id="clear-echo"><span data-i18n="清空">清空</span></button></div><div class="echo-meta"><span id="echo-stage"><span data-i18n="未强化 · 0 / 5 词条">未强化 · 0 / 5 词条</span></span><button class="text-button" id="sample"><span data-i18n="填入示例 ↗">填入示例 ↗</span></button></div><div id="echo-slots" class="slots"></div><div class="score-strip"><span><span data-i18n="当前评分">当前评分 </span><strong id="current-score">0.00</strong></span><span id="score-note"><span data-i18n="输入已揭示的词条与实际数值">输入已揭示的词条与实际数值</span></span></div><button id="ocr-toggle" class="text-button" hidden><span data-i18n="开启 OCR 自动填入 · UDP 9999">开启 OCR 自动填入 · UDP 9999</span></button></section>
+        <section class="panel candidate-panel" id="candidate-panel" hidden><details id="candidate-details" open><summary><span data-i18n="比较重抽候选">比较重抽候选 </span><span><span data-i18n="接受还是保留？">接受还是保留？</span> <span class="disclosure-icon" aria-hidden="true"></span></span></summary><p class="field-hint"><span data-i18n="填入重抽得到的完整五条词条及数值，自动比较接受新结果还是保留原结果。">填入重抽得到的完整五条词条及数值，自动比较接受新结果还是保留原结果。</span></p><button class="text-button" id="copy-candidate"><span data-i18n="从当前声骸复制">从当前声骸复制</span></button><button class="text-button" id="clear-candidate" data-i18n="清空候选">清空候选</button><div id="candidate-slots" class="slots"></div></details></section>
+        <div class="compute-bar"><span id="compute-hint"><span data-i18n="确认评分与目标后，点击求解策略">确认评分与目标后，点击求解策略</span></span><button class="primary" id="solve" disabled><span><span data-i18n="求解策略">求解策略</span></span><span aria-hidden="true">↗</span></button></div>
+      </div>
+      <aside class="results-column" aria-label="策略结果" aria-live="polite" data-i18n-aria="策略结果">
+        <section class="decision-card" id="decision-card"><div class="result-kicker"><span data-i18n="策略建议"> 策略建议 </span><span id="result-status"><span data-i18n="等待计算">等待计算</span></span></div><div id="decision-content"><h2><span data-i18n="尚未计算">尚未计算</span></h2><p><span data-i18n="设置评分与目标，填入当前词条后点击求解策略。">设置评分与目标，填入当前词条后点击求解策略。</span></p></div><button id="go-reroll" class="primary" hidden disabled data-i18n="转到重抽策略">转到重抽策略</button></section>
+        <section class="panel resource-panel"><div class="section-heading"><h2 id="resource-title"><span data-i18n="达标成品的期望消耗">达标成品的期望消耗</span></h2></div><div id="resources" class="resource-grid"></div></section>
+        <section class="panel" id="comparison-panel" hidden><div class="section-heading"><h2><span data-i18n="候选比较">候选比较</span></h2></div><div id="comparison"></div><button class="primary" id="accept-candidate" hidden disabled data-i18n="接受候选并继续重抽">接受候选并继续重抽</button></section>
+        <section class="panel" id="locks-panel" hidden><div class="section-heading"><h2><span data-i18n="锁定方案">锁定方案</span></h2></div><div id="locks"></div><p class="field-hint"><span data-i18n="按频整器期望消耗从低到高，最多显示 5 种锁定方案。期望包含本次及后续重抽；概率为下一次重抽立即达标。">按频整器期望消耗从低到高，最多显示 5 种锁定方案。期望包含本次及后续重抽；概率为下一次重抽立即达标。</span></p></section>
+      </aside>
+    </div>
+    <footer><span>Echo Studio · v3.0</span></footer>
+  </main>
+</div>
+<dialog id="guide">
+  <div class="section-heading"><h2 data-i18n="使用说明">使用说明</h2><button class="text-button" id="guide-close" aria-label="关闭说明" data-i18n-aria="关闭说明" data-i18n="关闭 ×">关闭 ×</button></div>
+  <section class="guide-mode"><h3 data-i18n="强化策略">强化策略</h3><ol>
+    <li data-i18n="选择角色预设和变体，填写目标总分；按需调整词条权重和资源相对价值。">选择角色预设和变体，填写目标总分；按需调整词条权重和资源相对价值。</li>
+    <li data-i18n="填入当前声骸已揭示的词条及数值；新胚子留空。点击「求解策略」。">填入当前声骸已揭示的词条及数值；新胚子留空。点击「求解策略」。</li>
+    <li data-i18n="每次强化后更新词条，建议会立即刷新。建议放弃时，换一个胚子并点击「清空」；建议保留时，留下当前声骸。">每次强化后更新词条，建议会立即刷新。建议放弃时，换一个胚子并点击「清空」；建议保留时，留下当前声骸。</li>
+    <li data-i18n="修改评分、目标或资源相对价值后，重新点击「求解策略」。">修改评分、目标或资源相对价值后，重新点击「求解策略」。</li>
+  </ol></section>
+  <section class="guide-mode"><h3 data-i18n="重抽策略">重抽策略</h3><ol>
+    <li data-i18n="选择角色预设和变体，填写目标总分，并填入当前声骸完整的五条副词条及数值。点击「求解策略」。">选择角色预设和变体，填写目标总分，并填入当前声骸完整的五条副词条及数值。点击「求解策略」。</li>
+    <li data-i18n="按建议锁定词条，在游戏中使用频整器重抽，再将完整的五条结果填入重抽候选。候选比较会自动更新。">按建议锁定词条，在游戏中使用频整器重抽，再将完整的五条结果填入重抽候选。候选比较会自动更新。</li>
+    <li data-i18n="决定接受时，点击「接受候选并继续重抽」；已达标时按钮显示「接受候选」。候选会成为当前声骸，下一步建议自动更新。">决定接受时，点击「接受候选并继续重抽」；已达标时按钮显示「接受候选」。候选会成为当前声骸，下一步建议自动更新。</li>
+    <li data-i18n="决定保留原结果时，点击「清空候选」，继续按当前声骸的建议重抽。达标后停止重抽。">决定保留原结果时，点击「清空候选」，继续按当前声骸的建议重抽。达标后停止重抽。</li>
+    <li data-i18n="修改当前声骸或候选会自动更新建议；修改评分或目标后，重新点击「求解策略」。">修改当前声骸或候选会自动更新建议；修改评分或目标后，重新点击「求解策略」。</li>
+  </ol></section>
+  <section class="guide-mode"><h3 data-i18n="联合策略">联合策略</h3><ol>
+    <li data-i18n="选择角色预设和变体，填写目标总分，设置资源相对价值，包括频整器。">选择角色预设和变体，填写目标总分，设置资源相对价值，包括频整器。</li>
+    <li data-i18n="填入当前声骸已揭示的词条及数值；新胚子留空。点击「求解策略」。">填入当前声骸已揭示的词条及数值；新胚子留空。点击「求解策略」。</li>
+    <li data-i18n="按建议继续强化，每次强化后更新词条。建议放弃时，换一个胚子并点击「清空」；建议保留时，留下当前声骸。">按建议继续强化，每次强化后更新词条。建议放弃时，换一个胚子并点击「清空」；建议保留时，留下当前声骸。</li>
+    <li data-i18n="建议重抽时，点击「转到重抽策略」。当前声骸、评分和目标会自动带入，接着按重抽模式的步骤操作。">建议重抽时，点击「转到重抽策略」。当前声骸、评分和目标会自动带入，接着按重抽模式的步骤操作。</li>
+    <li data-i18n="修改评分、目标或资源相对价值后，重新点击「求解策略」。">修改评分、目标或资源相对价值后，重新点击「求解策略」。</li>
+  </ol></section>
+</dialog>
+</body></html>
