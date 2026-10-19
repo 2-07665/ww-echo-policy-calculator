@@ -106,6 +106,22 @@ pub struct JointPolicySolver {
 }
 
 impl JointPolicySolver {
+    /// Retained allocation capacity; does not include temporary solve buffers.
+    pub fn allocated_bytes(&self) -> usize {
+        size_of::<Self>() + self.reroll.allocated_bytes() - size_of::<RerollPolicySolver>()
+            + self.layers.capacity() * size_of::<Layer>()
+            + self
+                .layers
+                .iter()
+                .map(|l| {
+                    l.configs.capacity() * size_of::<Config>()
+                        + l.values.capacity() * size_of::<f64>()
+                        + l.outcomes.capacity() * size_of::<Outcome>()
+                        + l.upgrade.capacity() * size_of::<bool>()
+                })
+                .sum::<usize>()
+    }
+
     /// Construct an unsolved joint optimizer. Target uses internal substat units.
     /// Frequency weight must be finite and nonnegative, in the same scale as
     /// the three `CostModel` weights; it has no implicit default.

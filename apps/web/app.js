@@ -1,6 +1,6 @@
 import { buildPresetList, importPresetList, upcoming } from './preset-data.js';
 import { t, language, setLanguage, translatePage, statNames, characterNames, characterName, variantName, errorText } from './i18n.js';
-import { api, desktop } from './api.js';
+import { api, desktop, hasAccessKey, setAccessKey } from './api.js';
 const $ = id => document.getElementById(id);
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const format = (value, digits = 2) => Number(value).toLocaleString(language, { maximumFractionDigits: digits, minimumFractionDigits: digits });
@@ -373,9 +373,10 @@ async function solve(automatic = false) {
     $('result-status').textContent = t('计算中');
   }
   const start = Date.now();
-  const ticker = quietSolve ? null : setInterval(() => { if (token === revision) setComputeHint('正在精确求解 · {seconds} 秒', {seconds:Math.floor((Date.now()-start)/1000)}); }, 1000);
+  let queueStatus = '';
+  const ticker = quietSolve ? null : setInterval(() => { if (token === revision) setComputeHint(queueStatus === 'queued' ? '等待求解 · {seconds} 秒' : '正在精确求解 · {seconds} 秒', {seconds:Math.floor((Date.now()-start)/1000)}); }, 1000);
   try {
-    const result = await api('solve',request);
+    const result = await api('solve',request, status => { queueStatus = status; });
     if (token !== revision) return;
     renderedRerollInput = request.config.mode === 'reroll' ? rerollInputKey(request.config, request.echo) : null;
     previewRevision++;
@@ -521,6 +522,29 @@ function setup() {
     void solve();
   });
   $('solve').addEventListener('click', () => solve());
+  $('access-open').hidden = desktop;
+  $('access-open').addEventListener('click', () => {
+    $('access-key').value = '';
+    $('access-message').textContent = hasAccessKey() ? t('当前会话已设置访问密钥') : '';
+    $('access-dialog').showModal();
+  });
+  $('access-close').addEventListener('click', () => $('access-dialog').close());
+  $('access-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = event.submitter;
+    button.disabled = true;
+    try {
+      if (!$('access-key').value.trim()) throw new Error(t('请输入访问密钥。'));
+      if (!await setAccessKey($('access-key').value)) return;
+      $('access-key').value = '';
+      $('access-message').textContent = t('密钥已验证，个人配额限制已解除');
+    } catch (e) { $('access-message').textContent = errorText(e); }
+    finally { button.disabled = false; }
+  });
+  $('access-clear').addEventListener('click', async () => {
+    await setAccessKey(''); $('access-key').value = '';
+    $('access-message').textContent = t('已清除访问密钥');
+  });
   $('guide-open').addEventListener('click', () => $('guide').showModal());
   $('guide-close').addEventListener('click', () => $('guide').close());
   $('save-preset').addEventListener('click', async () => {

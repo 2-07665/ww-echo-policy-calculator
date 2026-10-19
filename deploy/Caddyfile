@@ -1,3 +1,5 @@
+# Caddy replaces untrusted incoming X-Forwarded-For with the actual client IP.
+# Trust only this proxy peer in ECHO_TRUSTED_PROXIES; keep the backend private.
 # Replace with your domain; point its DNS A/AAAA records to the VPS.
 echo.example.com {
     encode zstd gzip

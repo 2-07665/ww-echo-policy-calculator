@@ -2,6 +2,25 @@
 export let language = 'zh-CN';
 try { language = localStorage.getItem('echo-studio-language') === 'en' ? 'en' : 'zh-CN'; } catch { /* Storage is optional. */ }
 export const messages = {
+  "访问密钥":"Access key",
+  "输入访问密钥":"Enter access key",
+  "管理员密钥可绕过个人用量配额。密钥仅保存在当前浏览器标签页的会话中。":"An administrator key bypasses personal usage quotas. The key is stored only for this browser tab’s session.",
+  "验证并使用":"Verify and use",
+  "清除密钥":"Clear key",
+  "当前会话已设置访问密钥":"An access key is set for this session",
+  "密钥已验证，个人配额限制已解除":"Key verified. Personal quotas are bypassed.",
+  "已清除访问密钥":"Access key cleared",
+  "请输入访问密钥。":"Please enter an access key.",
+  "访问密钥无效。":"Invalid access key.",
+  "等待求解 · {seconds} 秒":"Queued · {seconds}s",
+  "请在 {seconds} 秒后重试。":"Try again in {seconds} seconds.",
+  "服务队列已满，请稍后重试。":"The server queue is full. Please try again shortly.",
+  "请求过于频繁，请稍后重试。":"Too many requests. Please try again shortly.",
+  "已达到访问配额，请稍后重试或使用访问密钥。":"Usage quota reached. Please try again later or use an access key.",
+  "计算任务已过期，请重新求解。":"This job has expired. Please solve again.",
+  "策略超过缓存预算或缓存正在使用，请稍后重试或简化评分。":"The policy exceeds the cache budget or the cache is in use. Try again later or simplify the scoring.",
+  "求解任务异常结束，请重试。":"The solver job failed. Please try again.",
+
   '确认评分与目标后，点击求解策略。之后修改当前声骸或重抽候选，会自动更新建议。':'Confirm scoring and target, then solve the policy. Subsequent edits to the current Echo or reroll candidate automatically update the advice.',
   '更新中':'Updating',
   '求解策略':'Solve policy', '待求解':'Policy required',
@@ -150,6 +169,7 @@ export function variantName(name) {
   return Object.entries(variantTerms).reduce((text,[zh,en]) => text.replaceAll(zh,en),name).replace(/\b(\d)C /g,'$1-Cost ');
 }
 export function errorText(error) {
+  if (error?.retryAfter) return `${errorText({message:error.message})} ${t('请在 {seconds} 秒后重试。', {seconds:error.retryAfter})}`;
   const message = error?.message || String(error);
   if (language !== 'en') return message;
   if (Object.hasOwn(messages,message)) return t(message);

@@ -1,54 +1,113 @@
+mod access;
+mod scheduler;
+use access::Access;
 use axum::{
     Json, Router,
-    extract::{DefaultBodyLimit, State, rejection::JsonRejection},
-    http::{StatusCode, header},
+    extract::{ConnectInfo, DefaultBodyLimit, Path, State, rejection::JsonRejection},
+    http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response},
     routing::{get, post},
 };
-use echo_app::{AppError, Service, SolveRequest};
-use std::sync::{Arc, Mutex};
-use tokio::sync::Semaphore;
-
-#[derive(Clone)]
-struct Server {
-    service: Arc<Mutex<Service>>,
-    gate: Arc<Semaphore>,
-}
+use echo_app::{AppError, SolveRequest};
+use scheduler::{Rejection, Scheduler, Settings};
+use std::{net::SocketAddr, sync::Arc};
 fn error(status: StatusCode, e: AppError) -> Response {
-    (status, Json(e)).into_response()
+    (status, [(header::CACHE_CONTROL, "no-store")], Json(e)).into_response()
+}
+fn rejected(e: Rejection) -> Response {
+    (
+        StatusCode::TOO_MANY_REQUESTS,
+        [
+            (header::RETRY_AFTER, e.retry.to_string()),
+            (header::CACHE_CONTROL, "no-store".into()),
+        ],
+        Json(serde_json::json!({"code":e.code,"message":e.message,"retry_after":e.retry})),
+    )
+        .into_response()
+}
+fn identity(
+    state: &Scheduler,
+    peer: SocketAddr,
+    headers: &HeaderMap,
+) -> Result<(std::net::IpAddr, bool), AppError> {
+    let admin = state.access.admin(headers);
+    if headers.contains_key(header::AUTHORIZATION) && !admin {
+        return Err(AppError {
+            code: "invalid_key",
+            message: "访问密钥无效。".into(),
+        });
+    }
+    Ok((state.access.ip(peer.ip(), headers), admin))
+}
+async fn auth(State(state): State<Arc<Scheduler>>, headers: HeaderMap) -> Response {
+    if state.access.admin(&headers) {
+        Json(serde_json::json!({"admin":true})).into_response()
+    } else {
+        error(
+            StatusCode::UNAUTHORIZED,
+            AppError {
+                code: "invalid_key",
+                message: "访问密钥无效。".into(),
+            },
+        )
+    }
 }
 async fn solve(
-    State(state): State<Server>,
+    State(state): State<Arc<Scheduler>>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     body: Result<Json<SolveRequest>, JsonRejection>,
 ) -> Response {
+    let (ip, admin) = match identity(&state, peer, &headers) {
+        Ok(v) => v,
+        Err(e) => return error(StatusCode::UNAUTHORIZED, e),
+    };
     let Json(request) = match body {
         Ok(r) => r,
         Err(e) => return error(StatusCode::BAD_REQUEST, AppError::input(e.body_text())),
     };
-    let permit = match state.gate.clone().try_acquire_owned() {
-        Ok(p) => p,
-        Err(_) => return error(StatusCode::TOO_MANY_REQUESTS, AppError::busy()),
+    if let Err(e) = echo_app::validate_request(&request) {
+        return error(StatusCode::UNPROCESSABLE_ENTITY, e);
+    }
+    match state.submit(request, ip, admin) {
+        Ok(v) => (StatusCode::ACCEPTED, Json(v)).into_response(),
+        Err(e) => rejected(e),
+    }
+}
+async fn poll(
+    State(state): State<Arc<Scheduler>>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Response {
+    let (ip, _) = match identity(&state, peer, &headers) {
+        Ok(v) => v,
+        Err(e) => return error(StatusCode::UNAUTHORIZED, e),
     };
-    // Keep admission held inside the blocking task even if the HTTP client disconnects.
-    match tokio::task::spawn_blocking(move || {
-        let _permit = permit;
-        state
-            .service
-            .lock()
-            .map_err(|_| AppError::input("求解服务需要重启。"))?
-            .solve(request)
-    })
-    .await
-    {
-        Ok(Ok(result)) => Json(result).into_response(),
-        Ok(Err(e)) => error(StatusCode::UNPROCESSABLE_ENTITY, e),
-        Err(_) => error(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            AppError::input("求解任务异常结束。"),
+    match state.poll(&id, ip) {
+        Some(v) => ([(header::CACHE_CONTROL, "no-store")], Json(v)).into_response(),
+        None => error(
+            StatusCode::NOT_FOUND,
+            AppError {
+                code: "job_expired",
+                message: "计算任务已过期，请重新求解。".into(),
+            },
         ),
     }
 }
-async fn preview(body: Result<Json<SolveRequest>, JsonRejection>) -> Response {
+async fn preview(
+    State(state): State<Arc<Scheduler>>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    body: Result<Json<SolveRequest>, JsonRejection>,
+) -> Response {
+    let (ip, admin) = match identity(&state, peer, &headers) {
+        Ok(v) => v,
+        Err(e) => return error(StatusCode::UNAUTHORIZED, e),
+    };
+    if let Err(e) = state.charge_request(ip, admin) {
+        return rejected(e);
+    }
     match body {
         Ok(Json(r)) => match echo_app::preview(&r) {
             Ok(v) => Json(v).into_response(),
@@ -57,11 +116,7 @@ async fn preview(body: Result<Json<SolveRequest>, JsonRejection>) -> Response {
         Err(e) => error(StatusCode::BAD_REQUEST, AppError::input(e.body_text())),
     }
 }
-fn app(service: Service) -> Router {
-    let state = Server {
-        service: Arc::new(Mutex::new(service)),
-        gate: Arc::new(Semaphore::new(1)),
-    };
+fn app(state: Arc<Scheduler>) -> Router {
     Router::new()
         .route(
             "/api/health",
@@ -75,6 +130,8 @@ fn app(service: Service) -> Router {
         )
         .route("/api/preview", post(preview))
         .route("/api/solve", post(solve))
+        .route("/api/jobs/{id}", get(poll))
+        .route("/api/auth", post(auth))
         .route(
             "/",
             get(|| async {
@@ -148,37 +205,25 @@ fn asset(content_type: &'static str, body: &'static str) -> impl IntoResponse {
 }
 #[tokio::main]
 async fn main() {
-    let address = std::env::var("ECHO_BIND").unwrap_or_else(|_| "127.0.0.1:3000".into());
-    let mut limits = echo_app::Service::default();
-    if std::env::var_os("ECHO_MAX_STATES").is_some()
-        || std::env::var_os("ECHO_MAX_TRANSITIONS").is_some()
-    {
-        let number = |name, default| {
-            std::env::var(name)
-                .map(|s| {
-                    s.parse::<usize>()
-                        .expect("solver limits must be positive integers")
-                })
-                .unwrap_or(default)
-        };
-        let states = number("ECHO_MAX_STATES", 750_000);
-        let transitions = number("ECHO_MAX_TRANSITIONS", 24_000_000);
-        assert!(
-            states > 0 && transitions > 0,
-            "solver limits must be positive"
-        );
-        limits = echo_app::service_with_limits(states, transitions);
+    if std::env::args().nth(1).as_deref() == Some("generate-key") {
+        access::generate_key();
+        return;
     }
+    let address = std::env::var("ECHO_BIND").unwrap_or_else(|_| "127.0.0.1:3000".into());
+    let state = Scheduler::new(Settings::from_env(), Access::from_env());
     let listener = tokio::net::TcpListener::bind(&address)
         .await
         .expect("cannot bind ECHO_BIND");
     println!("Echo Studio listening on http://{address}");
-    axum::serve(listener, app(limits))
-        .with_graceful_shutdown(async {
-            tokio::signal::ctrl_c().await.ok();
-        })
-        .await
-        .expect("HTTP server failed");
+    axum::serve(
+        listener,
+        app(state).into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(async {
+        tokio::signal::ctrl_c().await.ok();
+    })
+    .await
+    .expect("HTTP server failed");
 }
 
 #[cfg(test)]
@@ -190,79 +235,73 @@ mod tests {
     };
     use tower::ServiceExt;
     #[tokio::test]
-    async fn http_contract_and_embedded_frontend() {
-        let app = app(Service::default());
-        for path in [
-            "/",
-            "/app.js",
-            "/styles.css",
-            "/api.js",
-            "/i18n.js",
-            "/preset-data.js",
-            "/api/bootstrap",
-            "/api/health",
-        ] {
-            let r = app
-                .clone()
-                .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
-                .await
-                .unwrap();
-            assert_eq!(r.status(), StatusCode::OK, "{path}");
-        }
-        let r = app
+    async fn http_admission_auth_and_private_jobs() {
+        let mut access = Access::from_env();
+        access.hourly = [0; 3];
+        access.hashes = vec![access::digest("test-key")];
+        let router = app(Scheduler::new(Settings::from_env(), access));
+        let make = |path: &str, key: Option<&str>, peer: &str, body: Option<String>| {
+            let mut r = Request::builder()
+                .uri(path)
+                .extension(ConnectInfo(peer.parse::<SocketAddr>().unwrap()));
+            if let Some(k) = key {
+                r = r.header("authorization", format!("Bearer {k}"));
+            }
+            if body.is_some() {
+                r = r.method("POST").header("content-type", "application/json");
+            }
+            r.body(Body::from(body.unwrap_or_default())).unwrap()
+        };
+        let body=serde_json::json!({"config":echo_app::Config{mode:echo_app::Mode::Upgrade,target:0.,..Default::default()},"echo":[]}).to_string();
+        let r = router
             .clone()
-            .oneshot(
-                Request::builder()
-                    .uri("/api/solve")
-                    .method("POST")
-                    .header("content-type", "application/json")
-                    .body(Body::from("{}"))
-                    .unwrap(),
-            )
+            .oneshot(make("/api/solve", None, "1.1.1.1:123", Some(body.clone())))
             .await
             .unwrap();
-        assert_eq!(r.status(), StatusCode::BAD_REQUEST);
-        let bytes = to_bytes(r.into_body(), 4096).await.unwrap();
-        assert_eq!(
-            serde_json::from_slice::<serde_json::Value>(&bytes).unwrap()["code"],
-            "invalid_input"
-        );
-        let config = echo_app::Config {
-            target: 0.,
-            mode: echo_app::Mode::Upgrade,
-            ..Default::default()
-        };
-        let r = app
-            .oneshot(
-                Request::builder()
-                    .uri("/api/solve")
-                    .method("POST")
-                    .header("content-type", "application/json")
-                    .body(Body::from(
-                        serde_json::json!({"config":config,"echo":[]}).to_string(),
-                    ))
-                    .unwrap(),
-            )
+        assert_eq!(r.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert!(r.headers().contains_key(header::RETRY_AFTER));
+        let r = router
+            .clone()
+            .oneshot(make(
+                "/api/solve",
+                Some("wrong"),
+                "1.1.1.1:123",
+                Some(body.clone()),
+            ))
             .await
             .unwrap();
-        assert_eq!(r.status(), StatusCode::OK);
-    }
-    #[tokio::test]
-    async fn refuses_work_when_worker_busy() {
-        let state = Server {
-            service: Arc::new(Mutex::new(Service::default())),
-            gate: Arc::new(Semaphore::new(1)),
-        };
-        let _permit = state.gate.acquire().await.unwrap();
-        let result = solve(
-            State(state.clone()),
-            Ok(Json(SolveRequest {
-                config: echo_app::Config::default(),
-                echo: vec![],
-                candidate: None,
-            })),
-        )
-        .await;
-        assert_eq!(result.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(r.status(), StatusCode::UNAUTHORIZED);
+        let r = router
+            .clone()
+            .oneshot(make(
+                "/api/solve",
+                Some("test-key"),
+                "1.1.1.1:123",
+                Some(body),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(r.status(), StatusCode::ACCEPTED);
+        let data: serde_json::Value =
+            serde_json::from_slice(&to_bytes(r.into_body(), 4096).await.unwrap()).unwrap();
+        let path = format!("/api/jobs/{}", data["id"].as_str().unwrap());
+        let r = router
+            .clone()
+            .oneshot(make(&path, None, "2.2.2.2:123", None))
+            .await
+            .unwrap();
+        assert_eq!(r.status(), StatusCode::NOT_FOUND);
+        assert_eq!(r.headers()[header::CACHE_CONTROL], "no-store");
+        for path in ["/", "/api.js", "/app.js", "/api/bootstrap", "/api/health"] {
+            assert_eq!(
+                router
+                    .clone()
+                    .oneshot(make(path, None, "1.1.1.1:123", None))
+                    .await
+                    .unwrap()
+                    .status(),
+                StatusCode::OK
+            );
+        }
     }
 }

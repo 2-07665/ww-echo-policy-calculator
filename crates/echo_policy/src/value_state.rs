@@ -52,6 +52,24 @@ pub(crate) fn choose(n: usize, k: usize) -> f64 {
 }
 
 impl ValueSpace {
+    pub(crate) fn heap_bytes(&self) -> usize {
+        self.types.capacity() * size_of::<usize>()
+            + self.strides.capacity() * size_of::<u64>()
+            + self.suffix.capacity() * size_of::<[usize; NUM_ECHO_SLOTS + 1]>()
+            + self.pmfs.capacity() * size_of::<Vec<(u16, f64)>>()
+            + self
+                .pmfs
+                .iter()
+                .map(|v| v.capacity() * size_of::<(u16, f64)>())
+                .sum::<usize>()
+            + self.raw_scores.capacity() * size_of::<Vec<(u16, u16)>>()
+            + self
+                .raw_scores
+                .iter()
+                .map(|v| v.capacity() * size_of::<(u16, u16)>())
+                .sum::<usize>()
+    }
+
     pub fn new<S: InternalScorer>(scorer: &S, limits: SolverLimits) -> Result<Self, Error> {
         let all = scorer.build_score_pmfs();
         if all.len() != NUM_BUFFS {

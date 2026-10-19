@@ -27,9 +27,11 @@ try {
     await page.locator('#solve').click();
     const r = await response;
     const body = await r.json();
-    assert.equal(r.status(),200,JSON.stringify(body));
+    assert.equal(r.status(),202,JSON.stringify(body));
     await page.waitForFunction(() => ['计算完成','Calculated'].includes(document.getElementById('result-status').textContent));
-    return body;
+    const job = await (await page.request.get(`${process.env.ECHO_URL || 'http://127.0.0.1:3000'}/api/jobs/${body.id}`)).json();
+    assert.equal(job.status,'done');
+    return job.result;
   };
   await page.locator('#sample').click();
   await page.locator('[data-language=en]').click();

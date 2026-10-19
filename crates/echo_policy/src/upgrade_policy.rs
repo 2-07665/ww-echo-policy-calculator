@@ -344,6 +344,41 @@ pub struct UpgradePolicySolver {
 }
 
 impl UpgradePolicySolver {
+    /// Retained allocation capacity; does not include temporary query buffers.
+    pub fn allocated_bytes(&self) -> usize {
+        size_of::<Self>()
+            + self.score_pmfs.capacity() * size_of::<Vec<(u16, f64)>>()
+            + self
+                .score_pmfs
+                .iter()
+                .map(|v| v.capacity() * size_of::<(u16, f64)>())
+                .sum::<usize>()
+            + self.caches.capacity() * size_of::<MaskCache>()
+            + self
+                .caches
+                .iter()
+                .map(|c| {
+                    c.dp.capacity() * size_of::<f64>() + c.touched.capacity() * size_of::<usize>()
+                })
+                .sum::<usize>()
+            + self.touched_cache.capacity() * size_of::<usize>()
+            + match &self.expected_cost_cache {
+                ExpectedCostCache::NotComputed => 0,
+                ExpectedCostCache::Computed(entries) => {
+                    entries.capacity() * size_of::<ExpectedCostCacheEntry>()
+                        + entries
+                            .iter()
+                            .map(|e| match e {
+                                ExpectedCostCacheEntry::Abandon => 0,
+                                ExpectedCostCacheEntry::Reachable { states, .. } => {
+                                    states.capacity() * size_of::<ExpectedUpgradeCostState>()
+                                }
+                            })
+                            .sum::<usize>()
+                }
+            }
+    }
+
     /// Read the stored cost model. Changing costs requires a new upgrade-only solver.
     pub fn cost_model(&self) -> &CostModel {
         &self.cost_model

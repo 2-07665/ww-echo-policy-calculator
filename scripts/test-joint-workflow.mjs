@@ -17,7 +17,7 @@ try {
     if(hold){hold=false;const fail=rejectHeld;rejectHeld=false;await new Promise(resolve=>{release=resolve;});if(fail)return route.fulfill({status:422,contentType:'application/json',body:JSON.stringify({message:'obsolete error'})});}
     await route.continue();
   });
-  page.on('response',async r=>{if(r.url().endsWith('/api/solve'))responses.push(await r.json());});
+  page.on('response', async r => { if (r.url().endsWith('/api/solve') && !r.ok()) responses.push(await r.json()); if (r.url().includes('/api/jobs/') && r.ok()) { const job = await r.json(); if (job.status === 'done') responses.push(job.result); } });
   const pause=()=>new Promise(r=>setTimeout(r,550));
   const until=async check=>{for(let i=0;i<300;i++){if(check())return;await new Promise(r=>setTimeout(r,25));}throw Error('Timed out');};
   const ready=async()=>{

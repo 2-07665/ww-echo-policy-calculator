@@ -6,6 +6,12 @@ services:
       - "127.0.0.1:3000:3000"
     environment:
       ECHO_BIND: "0.0.0.0:3000"
+      ECHO_ADMIN_KEY_HASHES: "${ECHO_ADMIN_KEY_HASHES:-}"
+      ECHO_TRUSTED_PROXIES: "172.30.77.1"
+      ECHO_CACHE_MIB: "512"
+      ECHO_QUOTA_UPGRADE: "60"
+      ECHO_QUOTA_REROLL: "12"
+      ECHO_QUOTA_JOINT: "4"
       ECHO_MAX_STATES: "750000"
       ECHO_MAX_TRANSITIONS: "24000000"
     mem_limit: 2g
@@ -13,3 +19,12 @@ services:
     security_opt:
       - no-new-privileges:true
     read_only: true
+
+# The host-side reverse proxy is the only trusted forwarding peer.
+# Change this private subnet and ECHO_TRUSTED_PROXIES together if it conflicts.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.77.0/24
+          gateway: 172.30.77.1

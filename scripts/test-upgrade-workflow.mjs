@@ -16,7 +16,7 @@ try {
     if(holdNext){holdNext=false;await new Promise(resolve=>{release=resolve;});}
     await route.continue();
   });
-  page.on('response',async response=>{if(response.url().endsWith('/api/solve') && response.ok()) results.push(await response.json());});
+  page.on('response', async r => { if (r.url().includes('/api/jobs/') && r.ok()) { const job = await r.json(); if (job.status === 'done') results.push(job.result); } });
   const pause = () => new Promise(r=>setTimeout(r,550));
   const ready = () => page.waitForFunction(()=>document.getElementById('result-status').textContent==='计算完成');
   const settled = async () => {await page.waitForFunction(()=>document.querySelector('.results-column').getAttribute('aria-busy') !== 'true'); await ready(); await page.waitForFunction(()=>!document.getElementById('solve').disabled);};

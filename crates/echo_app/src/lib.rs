@@ -271,6 +271,39 @@ pub fn preview(request: &SolveRequest) -> AppResult<Preview> {
     build_scorer(&request.config)?.preview(&request.echo, request.config.target)
 }
 
+/// Validate without allocating a solver, for server admission before charging quota.
+pub fn validate_request(request: &SolveRequest) -> AppResult<()> {
+    prepare(request).map(|_| ())
+}
+fn prepare(request: &SolveRequest) -> AppResult<(Scorer, Preview, CostModel)> {
+    let c = &request.config;
+    validate_echo(&request.echo, c.mode == Mode::Reroll)?;
+    if let Some(candidate) = &request.candidate {
+        if c.mode != Mode::Reroll {
+            return Err(AppError::input("仅重抽模式支持候选比较。"));
+        }
+        validate_echo(&request.echo, true)?;
+        validate_echo(candidate, true)?;
+    }
+    let scorer = build_scorer(c)?;
+    let preview = scorer.preview(&request.echo, c.target)?;
+    if c.mode != Mode::Reroll && c.costs.iter().any(|v| !v.is_finite() || *v < 0.) {
+        return Err(AppError::input("资源权重必须是有限非负数。"));
+    }
+    let cost = if c.mode == Mode::Reroll {
+        CostModel::tuner_only()
+    } else {
+        CostModel::new(c.costs[0], c.costs[1], c.costs[2], c.refund).map_err(solver_error)?
+    };
+    if preview.target_internal as f64 > (scorer.maximum() - scorer.main()) * scorer.scale() + 0.5 {
+        return Err(AppError {
+            code: "impossible_target",
+            message: "当前评分规则无法达到这个目标，请降低目标分数。".into(),
+        });
+    }
+    Ok((scorer, preview, cost))
+}
+
 enum Policy {
     Upgrade(UpgradePolicySolver),
     Reroll(RerollPolicySolver),
@@ -293,6 +326,14 @@ impl Default for Service {
     }
 }
 impl Service {
+    /// Bytes retained by the policy (allocator overhead is not included).
+    pub fn allocated_bytes(&self) -> usize {
+        self.cache.as_ref().map_or(0, |c| match &c.policy {
+            Policy::Upgrade(s) => s.allocated_bytes(),
+            Policy::Reroll(s) => s.allocated_bytes(),
+            Policy::Joint(s) => s.allocated_bytes(),
+        })
+    }
     pub fn new(limits: SolverLimits) -> Self {
         Self {
             cache: None,
@@ -302,24 +343,7 @@ impl Service {
     pub fn solve(&mut self, request: SolveRequest) -> AppResult<SolveResponse> {
         let started = Instant::now();
         let c = &request.config;
-        validate_echo(&request.echo, c.mode == Mode::Reroll)?;
-        if let Some(candidate) = &request.candidate {
-            if c.mode != Mode::Reroll {
-                return Err(AppError::input("仅重抽模式支持候选比较。"));
-            }
-            validate_echo(&request.echo, true)?;
-            validate_echo(candidate, true)?;
-        }
-        let scorer = build_scorer(c)?;
-        let preview = scorer.preview(&request.echo, c.target)?;
-        if c.mode != Mode::Reroll && c.costs.iter().any(|v| !v.is_finite() || *v < 0.) {
-            return Err(AppError::input("资源权重必须是有限非负数。"));
-        }
-        let cost = if c.mode == Mode::Reroll {
-            CostModel::tuner_only()
-        } else {
-            CostModel::new(c.costs[0], c.costs[1], c.costs[2], c.refund).map_err(solver_error)?
-        };
+        let (scorer, preview, cost) = prepare(&request)?;
         let cached = self.cache.as_ref().is_some_and(|s| s.config == *c);
         if !cached {
             // Drop the old table before building the next one to bound peak memory.

@@ -88,7 +88,8 @@ fn cache_is_keyed_by_full_configuration_and_never_an_implicit_session() {
     assert!(!service.solve(a).unwrap().cached);
     b.config.target = 3.;
     assert!(service.solve(b).is_err());
-    assert!(!service.solve(fixed(Mode::Upgrade)).unwrap().cached);
+    // Validation failures do not discard an already solved policy.
+    assert!(service.solve(fixed(Mode::Upgrade)).unwrap().cached);
 }
 #[test]
 fn validates_echoes_and_rejects_impossible_targets() {

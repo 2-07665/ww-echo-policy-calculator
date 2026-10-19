@@ -16,7 +16,7 @@ try {
     if(hold){hold=false;await new Promise(resolve=>{release=resolve;});}
     await route.continue();
   });
-  page.on('response',async r=>{if(r.url().endsWith('/api/solve')&&r.ok())responses.push(await r.json());});
+  page.on('response', async r => { if (r.url().includes('/api/jobs/') && r.ok()) { const job = await r.json(); if (job.status === 'done') responses.push(job.result); } });
   const pause=()=>new Promise(r=>setTimeout(r,550));
   const ready=async()=>{await page.waitForFunction(()=>document.getElementById('result-status').textContent==='计算完成' && document.querySelector('.results-column').getAttribute('aria-busy')!=='true' && !document.getElementById('solve').disabled);await until(()=>responses.length===requests.length);};
   const until=async check=>{for(let i=0;i<200;i++){if(check())return;await new Promise(r=>setTimeout(r,25));}throw Error('Timed out');};

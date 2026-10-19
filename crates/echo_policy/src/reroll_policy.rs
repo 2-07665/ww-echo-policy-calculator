@@ -135,6 +135,17 @@ pub struct RerollPolicySolver {
 }
 
 impl RerollPolicySolver {
+    /// Retained allocation capacity, excluding allocator overhead and temporary solve buffers.
+    pub fn allocated_bytes(&self) -> usize {
+        size_of::<Self>()
+            + self.space.heap_bytes()
+            + self.states.capacity() * size_of::<Config>()
+            + self.values.capacity() * size_of::<f64>()
+            + self.actions.capacity() * size_of::<Action>()
+            + self.neighbors.capacity() * size_of::<u32>()
+            + self.best_locks.capacity() * size_of::<u16>()
+    }
+
     /// Construct a type-only solver from internal integer type weights. Set a target before solving.
     pub fn new(weights: [u16; NUM_BUFFS]) -> Result<Self, RerollPolicySolverError> {
         Self::with_scorer(&FixedScorer::new(weights)?)
