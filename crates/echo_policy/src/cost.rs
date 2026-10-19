@@ -48,6 +48,23 @@ pub struct CostModel {
 }
 
 impl CostModel {
+    pub(crate) fn normalized(&self) -> (Self, f64) {
+        let scale = self.weight_echo.max(self.weight_tuner).max(self.weight_exp);
+        (
+            Self::build_cached(
+                self.weight_echo / scale,
+                self.weight_tuner / scale,
+                self.weight_exp / scale,
+                self.exp_refund_ratio,
+            ),
+            scale,
+        )
+    }
+
+    pub(crate) fn weighted_resources(&self, echo: f64, tuner: f64, exp: f64) -> f64 {
+        self.weight_echo * echo + self.weight_tuner * tuner + self.weight_exp * exp
+    }
+
     /// Create a cost model with validation.
     pub fn new(
         weight_echo: f64,

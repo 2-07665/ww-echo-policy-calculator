@@ -179,10 +179,50 @@ impl InternalScorer for FixedScorer {
 }
 
 pub struct LinearScorer {
-    weights: [f64; NUM_BUFFS],
-    unnormalized_max_score: f64,
+    buff_max_scores: [u16; NUM_BUFFS],
     normalized_main_buff_score: f64,
     normalized_max_score: f64,
+}
+
+// Apportion the integer score budget instead of rounding each maximum
+// independently. The best five stats must sum to the rounded substat maximum.
+// Equal remainders are resolved by buff index, so scoring is deterministic.
+fn quantize_max_scores(weights: &[f64; NUM_BUFFS], substat_max: f64) -> [u16; NUM_BUFFS] {
+    let budget = convert_display_to_internal(substat_max);
+    let total_weight = top_weights_sum(weights);
+    let mut indices: [usize; NUM_BUFFS] = std::array::from_fn(|i| i);
+    indices.sort_by(|&a, &b| weights[b].total_cmp(&weights[a]).then(a.cmp(&b)));
+    let exact: [f64; NUM_BUFFS] =
+        std::array::from_fn(|i| weights[i] / total_weight * f64::from(budget));
+    let mut scores = [0u16; NUM_BUFFS];
+    for &i in &indices[..NUM_ECHO_SLOTS] {
+        scores[i] = exact[i].floor() as u16;
+    }
+    let assigned: u32 = scores.iter().map(|&s| u32::from(s)).sum();
+    let mut remainder_order = indices[..NUM_ECHO_SLOTS].to_vec();
+    remainder_order.sort_by(|&a, &b| {
+        exact[b]
+            .fract()
+            .total_cmp(&exact[a].fract())
+            .then(a.cmp(&b))
+    });
+    for &i in remainder_order
+        .iter()
+        .take(usize::from(budget) - assigned as usize)
+    {
+        scores[i] += 1;
+    }
+    // A stat outside the selected top five must not displace one of them and
+    // accidentally increase the achievable maximum after rounding.
+    let lowest_top_score = indices[..NUM_ECHO_SLOTS]
+        .iter()
+        .map(|&i| scores[i])
+        .min()
+        .unwrap();
+    for &i in &indices[NUM_ECHO_SLOTS..] {
+        scores[i] = (exact[i].round() as u16).min(lowest_top_score);
+    }
+    scores
 }
 
 impl LinearScorer {
@@ -215,8 +255,10 @@ impl LinearScorer {
             main_buff_score / unnormalized_max_score * normalized_max_score;
 
         Ok(Self {
-            weights,
-            unnormalized_max_score,
+            buff_max_scores: quantize_max_scores(
+                &weights,
+                normalized_max_score - normalized_main_buff_score,
+            ),
             normalized_main_buff_score,
             normalized_max_score,
         })
@@ -242,14 +284,10 @@ impl LinearScorer {
     }
 
     pub fn mc_boost_assistant_scorer(weights: [f64; NUM_BUFFS]) -> Result<Self, ScorerError> {
-        validate_weights(&weights)?;
-        let unnormalized_max_score = 12.0 / 7.0 * top_weights_sum(&weights);
-        Ok(Self {
-            weights,
-            unnormalized_max_score,
-            normalized_main_buff_score: 50.0,
-            normalized_max_score: 120.0,
-        })
+        let mut scorer = Self::new(weights, 0.0, 70.0)?;
+        scorer.normalized_main_buff_score = 50.0;
+        scorer.normalized_max_score = 120.0;
+        Ok(scorer)
     }
 }
 
@@ -269,25 +307,21 @@ impl LinearScorer {
         buff_index: usize,
         buff_value: u16,
     ) -> Result<f64, ScorerError> {
-        is_valid_buff(buff_index, buff_value)?;
-        let weight = self.weights[buff_index];
-        let ratio: f64 = buff_value as f64 / BUFF_MAX_VALUES[buff_index] as f64;
-        Ok(self.normalized_max_score * weight * ratio / self.unnormalized_max_score)
+        Ok(f64::from(self.buff_score_internal(buff_index, buff_value)?) / SCORE_MULTIPLIER)
     }
 
     pub fn echo_score_display(&self, echo: &[(usize, u16)]) -> Result<f64, ScorerError> {
-        let mut sum: f64 = self.normalized_main_buff_score;
-        for &(buff_index, buff_value) in echo.iter() {
-            sum += self.buff_score_display(buff_index, buff_value)?;
-        }
-        Ok(sum)
+        Ok(self.normalized_main_buff_score
+            + f64::from(self.echo_score_internal(echo)?) / SCORE_MULTIPLIER)
     }
 }
 
 impl InternalScorer for LinearScorer {
     fn buff_score_internal(&self, buff_index: usize, buff_value: u16) -> Result<u16, ScorerError> {
-        let score_display = self.buff_score_display(buff_index, buff_value)?;
-        Ok(convert_display_to_internal(score_display))
+        is_valid_buff(buff_index, buff_value)?;
+        let numerator = u32::from(self.buff_max_scores[buff_index]) * u32::from(buff_value);
+        let denominator = u32::from(BUFF_MAX_VALUES[buff_index]);
+        Ok(((numerator + denominator / 2) / denominator) as u16)
     }
 }
 

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::CostModel;
 use crate::data::{NUM_BUFFS, NUM_ECHO_SLOTS};
 use crate::mask::{
@@ -150,7 +152,7 @@ struct MaskCache {
 
 impl MaskCache {
     fn new(min_score: u16, max_score: u16, best_case_remaining_score: u16) -> Self {
-        let size = (max_score - min_score + 1) as usize;
+        let size = usize::from(max_score) - usize::from(min_score) + 1;
 
         Self {
             dp: vec![f64::NAN; size],
@@ -318,7 +320,10 @@ pub struct UpgradePolicySolver {
     score_pmfs: Vec<Vec<(u16, f64)>>,
     target_score: u16,
     cost_model: CostModel,
+    normalized_cost_model: CostModel,
+    cost_scale: f64,
     lambda: f64,
+    reveal_penalties: [f64; NUM_ECHO_SLOTS],
     is_policy_derived: bool,
 
     pmf_len: [usize; NUM_BUFFS],
@@ -401,7 +406,17 @@ impl UpgradePolicySolver {
             }
         };
         if probability.is_nan() {
-            return Err(UpgradePolicySolverError::InvalidScore);
+            // A valid existing echo need not be reachable from the empty echo
+            // when following this policy (e.g. two stats revealed at once).
+            if !self.is_possible_score(mask, score) {
+                return Err(UpgradePolicySolverError::InvalidScore);
+            }
+            return Ok(self.conditional_success_probability(
+                cache,
+                &mut HashMap::new(),
+                mask,
+                score,
+            ));
         }
         Ok(probability)
     }
@@ -410,7 +425,89 @@ impl UpgradePolicySolver {
         if !self.is_policy_derived() {
             return Err(UpgradePolicySolverError::PolicyNotDerived);
         }
-        Ok(DP_VALUE_MULTIPLIER / self.lambda + self.cost_model.weighted_success_additional_cost())
+        let total = match &self.expected_cost_cache {
+            ExpectedCostCache::Computed(cache) => match &cache[0] {
+                ExpectedCostCacheEntry::Reachable { states, .. } => states[0],
+                ExpectedCostCacheEntry::Abandon => unreachable!("root state must be reachable"),
+            },
+            ExpectedCostCache::NotComputed => self.compute_expected_resources().0,
+        };
+        // Evaluate the actual policy, including policies derived at an explicit
+        // lambda. 1000 / lambda is only its cost at an exact optimal root.
+        Ok((self
+            .normalized_cost_model
+            .weighted_resources(1.0, total.tuner, total.exp)
+            / total.success_probability
+            + self
+                .normalized_cost_model
+                .weighted_success_additional_cost())
+            * self.cost_scale)
+    }
+
+    fn is_possible_score(&self, mask: u16, score: u16) -> bool {
+        if mask == 0 {
+            return score == 0;
+        }
+        let index = mask.trailing_zeros() as usize;
+        let remaining = mask & !(1u16 << index);
+        self.score_pmfs[index].iter().any(|&(delta, probability)| {
+            probability > 0.0 && score >= delta && self.is_possible_score(remaining, score - delta)
+        })
+    }
+
+    fn conditional_success_probability(
+        &self,
+        cache: &[ExpectedCostCacheEntry],
+        local: &mut HashMap<(u16, u16), f64>,
+        mask: u16,
+        score: u16,
+    ) -> f64 {
+        if score >= self.target_score {
+            return 1.0;
+        }
+        let filled = calculate_num_filled_slots(mask);
+        if filled == NUM_ECHO_SLOTS {
+            return 0.0;
+        }
+        match &cache[partial_mask_to_index(mask)] {
+            ExpectedCostCacheEntry::Abandon => return 0.0,
+            ExpectedCostCacheEntry::Reachable {
+                cut_off_score,
+                states,
+            } => {
+                if score < *cut_off_score {
+                    return 0.0;
+                }
+                if let Some(state) = states.get(usize::from(score - *cut_off_score))
+                    && !state.success_probability.is_nan()
+                {
+                    return state.success_probability;
+                }
+            }
+        }
+        if let Some(&probability) = local.get(&(mask, score)) {
+            return probability;
+        }
+        let mut total = 0.0;
+        for (index, pmf) in self.score_pmfs.iter().enumerate() {
+            let bit = 1u16 << index;
+            if mask & bit == 0 {
+                for &(delta, probability) in pmf {
+                    if probability > 0.0 {
+                        total += probability
+                            * self.conditional_success_probability(
+                                cache,
+                                local,
+                                mask | bit,
+                                score + delta,
+                            );
+                    }
+                }
+            }
+        }
+        let probability = total / (NUM_BUFFS - filled) as f64;
+        local.insert((mask, score), probability);
+        probability
     }
 }
 
@@ -453,11 +550,15 @@ impl UpgradePolicySolver {
             ));
         }
 
+        let (normalized_cost_model, cost_scale) = cost_model.normalized();
         Ok(Self {
             score_pmfs,
             target_score,
             cost_model,
+            normalized_cost_model,
+            cost_scale,
             lambda: 0.0,
+            reveal_penalties: [0.0; NUM_ECHO_SLOTS],
             is_policy_derived: false,
 
             pmf_len,
@@ -483,6 +584,7 @@ impl UpgradePolicySolver {
 impl UpgradePolicySolver {
     fn clear_caches(&mut self) {
         self.lambda = 0.0;
+        self.reveal_penalties.fill(0.0);
         self.is_policy_derived = false;
         for &index in self.touched_cache.iter() {
             self.caches[index].clear_touched();
@@ -502,10 +604,24 @@ impl UpgradePolicySolver {
     pub fn derive_policy_at_lambda(&mut self, lambda: f64) {
         self.clear_caches();
         self.lambda = lambda;
+        // Apply an explicit lambda in its original units, per stage. Computing
+        // lambda * cost_scale first can overflow even when a later stage has
+        // a small (or zero) cost and its penalty is perfectly representable.
+        self.reveal_penalties = std::array::from_fn(|slot| {
+            let cost = self.cost_model.weighted_reveal_cost(slot);
+            if lambda == 0.0 || cost == 0.0 {
+                0.0
+            } else {
+                lambda * cost
+            }
+        });
         self.is_policy_derived = true;
         self.value_rec(0u16, 0u16);
     }
 
+    /// Find a policy using relative convergence of its success/cost ratio.
+    /// Cost weights are normalized internally; the returned lambda uses the
+    /// caller's original cost units.
     pub fn lambda_search(
         &mut self,
         tol: f64,
@@ -515,87 +631,45 @@ impl UpgradePolicySolver {
             return Err(UpgradePolicySolverError::InvalidTolerance { tolerance: tol });
         }
 
-        let lo = 0.0;
-        let mut hi = 1.0;
-
-        let mut fa = self.root_advantage(lo);
-        if fa < 0.0 {
-            return Err(UpgradePolicySolverError::LambdaNotBracketed);
-        }
-        let mut fb = self.root_advantage(hi);
-        let mut expand_count: usize = 0;
-        while fb > 0.0 && expand_count < 80 {
-            hi *= 2.0;
-            fb = self.root_advantage(hi);
-            expand_count += 1;
-        }
-        if fb > 0.0 {
-            return Err(UpgradePolicySolverError::LambdaNotBracketed);
-        }
-
-        let mut a = lo;
-        let mut b = hi;
-        let mut scale_a = 1.0f64;
-        let mut scale_b = 1.0f64;
-
+        // Dinkelbach iteration: maximize 1000*p - lambda*c, evaluate that
+        // policy, then set lambda = 1000*p/c. Starting at zero approaches the
+        // optimum from below without a scale-dependent bracketing tolerance.
+        let mut lambda = 0.0;
+        let relative_tolerance = tol.max(64.0 * f64::EPSILON);
         for _ in 0..max_iter {
-            let fa_s = fa * scale_a;
-            let fb_s = fb * scale_b;
-            let denom = fb_s - fa_s;
-
-            let c = if denom.abs() <= f64::EPSILON * (fa_s.abs() + fb_s.abs() + 1.0) {
-                0.5 * (a + b)
-            } else {
-                (a * fb_s - b * fa_s) / denom
-            };
-
-            let fc = self.root_advantage(c);
-            if fc.abs() <= tol {
-                return Ok(c);
+            self.derive_normalized_policy(lambda);
+            let (total, memo) = self.compute_expected_resources();
+            let cost = self
+                .normalized_cost_model
+                .weighted_resources(1.0, total.tuner, total.exp);
+            let next_lambda = DP_VALUE_MULTIPLIER * (total.success_probability / cost);
+            if !next_lambda.is_finite() || next_lambda <= 0.0 {
+                self.clear_caches();
+                return Err(UpgradePolicySolverError::LambdaNotBracketed);
             }
-
-            if fc > 0.0 {
-                a = c;
-                fa = fc;
-                scale_a = 1.0;
-                scale_b *= 0.5;
-            } else {
-                b = c;
-                fb = fc;
-                scale_b = 1.0;
-                scale_a *= 0.5;
+            self.expected_cost_cache = ExpectedCostCache::Computed(memo);
+            // Every attempt pays at least the first reveal cost. This bounds
+            // the remaining distance to the optimal ratio by residual/c_min,
+            // rather than merely checking the last step in lambda.
+            let relative_gap = (next_lambda - lambda).abs() / next_lambda;
+            let cost_ratio = cost / self.normalized_cost_model.weighted_reveal_cost(0);
+            if lambda > 0.0 && relative_gap * cost_ratio <= relative_tolerance {
+                return Ok(self.lambda);
             }
-
-            if (b - a).abs() <= tol * (1.0 + c.abs()) {
-                let c = 0.5 * (a + b);
-                self.root_advantage(c);
-                return Ok(c);
-            }
+            lambda = next_lambda;
         }
+        self.clear_caches();
         Err(UpgradePolicySolverError::LambdaNotFoundWithinMaxIter)
     }
 
-    fn root_advantage(&mut self, lambda: f64) -> f64 {
+    fn derive_normalized_policy(&mut self, lambda: f64) {
         self.clear_caches();
-        self.lambda = lambda;
+        self.lambda = lambda / self.cost_scale;
+        self.reveal_penalties = std::array::from_fn(|slot| {
+            lambda * self.normalized_cost_model.weighted_reveal_cost(slot)
+        });
         self.is_policy_derived = true;
-
-        let mut total: f64 = 0.0;
-        let mut remaining_buffs = MASK_ALL;
-        while remaining_buffs != 0 {
-            let lsb = remaining_buffs & remaining_buffs.wrapping_neg();
-            let index = lsb.trailing_zeros() as usize;
-            remaining_buffs ^= lsb;
-            let next_mask = 1u16 << index;
-
-            for j in 0..self.pmf_len[index] {
-                let (delta, probability) = self.score_pmfs[index][j];
-                total += probability * self.value_rec(next_mask, delta);
-            }
-        }
-
-        let expected = total / NUM_BUFFS as f64;
-        expected - lambda * self.cost_model.weighted_reveal_cost(0)
+        self.value_rec(0u16, 0u16);
     }
 
     fn value_rec(&mut self, mask: u16, score: u16) -> f64 {
@@ -643,8 +717,7 @@ impl UpgradePolicySolver {
         }
 
         let expected = total / (num_remaining_buffs as f64);
-        let advantage =
-            expected - self.lambda * self.cost_model.weighted_reveal_cost(num_filled_slots);
+        let advantage = expected - self.reveal_penalties[num_filled_slots];
         let decision = advantage >= 0.0;
         let dp = if decision { advantage } else { 0.0 };
         self.set_cache(mask, score, dp, decision);
@@ -659,6 +732,29 @@ impl UpgradePolicySolver {
             return Err(UpgradePolicySolverError::PolicyNotDerived);
         }
 
+        let total = match &self.expected_cost_cache {
+            ExpectedCostCache::Computed(cache) => match &cache[0] {
+                ExpectedCostCacheEntry::Reachable { states, .. } => states[0],
+                ExpectedCostCacheEntry::Abandon => unreachable!("root state must be reachable"),
+            },
+            ExpectedCostCache::NotComputed => {
+                let (total, memo) = self.compute_expected_resources();
+                self.expected_cost_cache = ExpectedCostCache::Computed(memo);
+                total
+            }
+        };
+        Ok(ExpectedUpgradeCost {
+            success_probability: total.success_probability,
+            tuner_per_success: total.tuner / total.success_probability
+                + self.cost_model.success_additional_tuner_cost(),
+            exp_per_success: total.exp / total.success_probability
+                + self.cost_model.success_additional_exp_cost(),
+        })
+    }
+
+    fn compute_expected_resources(
+        &self,
+    ) -> (ExpectedUpgradeCostState, Vec<ExpectedCostCacheEntry>) {
         let mut memo: Vec<ExpectedCostCacheEntry> = Vec::with_capacity(NUM_PARTIAL_MASKS);
 
         for &mask in PARTIAL_MASKS.iter() {
@@ -678,7 +774,7 @@ impl UpgradePolicySolver {
                 None => memo.push(ExpectedCostCacheEntry::Abandon),
                 Some(cut_off_s) => {
                     if cut_off_s < self.target_score {
-                        let size = (self.target_score - cut_off_s + 1) as usize;
+                        let size = usize::from(self.target_score - cut_off_s) + 1;
                         memo.push(ExpectedCostCacheEntry::Reachable {
                             cut_off_score: cut_off_s,
                             states: vec![ExpectedUpgradeCostState::default(); size],
@@ -730,15 +826,7 @@ impl UpgradePolicySolver {
             ExpectedCostCacheEntry::Abandon => unreachable!("root state must be reachable"),
         }
 
-        self.expected_cost_cache = ExpectedCostCache::Computed(memo);
-
-        Ok(ExpectedUpgradeCost {
-            success_probability: total.success_probability,
-            tuner_per_success: total.tuner / total.success_probability
-                + self.cost_model.success_additional_tuner_cost(),
-            exp_per_success: total.exp / total.success_probability
-                + self.cost_model.success_additional_exp_cost(),
-        })
+        (total, memo)
     }
 
     fn expected_resources_rec(
