@@ -205,6 +205,8 @@ impl MaskCache {
     }
 }
 
+/// Expected net resources per successful, fully upgraded echo under the derived policy.
+/// Tuner and EXP totals already include the successful echo’s refund correction.
 pub struct ExpectedUpgradeCost {
     success_probability: f64,
     tuner_per_success: f64,
@@ -212,18 +214,22 @@ pub struct ExpectedUpgradeCost {
 }
 
 impl ExpectedUpgradeCost {
+    /// Probability of success in one attempt starting from a fresh echo, before abandonment.
     pub fn success_probability(&self) -> f64 {
         self.success_probability
     }
 
+    /// Expected number of fresh echoes consumed: the reciprocal of per-attempt success probability.
     pub fn echo_per_success(&self) -> f64 {
         1.0 / self.success_probability
     }
 
+    /// Expected net tuner consumption, including failed attempts and the retained echo.
     pub fn tuner_per_success(&self) -> f64 {
         self.tuner_per_success
     }
 
+    /// Expected net EXP consumption in 5000-EXP tubes, including the retained echo.
     pub fn exp_per_success(&self) -> f64 {
         self.exp_per_success
     }
@@ -280,6 +286,7 @@ enum ExpectedCostCacheEntry {
     },
 }
 
+/// Invalid inputs, unavailable policy/cache, or failure of the outer ratio search.
 #[derive(Debug)]
 pub enum UpgradePolicySolverError {
     ExpectedResourcesNotComputed,
@@ -316,6 +323,9 @@ pub enum UpgradePolicySolverError {
     },
 }
 
+/// Upgrade-only optimizer using `(type mask, total internal score)` states.
+/// Targets passed to constructors/updates are display substat scores; query
+/// scores are internal integers. See the crate-level guide for unit conversion.
 pub struct UpgradePolicySolver {
     score_pmfs: Vec<Vec<(u16, f64)>>,
     target_score: u16,
@@ -334,14 +344,19 @@ pub struct UpgradePolicySolver {
 }
 
 impl UpgradePolicySolver {
+    /// Read the stored cost model. Changing costs requires a new upgrade-only solver.
     pub fn cost_model(&self) -> &CostModel {
         &self.cost_model
     }
 
+    /// Whether a policy is available, including one derived at an explicit lambda.
     pub fn is_policy_derived(&self) -> bool {
         self.is_policy_derived
     }
 
+    /// Whether to reveal the next stat. The empty mask returns true; a full mask returns false.
+    /// Supply a realizable internal score from the same scorer: this threshold query
+    /// does not fully validate score reachability. Requires a derived policy.
     pub fn get_decision(&self, mask: u16, score: u16) -> Result<bool, UpgradePolicySolverError> {
         if !self.is_policy_derived() {
             return Err(UpgradePolicySolverError::PolicyNotDerived);
@@ -365,6 +380,9 @@ impl UpgradePolicySolver {
     }
 
     /// This is the probability of reaching target_score by strictly following the policy.
+    /// Inputs are a type mask and internal substat score. The usual `lambda_search`
+    /// path supplies the resource cache; after `derive_policy_at_lambda`, call
+    /// `calculate_expected_resources` before queries that need that cache.
     pub fn get_success_probability(
         &self,
         mask: u16,
@@ -421,6 +439,9 @@ impl UpgradePolicySolver {
         Ok(probability)
     }
 
+    /// Evaluate expected weighted net cost per success under the current policy,
+    /// including the final refund correction. A zero-success explicit-lambda policy
+    /// can have infinite cost.
     pub fn weighted_expected_cost(&self) -> Result<f64, UpgradePolicySolverError> {
         if !self.is_policy_derived() {
             return Err(UpgradePolicySolverError::PolicyNotDerived);
@@ -512,6 +533,9 @@ impl UpgradePolicySolver {
 }
 
 impl UpgradePolicySolver {
+    /// Construct an unsolved policy from a scorer, display substat target and cost model.
+    /// Subtract the main-stat display score before passing the target. For a fixed
+    /// integer target `t`, pass `f64::from(t) / SCORE_MULTIPLIER`.
     pub fn new<S: InternalScorer>(
         scorer: &S,
         target_score_display: f64,
@@ -569,6 +593,8 @@ impl UpgradePolicySolver {
         })
     }
 
+    /// Update the display substat target and invalidate policy/resource caches on success.
+    /// Validation failure preserves the previous configuration.
     pub fn update_target_score(
         &mut self,
         new_target_score_display: f64,
@@ -601,6 +627,10 @@ impl UpgradePolicySolver {
         self.caches[cache_index].set_cache(score, dp, decision);
     }
 
+    /// Advanced entry point: derive a policy at a supplied success-reward/cost multiplier.
+    /// The success reward is 1000 and lambda uses the caller’s original cost units.
+    /// Supply a finite nonnegative lambda; this method does not validate it or
+    /// optimize it. Resource caches are invalidated.
     pub fn derive_policy_at_lambda(&mut self, lambda: f64) {
         self.clear_caches();
         self.lambda = lambda;
@@ -725,6 +755,8 @@ impl UpgradePolicySolver {
         dp
     }
 
+    /// Populate or reuse the resource cache and return expected net consumption per success.
+    /// Requires a derived policy. Success corrections are already included.
     pub fn calculate_expected_resources(
         &mut self,
     ) -> Result<ExpectedUpgradeCost, UpgradePolicySolverError> {

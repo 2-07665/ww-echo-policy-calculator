@@ -98,6 +98,9 @@ pub fn partial_mask_to_index(mask: u16) -> usize {
     PARTIAL_MASK_TO_INDEX[mask as usize]
 }
 
+/// Convert the first 13 entries to a mask, setting only entries equal to 1.
+/// Missing entries become zero and excess entries are ignored. This does not
+/// validate the five-stat limit or reject input values other than 0/1.
 pub fn bits_to_mask(bits: &[u8]) -> u16 {
     let mut mask: u16 = 0;
     for (index, &bit) in bits.iter().enumerate().take(NUM_BUFFS) {
@@ -110,6 +113,8 @@ pub fn bits_to_mask(bits: &[u8]) -> u16 {
     mask
 }
 
+/// Return the low 13 bits as a 0/1 array, ignoring any higher bits.
+/// This does not validate the five-stat limit.
 pub fn mask_to_bits(mask: u16) -> [u8; NUM_BUFFS] {
     let mut bits = [0; NUM_BUFFS];
     for (index, bit) in bits.iter_mut().enumerate().take(NUM_BUFFS) {

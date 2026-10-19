@@ -13,6 +13,7 @@ fn lock_cost(k: usize) -> f64 {
     }
 }
 
+/// Invalid configuration/query, unavailable policy, allocation limit or numeric failure.
 #[derive(Debug)]
 pub enum RerollPolicySolverError {
     PolicyNotDerived,
@@ -64,12 +65,15 @@ impl From<ScorerError> for RerollPolicySolverError {
     }
 }
 
+/// One retained lock option, evaluated for a specific baseline echo.
 #[derive(Clone, Debug)]
 pub struct LockChoice {
+    /// Types to lock; their current numeric values are preserved.
     pub lock_mask: u16,
     /// Expected total frequency resource consumption when taking this action
     /// once, then following the optimal policy (including rejecting results).
     pub expected_cost: f64,
+    /// Extra expected cost relative to the first (best) returned lock option.
     pub regret: f64,
     /// Probability of immediately reaching the target on this reroll.
     pub success_probability: f64,
@@ -131,14 +135,19 @@ pub struct RerollPolicySolver {
 }
 
 impl RerollPolicySolver {
+    /// Construct a type-only solver from internal integer type weights. Set a target before solving.
     pub fn new(weights: [u16; NUM_BUFFS]) -> Result<Self, RerollPolicySolverError> {
         Self::with_scorer(&FixedScorer::new(weights)?)
     }
 
+    /// Construct a value-aware solver with default allocation limits; the scorer is not retained.
     pub fn with_scorer<S: InternalScorer>(scorer: &S) -> Result<Self, RerollPolicySolverError> {
         Self::with_scorer_and_limits(scorer, SolverLimits::default())
     }
 
+    /// Construct compressed states and lock memberships with explicit allocation limits.
+    /// Extremely small joint probabilities return `NumericalFailure` rather than
+    /// allowing subnormal rounding to corrupt expected costs.
     pub fn with_scorer_and_limits<S: InternalScorer>(
         scorer: &S,
         limits: SolverLimits,
@@ -220,16 +229,21 @@ impl RerollPolicySolver {
         })
     }
 
+    /// Whether an internal-score target has been set.
     pub fn is_target_set(&self) -> bool {
         self.target_score.is_some()
     }
+    /// Whether queries can use the derived policy for the current target.
     pub fn is_policy_derived(&self) -> bool {
         self.policy_derived
     }
+    /// Number of compressed full-echo states, excluding lock configurations.
     pub fn state_count(&self) -> usize {
         self.states.len()
     }
 
+    /// Set an internal substat target, invalidating the derived policy on success.
+    /// An invalid target leaves the existing configuration unchanged.
     pub fn set_target(&mut self, target_score: u16) -> Result<(), RerollPolicySolverError> {
         if target_score > self.space.max_score {
             return Err(RerollPolicySolverError::TargetScoreImpossible {
@@ -440,12 +454,17 @@ impl RerollPolicySolver {
         Some((a.success_mass / a.probability).clamp(0.0, 1.0))
     }
 
+    /// Expected total frequency units to reach the target from a full type mask.
+    /// Returns `ValuesRequired` when a present type has multiple score buckets.
     pub fn expected_lock_cost(&self, mask: u16) -> Result<f64, RerollPolicySolverError> {
         Ok(self.values[self.mask_index(mask)?])
     }
+    /// Return one optimal lock mask, or `None` if already successful. Requires a full mask.
     pub fn best_lock_choices(&self, mask: u16) -> Result<Option<u16>, RerollPolicySolverError> {
         Ok(self.best_lock(self.mask_index(mask)?))
     }
+    /// Rank lock options by expected total cost; `top_k = 0` returns all retained options.
+    /// Successful states return an empty vector. Permanently zero-score locks are omitted.
     pub fn lock_choices(
         &self,
         mask: u16,
@@ -453,12 +472,15 @@ impl RerollPolicySolver {
     ) -> Result<Vec<LockChoice>, RerollPolicySolverError> {
         Ok(self.choices(self.mask_index(mask)?, top_k))
     }
+    /// Probability the recommended action succeeds on the next reroll; `None` if already successful.
     pub fn best_lock_success_probability(
         &self,
         mask: u16,
     ) -> Result<Option<f64>, RerollPolicySolverError> {
         Ok(self.best_success(self.mask_index(mask)?))
     }
+    /// Accept a candidate if its optimal remaining cost is no greater than the baseline’s.
+    /// Both masks must be full. Does not check compatibility with a previously selected lock.
     pub fn should_accept(
         &self,
         baseline_mask: u16,
@@ -469,18 +491,22 @@ impl RerollPolicySolver {
 
     /// Echo entries use actual in-game substat values in the same units as
     /// `InternalScorer::buff_score_internal`, not already-computed scores.
+    /// Requires five distinct types with numeric values from the built-in legal histograms.
+    /// Returns zero when already successful; otherwise includes repeated rerolls.
     pub fn expected_lock_cost_for_echo(
         &self,
         echo: &[(usize, u16)],
     ) -> Result<f64, RerollPolicySolverError> {
         Ok(self.values[self.echo_index(echo)?])
     }
+    /// Value-aware optimal lock mask, or `None` for an already successful five-stat echo.
     pub fn best_lock_choices_for_echo(
         &self,
         echo: &[(usize, u16)],
     ) -> Result<Option<u16>, RerollPolicySolverError> {
         Ok(self.best_lock(self.echo_index(echo)?))
     }
+    /// Value-aware counterpart of [`Self::lock_choices`]; `top_k = 0` returns all retained options.
     pub fn lock_choices_for_echo(
         &self,
         echo: &[(usize, u16)],
@@ -488,12 +514,15 @@ impl RerollPolicySolver {
     ) -> Result<Vec<LockChoice>, RerollPolicySolverError> {
         Ok(self.choices(self.echo_index(echo)?, top_k))
     }
+    /// Value-aware one-reroll success probability for the recommended lock, or `None` if successful.
     pub fn best_lock_success_probability_for_echo(
         &self,
         echo: &[(usize, u16)],
     ) -> Result<Option<f64>, RerollPolicySolverError> {
         Ok(self.best_success(self.echo_index(echo)?))
     }
+    /// Value-aware candidate comparison by optimal remaining frequency cost, accepting ties.
+    /// Validates each echo, but not compatibility with a previously selected lock.
     pub fn should_accept_echo(
         &self,
         baseline: &[(usize, u16)],

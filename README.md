@@ -3,8 +3,7 @@
 本项目使用动态规划计算《鸣潮》声骸强化开词条与使用频整器重抽词条的最优策略，以便在强化前计算期望资源消耗，以及在强化时实时辅助决策。
 
 仓库结构：
-- `crates/echo_policy/`：核心求解器 crate（可直接命令行运行示例）。
-- `crates/echo_policy/src/bin/target_score_sweep.rs`：用于批量扫描 `target_score` 并输出 Mathematica / Wolfram Language 数据的辅助 CLI。由 Codex 管理。
+- `crates/echo_policy/`：核心求解器库。问题定义、求解原理与公开接口见 [核心库文档](crates/echo_policy/README.md)。
 - `apps/desktop/`：桌面应用（Tauri 2，前端资源已内置，无需 Node/npm）。由 Codex 管理。
 
 ## 环境要求
@@ -14,35 +13,19 @@
 
 ## 使用方法
 
-### 1. 运行核心求解器示例（CLI）
-
-```bash
-cargo run --release --manifest-path crates/echo_policy/Cargo.toml --bin cli
-```
-
-### 2. 运行桌面应用（Tauri）
+### 1. 运行桌面应用（Tauri）
 
 ```bash
 cargo run --release --manifest-path apps/desktop/src-tauri/Cargo.toml
 ```
 
-### 3. 批量扫描 `target_score`
-
-该入口用于固定评分器和成本模型后，批量扫描一组 `target_score`，输出适合 Mathematica / Wolfram Language 读取的结果。
-
-```bash
-cargo run --release --manifest-path crates/echo_policy/Cargo.toml --bin target_score_sweep -- \
-  crates/echo_policy/examples/target_score_sweep.json \
-  crates/echo_policy/examples/output.wl
-```
-
-### 4. OCR 集成（Windows Only）
+### 2. OCR 集成（Windows Only）
 
 - OCR 方案依赖 `ok-wuthering-waves` 项目：
   https://github.com/ok-oldking/ok-wuthering-waves
 - 使用方式：双击运行 `将OCR任务加入ok-ww.cmd`。启动 `ok-ww` 后运行 `Echo OCR` 任务。
 
-### 5. 核心库：独立强化与联合求解
+### 3. 核心库：独立强化与联合求解
 
 不考虑重抽时，继续使用 `UpgradePolicySolver`，其接口与求解方法保持不变。
 考虑重抽时，使用 `JointPolicySolver`：它把频整器作为第四种加权资源，先求解重抽，再反向求解强化决策。

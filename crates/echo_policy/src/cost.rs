@@ -29,6 +29,8 @@ const EXP_REFUND_RATIO_MAX: f64 = 0.75;
 // Each (raw) Echo EXP requires 0.1 Shell Credit.
 // Each tune attempt requires 2000 Shell Credit.
 
+/// Invalid resource weights or experience refund ratio.
+/// `NegativeWeight` also covers non-finite weights.
 #[derive(Debug)]
 pub enum CostModelError {
     NegativeWeight { field: &'static str, value: f64 },
@@ -36,6 +38,9 @@ pub enum CostModelError {
     InvalidExpRefundRatio { value: f64 },
 }
 
+/// Relative costs for echoes, tuners and EXP tubes, with decomposition refunds.
+/// One EXP tube is 5000 raw EXP. Frequency weight belongs to `JointPolicySolver`.
+/// This type is `Copy`; mutating another copy does not update an existing solver.
 #[derive(Clone, Copy)]
 pub struct CostModel {
     weight_echo: f64,
@@ -66,6 +71,8 @@ impl CostModel {
     }
 
     /// Create a cost model with validation.
+    /// Weights must be finite, nonnegative and not all zero. Refund must be finite
+    /// and in `[0, 0.75]`. These weights express relative value, not inventory limits.
     pub fn new(
         weight_echo: f64,
         weight_tuner: f64,
@@ -158,11 +165,13 @@ impl CostModel {
     }
 
     /// Create a cost model with only weight_tuner=1.0
+    /// Uses EXP refund ratio 0.66.
     pub fn tuner_only() -> Self {
         Self::build_cached(0.0, 1.0, 0.0, EXP_REFUND_RATIO_DEFAULT)
     }
 
     /// Validate new weights and update the cost model.
+    /// `None` preserves the previous field. Validation failure leaves the model unchanged.
     pub fn update_weights(
         &mut self,
         new_weight_echo: Option<f64>,
@@ -180,10 +189,15 @@ impl CostModel {
         Ok(())
     }
 
+    /// Unweighted net tuner cost per reveal: 7 after the modeled 30% refund.
     pub fn tuner_cost(&self) -> f64 {
         (1.0 - TUNER_REFUND_RATIO) * TUNER_COST
     }
 
+    /// Unweighted net EXP increment in tubes for reveal index `slot` (`0..5`).
+    ///
+    /// # Panics
+    /// Panics when `slot >= 5`.
     pub fn exp_cost(&self, slot: usize) -> f64 {
         (1.0 - self.exp_refund_ratio) * EXP_INCREMENTAL_COSTS[slot]
     }
@@ -201,6 +215,10 @@ impl CostModel {
     }
 
     /// The weighted cost to reveal `slot`.
+    /// `slot` is zero-based (`0..5`); the first reveal includes the echo cost.
+    ///
+    /// # Panics
+    /// Panics when `slot >= 5`.
     pub fn weighted_reveal_cost(&self, slot: usize) -> f64 {
         self.reveal_cost_cached[slot]
     }

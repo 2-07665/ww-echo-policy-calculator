@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::data::{BUFF_FIXED_VALUE_INDEX, BUFF_MAX_VALUES, BUFF_TYPES, NUM_BUFFS, NUM_ECHO_SLOTS};
 
+/// Linear display-substat scores are multiplied by this factor to obtain internal units.
 pub const SCORE_MULTIPLIER: f64 = 100.0;
 const MAX_DISPLAY_SCORE: f64 = u16::MAX as f64 / SCORE_MULTIPLIER;
 
@@ -24,6 +25,7 @@ fn is_valid_buff(buff_index: usize, buff_value: u16) -> Result<(), ScorerError> 
     Ok(())
 }
 
+/// Invalid scoring configuration or stat input.
 #[derive(Debug)]
 pub enum ScorerError {
     NegativeWeight { index: usize, weight: f64 },
@@ -37,9 +39,17 @@ pub enum ScorerError {
     FixedScorerTopWeightsTooLarge { sum: u32 },
 }
 
+/// Additive, nonnegative scoring in internal substat units, excluding the main stat.
+///
+/// Implementations must score every built-in histogram entry and keep any five
+/// distinct stat scores within `u16`. Custom PMFs must agree with these scores.
+/// Solvers use additive per-stat PMFs, even if `echo_score_internal` is overridden.
 pub trait InternalScorer {
+    /// Score one stat using its type index and raw in-game numeric value.
     fn buff_score_internal(&self, buff_index: usize, buff_value: u16) -> Result<u16, ScorerError>;
 
+    /// Sum internal scores for up to five distinct stat types, without a main-stat bonus.
+    /// The default implementation checks length and duplicates, but not sum overflow.
     fn echo_score_internal(&self, echo: &[(usize, u16)]) -> Result<u16, ScorerError> {
         if echo.len() > NUM_ECHO_SLOTS {
             return Err(ScorerError::InvalidEcho);
@@ -60,6 +70,9 @@ pub trait InternalScorer {
         Ok(sum)
     }
 
+    /// Return one `(internal_score, probability)` PMF per stat type, in index order.
+    /// The default merges equal scores using built-in value histograms. It panics if
+    /// `buff_score_internal` rejects any built-in histogram entry.
     fn build_score_pmfs(&self) -> Vec<Vec<(u16, f64)>> {
         build_score_pmfs(self)
     }
@@ -132,29 +145,38 @@ fn top_weights_sum(weights: &[f64; NUM_BUFFS]) -> f64 {
     top_weights.into_iter().sum()
 }
 
+/// Type-only scorer: each supplied weight is already an internal integer score.
+/// Its display methods return the same integer units, without dividing by 100.
 pub struct FixedScorer {
     weights: [u16; NUM_BUFFS],
     max_score: u16,
 }
 
 impl FixedScorer {
+    /// Construct from 13 type weights; reject all-zero weights or a top-five sum above `u16::MAX`.
     pub fn new(weights: [u16; NUM_BUFFS]) -> Result<Self, ScorerError> {
         let max_score = validate_fixed_scorer_weights(&weights)?;
         Ok(Self { weights, max_score })
     }
 
+    /// Unimplemented placeholder; use [`Self::new`] instead.
+    ///
+    /// # Panics
+    /// Always panics.
     pub fn build_from_buff_selection() -> Result<Self, ScorerError> {
         todo!()
     }
 }
 
 impl FixedScorer {
+    /// Maximum internal score of any five distinct types.
     pub fn max_score(&self) -> u16 {
         self.max_score
     }
 }
 
 impl FixedScorer {
+    /// Return the fixed type weight in internal integer units.
     pub fn buff_score_display(
         &self,
         buff_index: usize,
@@ -163,6 +185,7 @@ impl FixedScorer {
         self.buff_score_internal(buff_index, buff_value)
     }
 
+    /// Sum fixed type weights in internal integer units.
     pub fn echo_score_display(&self, echo: &[(usize, u16)]) -> Result<u16, ScorerError> {
         self.echo_score_internal(echo)
     }
@@ -175,6 +198,9 @@ impl InternalScorer for FixedScorer {
     }
 }
 
+/// Value-dependent scorer with integer quantization at 0.01 display-score resolution.
+/// Weights describe relative scores at each type’s maximum numeric roll.
+/// Internal scoring excludes the main stat; echo display scoring includes it.
 pub struct LinearScorer {
     buff_max_scores: [u16; NUM_BUFFS],
     normalized_main_buff_score: f64,
@@ -223,6 +249,10 @@ fn quantize_max_scores(weights: &[f64; NUM_BUFFS], substat_max: f64) -> [u16; NU
 }
 
 impl LinearScorer {
+    /// Normalize raw maximum-roll weights and the raw main-stat score to a total score budget.
+    /// Weights must be finite and nonnegative with at least one positive value.
+    /// The main-stat input must be finite and nonnegative; the normalized maximum
+    /// must be finite and in `(0, 655.35]`.
     pub fn new(
         weights: [f64; NUM_BUFFS],
         main_buff_score: f64,
@@ -261,10 +291,13 @@ impl LinearScorer {
         })
     }
 
+    /// Construct with no main-stat score and a normalized total maximum of 100.
+    /// This associated function is not the `Default` trait.
     pub fn default(weights: [f64; NUM_BUFFS]) -> Result<Self, ScorerError> {
         Self::new(weights, 0.0, 100.0)
     }
 
+    /// Convert per-unit weights (percentage units for percentage stats) and normalize to 50.
     pub fn qq_bot_scorer(
         qq_bot_weights: [f64; NUM_BUFFS],
         main_buff_score: f64,
@@ -280,6 +313,7 @@ impl LinearScorer {
         Self::new(weights, main_buff_score, 50.0)
     }
 
+    /// Allocate 70 display points to substats and add a fixed 50-point main-stat bonus.
     pub fn mc_boost_assistant_scorer(weights: [f64; NUM_BUFFS]) -> Result<Self, ScorerError> {
         let mut scorer = Self::new(weights, 0.0, 70.0)?;
         scorer.normalized_main_buff_score = 50.0;
@@ -289,16 +323,19 @@ impl LinearScorer {
 }
 
 impl LinearScorer {
+    /// Normalized main-stat display score; subtract this from a total display target.
     pub fn main_buff_score(&self) -> f64 {
         self.normalized_main_buff_score
     }
 
+    /// Nominal total display-score budget, before small integer-quantization differences.
     pub fn normalized_max_score(&self) -> f64 {
         self.normalized_max_score
     }
 }
 
 impl LinearScorer {
+    /// Return the quantized single-stat score divided by `SCORE_MULTIPLIER`.
     pub fn buff_score_display(
         &self,
         buff_index: usize,
@@ -307,6 +344,7 @@ impl LinearScorer {
         Ok(f64::from(self.buff_score_internal(buff_index, buff_value)?) / SCORE_MULTIPLIER)
     }
 
+    /// Return the main-stat display score plus the internal substat sum divided by 100.
     pub fn echo_score_display(&self, echo: &[(usize, u16)]) -> Result<f64, ScorerError> {
         Ok(self.normalized_main_buff_score
             + f64::from(self.echo_score_internal(echo)?) / SCORE_MULTIPLIER)

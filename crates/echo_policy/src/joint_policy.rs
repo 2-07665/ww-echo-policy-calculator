@@ -1,6 +1,7 @@
 use crate::value_state::Config;
 use crate::{CostModel, InternalScorer, RerollPolicySolver, RerollPolicySolverError, SolverLimits};
 
+/// Invalid joint configuration, a wrapped reroll error, or failure of the outer optimization.
 #[derive(Debug)]
 pub enum JointPolicySolverError {
     Reroll(RerollPolicySolverError),
@@ -17,14 +18,20 @@ impl From<RerollPolicySolverError> for JointPolicySolverError {
     }
 }
 
+/// Recommended next action for the supplied partial or full echo.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum JointDecision {
+    /// Reveal the next stat, paying the next upgrade/tuning cost.
     Upgrade,
+    /// Discard this echo and start another attempt.
     Abandon,
+    /// Keep the fully upgraded echo: it meets the target.
     Keep,
+    /// Reroll the full echo, preserving the types and values selected by `lock_mask`.
     Reroll { lock_mask: u16 },
 }
 
+/// Net resource consumption per success, including failures and the final refund correction.
 #[derive(Clone, Copy, Debug)]
 pub struct ExpectedJointCost {
     success_probability: f64,
@@ -37,9 +44,11 @@ impl ExpectedJointCost {
     pub fn success_probability(&self) -> f64 {
         self.success_probability
     }
+    /// Expected echoes consumed per success, the reciprocal of per-attempt success probability.
     pub fn echo_per_success(&self) -> f64 {
         1.0 / self.success_probability
     }
+    /// Expected net tuners per success, including the retained echo.
     pub fn tuner_per_success(&self) -> f64 {
         self.tuner_per_success
     }
@@ -47,6 +56,7 @@ impl ExpectedJointCost {
     pub fn exp_per_success(&self) -> f64 {
         self.exp_per_success
     }
+    /// Expected frequency units per success; this is not a worst-case or inventory bound.
     pub fn frequency_per_success(&self) -> f64 {
         self.frequency_per_success
     }
@@ -96,6 +106,9 @@ pub struct JointPolicySolver {
 }
 
 impl JointPolicySolver {
+    /// Construct an unsolved joint optimizer. Target uses internal substat units.
+    /// Frequency weight must be finite and nonnegative, in the same scale as
+    /// the three `CostModel` weights; it has no implicit default.
     pub fn new<S: InternalScorer>(
         scorer: &S,
         cost_model: CostModel,
@@ -111,6 +124,7 @@ impl JointPolicySolver {
         )
     }
 
+    /// Like [`Self::new`], with explicit limits on compressed states and lock memberships.
     pub fn with_limits<S: InternalScorer>(
         scorer: &S,
         cost_model: CostModel,
@@ -171,15 +185,20 @@ impl JointPolicySolver {
         }
     }
 
+    /// Read the three-resource cost model.
     pub fn cost_model(&self) -> &CostModel {
         &self.cost_model
     }
+    /// Read the separate frequency resource weight.
     pub fn frequency_weight(&self) -> f64 {
         self.frequency_weight
     }
+    /// Read the reusable reroll solver for lock rankings and candidate comparisons.
+    /// Use the joint decision to determine whether rerolling is worth starting.
     pub fn reroll_solver(&self) -> &RerollPolicySolver {
         &self.reroll
     }
+    /// Whether queries can use a joint policy for the current configuration.
     pub fn is_policy_derived(&self) -> bool {
         self.derived
     }
@@ -198,6 +217,7 @@ impl JointPolicySolver {
         Ok(())
     }
 
+    /// Set an internal substat target and invalidate both joint and reroll policies on success.
     pub fn update_target_score(&mut self, target_score: u16) -> Result<(), JointPolicySolverError> {
         self.reroll.set_target(target_score)?;
         self.derived = false;
@@ -379,6 +399,8 @@ impl JointPolicySolver {
         }
     }
 
+    /// Query the next action for zero to five distinct stats with legal raw numeric values.
+    /// Requires a derived policy; the empty echo starts a new attempt.
     pub fn get_decision(
         &self,
         echo: &[(usize, u16)],
@@ -429,6 +451,8 @@ impl JointPolicySolver {
             .clamp(0.0, 1.0))
     }
 
+    /// Read expected net resources per successful full echo from the derived policy.
+    /// Unlike the upgrade-only counterpart, this method needs no mutable receiver.
     pub fn calculate_expected_resources(
         &self,
     ) -> Result<ExpectedJointCost, JointPolicySolverError> {
@@ -444,6 +468,7 @@ impl JointPolicySolver {
         })
     }
 
+    /// Expected weighted net cost per success across all four resources, including the final refund correction.
     pub fn weighted_expected_cost(&self) -> Result<f64, JointPolicySolverError> {
         self.check_policy()?;
         let total = self.layers[0].outcomes[0];
