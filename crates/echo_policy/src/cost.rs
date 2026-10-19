@@ -7,35 +7,30 @@ const TUNER_REFUND_RATIO: f64 = 0.3;
 
 // EXP costs are in "Premium Sealed Tubes", where 1 tube = 5000 raw EXP.
 const EXP_PER_TUBE: f64 = 5000.0;
-const EXP_COST_BY_LEVEL: [f64; NUM_ECHO_SLOTS] = [
-    4400.0 / EXP_PER_TUBE,
-    16500.0 / EXP_PER_TUBE,
-    39600.0 / EXP_PER_TUBE,
-    79100.0 / EXP_PER_TUBE,
-    142600.0 / EXP_PER_TUBE,
-];
-const EXP_INCREMENTAL_COSTS: [f64; NUM_ECHO_SLOTS] = [
-    4400.0 / EXP_PER_TUBE,
-    12100.0 / EXP_PER_TUBE,
-    23100.0 / EXP_PER_TUBE,
-    39500.0 / EXP_PER_TUBE,
-    63500.0 / EXP_PER_TUBE,
-];
-// The ideal refund ratio is 0.75.
-const EXP_REFUND_RATIO_DEFAULT: f64 = 0.66;
-const EXP_REFUND_RATIO_MAX: f64 = 0.75;
+// Cumulative raw EXP spent/refunded at +0, +5, +10, +15, +20, +25.
+// Measured recycle rewards are rounded by level, so one refund ratio is insufficient.
+const EXP_COST_BY_LEVEL: [f64; NUM_ECHO_SLOTS + 1] =
+    [0.0, 4500.0, 16500.0, 40000.0, 79500.0, 143000.0];
+const EXP_REFUND_BY_LEVEL: [f64; NUM_ECHO_SLOTS + 1] =
+    [0.0, 3000.0, 12000.0, 30000.0, 59500.0, 106500.0];
+
+fn net_exp_at_level(slot: usize) -> f64 {
+    (EXP_COST_BY_LEVEL[slot] - EXP_REFUND_BY_LEVEL[slot]) / EXP_PER_TUBE
+}
+fn net_exp_increment(slot: usize) -> f64 {
+    net_exp_at_level(slot + 1) - net_exp_at_level(slot)
+}
 
 // Shell credit cost not considered.
 // Each (raw) Echo EXP requires 0.1 Shell Credit.
 // Each tune attempt requires 2000 Shell Credit.
 
-/// Invalid resource weights or experience refund ratio.
+/// Invalid resource weights.
 /// `NegativeWeight` also covers non-finite weights.
 #[derive(Debug)]
 pub enum CostModelError {
     NegativeWeight { field: &'static str, value: f64 },
     AllWeightsZero,
-    InvalidExpRefundRatio { value: f64 },
 }
 
 /// Relative costs for echoes, tuners and EXP tubes, with decomposition refunds.
@@ -46,7 +41,6 @@ pub struct CostModel {
     weight_echo: f64,
     weight_tuner: f64,
     weight_exp: f64,
-    exp_refund_ratio: f64,
 
     // Cached costs
     reveal_cost_cached: [f64; NUM_ECHO_SLOTS],
@@ -60,7 +54,6 @@ impl CostModel {
                 self.weight_echo / scale,
                 self.weight_tuner / scale,
                 self.weight_exp / scale,
-                self.exp_refund_ratio,
             ),
             scale,
         )
@@ -71,34 +64,27 @@ impl CostModel {
     }
 
     /// Create a cost model with validation.
-    /// Weights must be finite, nonnegative and not all zero. Refund must be finite
-    /// and in `[0, 0.75]`. These weights express relative value, not inventory limits.
+    /// Weights must be finite, nonnegative and not all zero.
+    /// These weights express relative value, not inventory limits.
+    /// EXP costs and recycle rewards use the fixed measured level tables.
     pub fn new(
         weight_echo: f64,
         weight_tuner: f64,
         weight_exp: f64,
-        exp_refund_ratio: f64,
     ) -> Result<Self, CostModelError> {
-        Self::validate_weights(weight_echo, weight_tuner, weight_exp, exp_refund_ratio)?;
-        Ok(Self::build_cached(
-            weight_echo,
-            weight_tuner,
-            weight_exp,
-            exp_refund_ratio,
-        ))
+        Self::validate_weights(weight_echo, weight_tuner, weight_exp)?;
+        Ok(Self::build_cached(weight_echo, weight_tuner, weight_exp))
     }
 
     /// Validate the weights
     ///
     /// Constraints enforced:
     /// - weights are finite and >= 0
-    /// - exp_refund_ratio is finite and in [0, 0.75]
     /// - not all weights are zero
     fn validate_weights(
         weight_echo: f64,
         weight_tuner: f64,
         weight_exp: f64,
-        exp_refund_ratio: f64,
     ) -> Result<(), CostModelError> {
         if !weight_echo.is_finite() || weight_echo < 0.0 {
             return Err(CostModelError::NegativeWeight {
@@ -119,14 +105,6 @@ impl CostModel {
             });
         }
 
-        if !exp_refund_ratio.is_finite()
-            || !(0.0..=EXP_REFUND_RATIO_MAX).contains(&exp_refund_ratio)
-        {
-            return Err(CostModelError::InvalidExpRefundRatio {
-                value: exp_refund_ratio,
-            });
-        }
-
         if weight_echo == 0.0 && weight_tuner == 0.0 && weight_exp == 0.0 {
             return Err(CostModelError::AllWeightsZero);
         }
@@ -135,19 +113,13 @@ impl CostModel {
     }
 
     /// Build a cost model from the weights (without validation).
-    fn build_cached(
-        weight_echo: f64,
-        weight_tuner: f64,
-        weight_exp: f64,
-        exp_refund_ratio: f64,
-    ) -> Self {
+    fn build_cached(weight_echo: f64, weight_tuner: f64, weight_exp: f64) -> Self {
         let weighted_echo_cost = weight_echo * ECHO_COST;
         let weighted_tuner_cost = weight_tuner * (1.0 - TUNER_REFUND_RATIO) * TUNER_COST;
-        let weighted_exp_factor = weight_exp * (1.0 - exp_refund_ratio);
 
         let mut reveal_cost_cached = [0.0; NUM_ECHO_SLOTS];
         for (slot, cost) in reveal_cost_cached.iter_mut().enumerate() {
-            let base = weighted_tuner_cost + weighted_exp_factor * EXP_INCREMENTAL_COSTS[slot];
+            let base = weighted_tuner_cost + weight_exp * net_exp_increment(slot);
             *cost = if slot == 0 {
                 base + weighted_echo_cost
             } else {
@@ -159,15 +131,13 @@ impl CostModel {
             weight_echo,
             weight_tuner,
             weight_exp,
-            exp_refund_ratio,
             reveal_cost_cached,
         }
     }
 
     /// Create a cost model with only weight_tuner=1.0
-    /// Uses EXP refund ratio 0.66.
     pub fn tuner_only() -> Self {
-        Self::build_cached(0.0, 1.0, 0.0, EXP_REFUND_RATIO_DEFAULT)
+        Self::build_cached(0.0, 1.0, 0.0)
     }
 
     /// Validate new weights and update the cost model.
@@ -177,15 +147,13 @@ impl CostModel {
         new_weight_echo: Option<f64>,
         new_weight_tuner: Option<f64>,
         new_weight_exp: Option<f64>,
-        new_exp_refund_ratio: Option<f64>,
     ) -> Result<(), CostModelError> {
         let weight_echo = new_weight_echo.unwrap_or(self.weight_echo);
         let weight_tuner = new_weight_tuner.unwrap_or(self.weight_tuner);
         let weight_exp = new_weight_exp.unwrap_or(self.weight_exp);
-        let exp_refund_ratio = new_exp_refund_ratio.unwrap_or(self.exp_refund_ratio);
 
-        Self::validate_weights(weight_echo, weight_tuner, weight_exp, exp_refund_ratio)?;
-        *self = Self::build_cached(weight_echo, weight_tuner, weight_exp, exp_refund_ratio);
+        Self::validate_weights(weight_echo, weight_tuner, weight_exp)?;
+        *self = Self::build_cached(weight_echo, weight_tuner, weight_exp);
         Ok(())
     }
 
@@ -199,19 +167,14 @@ impl CostModel {
     /// # Panics
     /// Panics when `slot >= 5`.
     pub fn exp_cost(&self, slot: usize) -> f64 {
-        (1.0 - self.exp_refund_ratio) * EXP_INCREMENTAL_COSTS[slot]
+        net_exp_increment(slot)
     }
 
     /// Calculate the exp cost for a full upgrade starting from current_slot
     ///
     /// Must ensure `current_slot` is in 0..=5
     pub fn full_upgrade_exp_cost(&self, current_slot: usize) -> f64 {
-        let exp_now = if current_slot == 0 {
-            0.0
-        } else {
-            EXP_COST_BY_LEVEL[current_slot - 1]
-        };
-        (1.0 - self.exp_refund_ratio) * (EXP_COST_BY_LEVEL[NUM_ECHO_SLOTS - 1] - exp_now)
+        net_exp_at_level(NUM_ECHO_SLOTS) - net_exp_at_level(current_slot)
     }
 
     /// The weighted cost to reveal `slot`.
@@ -230,12 +193,72 @@ impl CostModel {
 
     /// The additional exp cost for an echo that is kept.
     pub fn success_additional_exp_cost(&self) -> f64 {
-        self.exp_refund_ratio * EXP_COST_BY_LEVEL[NUM_ECHO_SLOTS - 1]
+        EXP_REFUND_BY_LEVEL[NUM_ECHO_SLOTS] / EXP_PER_TUBE
     }
 
     /// The weighted additional cost for an echo that is kept.
     pub fn weighted_success_additional_cost(&self) -> f64 {
         self.weight_tuner * self.success_additional_tuner_cost()
             + self.weight_exp * self.success_additional_exp_cost()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn close(actual: f64, expected: f64) {
+        assert!((actual - expected).abs() < 1e-9, "{actual} != {expected}");
+    }
+    #[test]
+    fn measured_recycling_at_each_stop_and_kept_product() {
+        let model = CostModel::new(2., 3., 5.).unwrap();
+        // Independent raw observations: net spending after recycling at each node.
+        let spent = [4500., 16500., 40000., 79500., 143000.];
+        let returned = [3000., 12000., 30000., 59500., 106500.];
+        let mut net = 0.;
+        for slot in 0..5 {
+            net += model.exp_cost(slot);
+            close(net * 5000., spent[slot] - returned[slot]);
+            close(net + model.full_upgrade_exp_cost(slot + 1), 7.3);
+            let weighted = (0..=slot)
+                .map(|s| model.weighted_reveal_cost(s))
+                .sum::<f64>();
+            close(weighted, 2. + 3. * 7. * (slot + 1) as f64 + 5. * net);
+        }
+        close(
+            model.full_upgrade_exp_cost(0) + model.success_additional_exp_cost(),
+            28.6,
+        );
+        close(model.success_additional_exp_cost(), 21.3);
+        // Discard at +10, discard at +20, then keep a fully leveled Echo.
+        let exp = model.exp_cost(0) * 3.
+            + model.exp_cost(1) * 3.
+            + model.exp_cost(2) * 2.
+            + model.exp_cost(3) * 2.
+            + model.exp_cost(4)
+            + model.success_additional_exp_cost();
+        close(exp * 5000., 4500. + 20000. + 143000.);
+    }
+    #[test]
+    fn normalization_and_weight_updates_preserve_measured_costs() {
+        let mut model = CostModel::new(2., 3., 5.).unwrap();
+        let (normalized, scale) = model.normalized();
+        for slot in 0..5 {
+            close(
+                normalized.weighted_reveal_cost(slot) * scale,
+                model.weighted_reveal_cost(slot),
+            );
+        }
+        close(
+            normalized.weighted_success_additional_cost() * scale,
+            model.weighted_success_additional_cost(),
+        );
+        let before = model.weighted_reveal_cost(0);
+        assert!(model.update_weights(None, None, Some(f64::NAN)).is_err());
+        close(model.weighted_reveal_cost(0), before);
+        model.update_weights(Some(0.), Some(0.), Some(1.)).unwrap();
+        for slot in 0..5 {
+            close(model.weighted_reveal_cost(slot), model.exp_cost(slot));
+        }
     }
 }

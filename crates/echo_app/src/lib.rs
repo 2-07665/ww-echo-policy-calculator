@@ -77,7 +77,6 @@ pub struct Config {
     pub target: f64,
     /// Echo, tuner, premium sealed tube, frequency relative values.
     pub costs: [f64; 4],
-    pub refund: f64,
 }
 impl Default for Config {
     fn default() -> Self {
@@ -89,7 +88,6 @@ impl Default for Config {
             max_score: 100.,
             target: 70.,
             costs: [0., 1., 0., 1000.],
-            refund: 0.66,
         }
     }
 }
@@ -294,7 +292,7 @@ fn prepare(request: &SolveRequest) -> AppResult<(Scorer, Preview, CostModel)> {
     let cost = if c.mode == Mode::Reroll {
         CostModel::tuner_only()
     } else {
-        CostModel::new(c.costs[0], c.costs[1], c.costs[2], c.refund).map_err(solver_error)?
+        CostModel::new(c.costs[0], c.costs[1], c.costs[2]).map_err(solver_error)?
     };
     if preview.target_internal as f64 > (scorer.maximum() - scorer.main()) * scorer.scale() + 0.5 {
         return Err(AppError {

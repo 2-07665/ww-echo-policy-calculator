@@ -71,7 +71,7 @@ fn target_zero_still_counts_finished_product_resources() {
         let r = Service::default().solve(req).unwrap().resources.unwrap();
         assert!((r.echoes - 1.).abs() < 1e-8);
         assert!((r.tuners - 50.).abs() < 1e-8);
-        assert!((r.tubes - 28.52).abs() < 1e-8);
+        assert!((r.tubes - 28.6).abs() < 1e-8);
         assert_eq!(r.frequencies, 0.);
     }
 }
@@ -121,9 +121,6 @@ fn refuses_fractional_fixed_weights_and_resource_errors() {
     req.config.costs = [0.; 4];
     assert!(Service::default().solve(req).is_err());
     let mut req = fixed(Mode::Joint);
-    req.config.refund = 0.76;
-    assert!(Service::default().solve(req).is_err());
-    let mut req = fixed(Mode::Joint);
     req.config.target = f64::NAN;
     assert!(Service::default().solve(req).is_err());
 }
@@ -153,7 +150,6 @@ fn standalone_reroll_does_not_require_upgrade_resource_weights() {
     let mut req = fixed(Mode::Reroll);
     req.echo = FULL.to_vec();
     req.config.costs = [0.; 4];
-    req.config.refund = 0.99;
     assert!(Service::default().solve(req).is_ok());
 }
 
@@ -172,5 +168,24 @@ fn joint_hands_off_to_reroll_without_returning_lock_details() {
     assert_eq!(
         Service::default().solve(req).err().unwrap().code,
         "invalid_input"
+    );
+}
+
+#[test]
+fn measured_exp_cost_matches_weighted_solver_objective() {
+    for mode in [Mode::Upgrade, Mode::Joint] {
+        let mut req = fixed(mode);
+        req.config.costs = [0., 0., 1., 10.];
+        let resources = Service::default().solve(req).unwrap().resources.unwrap();
+        assert!(
+            (resources.weighted - (resources.tubes + 10. * resources.frequencies)).abs() < 1e-6
+        );
+        assert!(resources.tubes >= 28.6);
+    }
+    assert!(
+        serde_json::to_value(Config::default())
+            .unwrap()
+            .get("refund")
+            .is_none()
     );
 }

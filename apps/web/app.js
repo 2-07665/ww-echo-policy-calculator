@@ -54,7 +54,7 @@ function number(id) {
 function collect() {
   return { ...config, scoring: $('scoring').value, target: number('target'), main_score: number('main-score'), max_score: number('max-score'),
     weights: Array.from(document.querySelectorAll('[data-weight]'), e => number(e.id)),
-    costs: config.mode === 'reroll' ? config.costs : Array.from(document.querySelectorAll('[data-cost]'), e => number(e.id)), refund: config.mode === 'reroll' ? config.refund : number('refund') };
+    costs: config.mode === 'reroll' ? config.costs : Array.from(document.querySelectorAll('[data-cost]'), e => number(e.id)) };
 }
 function payload() {
   return { config: collect(), echo, candidate: config.mode === 'reroll' && echo.length === 5 && candidate.length === 5 ? candidate : null };
@@ -205,7 +205,6 @@ function renderConfig() {
   $('target').step = config.scoring === 'fixed' ? '1' : '0.1';
   $('main-score').value = config.main_score;
   $('max-score').value = config.max_score;
-  $('refund').value = config.refund;
   document.querySelectorAll('[data-cost]').forEach(e => { e.id = `cost-${e.dataset.cost}`; e.value = config.costs[Number(e.dataset.cost)]; });
   $('weights').innerHTML = boot.stats.map((s,i) => `<label>${escape(statLabel(s))}<input id="weight-${i}" data-weight="${i}" type="number" min="0" step="${config.scoring === 'fixed' ? '1' : 'any'}" value="${config.weights[i]}" required></label>`).join('');
   $('normalization').hidden = ['fixed','mc_boost_assistant'].includes(config.scoring);
@@ -657,6 +656,8 @@ async function init() {
     config = structuredClone(boot.defaults);
     const saved = readStorage('echo-studio-session-v3',null);
     if (saved?.config && Object.hasOwn(modes,saved.config.mode) && Object.hasOwn(scorerDefaults,saved.config.scoring)) {
+      // Migrate sessions saved before EXP recycling became a fixed level table.
+      delete saved.config.refund;
       try { await api('preview', { config:saved.config, echo:saved.echo }); config = saved.config; echo = saved.echo; selectedPreset = saved.selectedPreset || ''; if (selectedPreset.startsWith('builtin:') && saved.dataRevision !== boot.data.revision) selectedPreset = ''; } catch { /* Ignore invalid / older local sessions. */ }
     }
     const stored = readStorage('echo-studio-presets-v3',[]);

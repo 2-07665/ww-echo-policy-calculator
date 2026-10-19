@@ -228,5 +228,18 @@ try {
   assert.equal(await page.locator('#max-score').inputValue(),'100');
   r=await solve();assert.equal(r.mode,'reroll');
   assert.deepEqual(errors,[]);
+  // Existing sessions retain their target and Echo when the obsolete ratio is removed.
+  const migrated = await browser.newPage();
+  const defaults = (await (await page.request.get(`${process.env.ECHO_URL || 'http://127.0.0.1:3000'}/api/bootstrap`)).json()).defaults;
+  await migrated.addInitScript(config => {
+    localStorage.setItem('echo-studio-session-v3',JSON.stringify({config:{...config,mode:'upgrade',target:33,refund:0.66},echo:[[0,63]],selectedPreset:''}));
+  },defaults);
+  await migrated.goto(process.env.ECHO_URL || 'http://127.0.0.1:3000');
+  await migrated.locator('#solve:not([disabled])').waitFor();
+  assert.equal(await migrated.locator('#refund').count(),0);
+  assert.equal(await migrated.locator('#target').inputValue(),'33');
+  assert.equal(await migrated.locator('[data-kind=echo][data-slot="0"][data-field=value]').inputValue(),'63');
+  assert.equal(await migrated.evaluate(() => Object.hasOwn(JSON.parse(localStorage.getItem('echo-studio-session-v3')).config,'refund')),false);
+  await migrated.close();
   console.log('UI integration passed (including bilingual switching and all built-in presets): three solvers, numeric rerolls, candidate comparison, stale state, validation, preset persistence, mobile layout.');
 } finally { await browser.close(); }
