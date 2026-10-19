@@ -42,6 +42,55 @@ cargo run --release --manifest-path crates/echo_policy/Cargo.toml --bin target_s
   https://github.com/ok-oldking/ok-wuthering-waves
 - 使用方式：双击运行 `将OCR任务加入ok-ww.cmd`。启动 `ok-ww` 后运行 `Echo OCR` 任务。
 
+### 5. 核心库：独立强化与联合求解
+
+不考虑重抽时，继续使用 `UpgradePolicySolver`，其接口与求解方法保持不变。
+考虑重抽时，使用 `JointPolicySolver`：它把频整器作为第四种加权资源，先求解重抽，再反向求解强化决策。
+这些接口目前仅在核心库中提供，桌面应用尚未接入联合模式。
+
+`RerollPolicySolver` 现在支持任意实现 `InternalScorer` 的非负、可加评分器。
+原有的 `new(weights)` 和 mask 查询仍可用于按词条类型评分；数值评分使用
+`with_scorer(&scorer)` 和带 `_for_echo` 的查询方法：
+
+```rust
+use echo_policy::{CostModel, JointPolicySolver, LinearScorer, RerollPolicySolver};
+
+let weights = [1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0];
+let scorer = LinearScorer::default(weights).unwrap();
+let mut reroll = RerollPolicySolver::with_scorer(&scorer).unwrap();
+reroll.set_target(8000).unwrap(); // 内部副词条分数：主词条为 0 时，8000 对应显示分 80
+reroll.solve().unwrap();
+
+// 词条序号与 scorer 一致；数值使用游戏原始档位单位，不能传入评分。
+// 例如暴击率 6.3% 为 63，暴击伤害 12.6% 为 126。
+let echo = [(0, 63), (1, 126), (2, 64), (8, 68), (9, 64)];
+let frequency_cost = reroll.expected_lock_cost_for_echo(&echo).unwrap();
+let locks = reroll.lock_choices_for_echo(&echo, 3).unwrap();
+
+// 复用已求好的重抽表。此处调谐器权重为 1，频整器权重为 1000。
+let mut joint = JointPolicySolver::from_reroll(reroll, CostModel::tuner_only(), 1000.0).unwrap();
+joint.derive_policy(1e-9, 100).unwrap();
+let decision = joint.get_decision(&[(0, 63), (1, 126)]).unwrap();
+let resources = joint.calculate_expected_resources().unwrap();
+let weighted_cost = joint.weighted_expected_cost().unwrap();
+```
+
+也可以直接用 `JointPolicySolver::new(&scorer, cost_model, frequency_weight, target_score)` 创建。
+`update_cost_model` 更改资源权重后，需要重新 `derive_policy`，但会复用重抽表；
+`update_target_score` 则会使重抽表一并失效。
+联合决策包含 `Upgrade`、`Abandon`、`Keep` 和 `Reroll { lock_mask }`。
+重抽结果的接受判断可以通过 `joint.reroll_solver().should_accept_echo(...)` 查询。
+
+注意单位与模型边界：
+
+- 重抽与联合求解的目标均为 **内部副词条分数**；`LinearScorer` 的显示目标应先减去主词条分数，再乘 `SCORE_MULTIPLIER` 并四舍五入。现有 `UpgradePolicySolver` 的目标参数仍使用显示副词条分数。
+- Echo 查询接受 0～5 条互不重复的真实词条及合法数值档位；重抽查询必须恰好有 5 条。只有 mask、没有数值的查询遇到数值相关评分时会返回 `ValuesRequired`。
+- 资源结果表示获得一个达标成品的期望净消耗，计入分解返还与保留成品的返还修正。经验单位为每管 5000 经验的特级密音筒。
+- 频整器权重表达其相对稀缺程度，**不表示库存硬上限**。模型允许反复重抽、拒绝新结果并保留原结果；达标成品总是升满、调满。
+- 精确求解仍有状态空间限制。默认最多 250 万个状态、8000 万个状态与锁定组合关联；超限返回错误，不做隐式近似。可通过 `SolverLimits` 和对应的 `with_limits` / `with_scorer_and_limits` 显式调整，内存消耗也会随之增加。
+- 自定义评分概率若小到使联合状态概率进入 `f64` 的非正规数范围，会返回 `NumericalFailure`，避免概率舍入放大为错误的期望消耗；实际游戏概率不受影响。
+- 新重抽算法不使用迭代收敛。旧 `derive_policy(tol, max_iter)` 接口保留参数校验；`max_iter > 0` 时完成精确求解，`tol` 不再决定重抽精度。联合求解的 `tol` / `max_iter` 仍控制外层迭代。
+
 ## 构建
 
 先安装 Tauri CLI：

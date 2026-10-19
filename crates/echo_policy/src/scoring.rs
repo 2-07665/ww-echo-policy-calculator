@@ -138,9 +138,6 @@ pub struct FixedScorer {
 }
 
 impl FixedScorer {
-    // NOTE: reroll_policy's `From<ScorerError>` assumes `FixedScorer::new`
-    // only returns `AllWeightsZero` and `FixedScorerTopWeightsTooLarge`.
-    // If new error paths are added here, update that mapping accordingly.
     pub fn new(weights: [u16; NUM_BUFFS]) -> Result<Self, ScorerError> {
         let max_score = validate_fixed_scorer_weights(&weights)?;
         Ok(Self { weights, max_score })
