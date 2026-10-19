@@ -522,26 +522,7 @@ function setup() {
     void solve();
   });
   $('solve').addEventListener('click', () => solve());
-  $('data-open').addEventListener('click', () => {
-    renderDataStatus(); $('data-dialog').showModal();
-  });
-  $('data-close').addEventListener('click', () => $('data-dialog').close());
-  $('data-desktop').hidden = !desktop;
-  $('data-url').value = readStorage('echo-studio-data-url', 'https://raw.githubusercontent.com/2-07665/ww-echo-policy-calculator/main/data/echo-data.json');
-  $('data-update').addEventListener('click', () => updateData(async () => {
-    if (!desktop) return api('bootstrap');
-    const url = $('data-url').value.trim();
-    const next = await api('data_download', {url});
-    saveStorage('echo-studio-data-url',url); return next;
-  }));
-  $('data-import').addEventListener('change', e => {
-    const file=e.target.files[0]; e.target.value='';
-    if (!file) return;
-    updateData(async () => {
-      if (file.size > 8 * 1024 * 1024) throw new Error('数据包无效或版本不兼容，已保留原数据。');
-      return api('data_install',{content:await file.text()});
-    });
-  });
+  setupDataManagement();
   $('access-open').hidden = desktop;
   $('access-open').addEventListener('click', () => {
     $('access-key').value = '';
@@ -619,9 +600,37 @@ function setup() {
     window.__TAURI__.event.listen('ocr-echo', ({ payload }) => { echo = payload; renderSlots('echo'); dirty('echo'); }).catch(e => notice(() => t('OCR 事件连接失败：{error}', {error:errorText(e)})));
   }
 }
+function setupDataManagement() {
+  // The web catalog is maintained by the server; only desktop manages local data.
+  if (!desktop) {
+    $('data-open').remove();
+    $('data-dialog').remove();
+    return;
+  }
+  $('data-open').hidden = false;
+  $('data-open').addEventListener('click', () => {
+    renderDataStatus(); $('data-dialog').showModal();
+  });
+  $('data-close').addEventListener('click', () => $('data-dialog').close());
+  $('data-desktop').hidden = false;
+  $('data-url').value = readStorage('echo-studio-data-url', 'https://raw.githubusercontent.com/2-07665/ww-echo-policy-calculator/main/data/echo-data.json');
+  $('data-update').addEventListener('click', () => updateData(async () => {
+    const url = $('data-url').value.trim();
+    const next = await api('data_download', {url});
+    saveStorage('echo-studio-data-url',url); return next;
+  }));
+  $('data-import').addEventListener('change', e => {
+    const file=e.target.files[0]; e.target.value='';
+    if (!file) return;
+    updateData(async () => {
+      if (file.size > 8 * 1024 * 1024) throw new Error('数据包无效或版本不兼容，已保留原数据。');
+      return api('data_install',{content:await file.text()});
+    });
+  });
+}
 let dataMessage = null;
 function renderDataStatus() {
-  if (!boot?.data) return;
+  if (!desktop || !boot?.data) return;
   $('data-version').textContent = t('数据版本：{version}', {version:boot.data.version});
   $('data-warning').textContent = boot.data.status.warning ? errorText({message:boot.data.status.warning}) : '';
   const message = dataMessage ? dataMessage() : '';

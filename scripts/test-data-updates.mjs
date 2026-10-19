@@ -24,6 +24,15 @@ async function publish(pack) {
   await rename(join(dir,'next.json'),dataPath);
   await pause(1100);
 }
+async function reloadWeb(page) {
+  await page.reload();
+  await page.locator('#solve:not([disabled])').waitFor();
+  assert.equal(await page.locator('#data-open').count(),0);
+  assert.equal(await page.locator('#data-dialog').count(),0);
+}
+async function bootstrap() {
+  return (await fetch(`${url}/api/bootstrap`)).json();
+}
 async function update(page) {
   await page.locator('#data-update').click();
   await page.waitForFunction(()=>!document.getElementById('data-update').disabled);
@@ -34,7 +43,15 @@ try {
   browser=await chromium.launch({headless:true});
   const page=await browser.newPage({viewport:{width:1360,height:1000}});
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  // The desktop entry stays hidden even before initialization finishes.
+  await page.route('**/api/bootstrap', async route => {
+    assert.equal(await page.locator('#data-open').isVisible(),false);
+    await route.continue();
+  });
   await page.goto(url);await page.locator('#solve:not([disabled])').waitFor();
+  await page.unroute('**/api/bootstrap');
+  assert.equal(await page.locator('#data-open').count(),0);
+  assert.equal(await page.locator('#data-dialog').count(),0);
   await page.locator('#preset').selectOption('builtin:linear:group:爱弥斯');
   const before=await page.locator('[data-weight]').evaluateAll(inputs=>inputs.map(i=>i.value));
   let solveRequests=0;
@@ -42,11 +59,8 @@ try {
   await page.locator('#target').fill('0');
   await page.locator('#solve').click();
   await page.waitForFunction(()=>document.getElementById('result-status').textContent==='计算完成');
-  const decision=await page.locator('#decision-content').innerText();
   const requestsBefore=solveRequests;
   const target=await page.locator('#target').inputValue();
-  await page.locator('#data-open').click();
-  assert.equal(await page.locator('#data-desktop').isVisible(),false);
   const next=structuredClone(original); next.version='test-next';
   next.characters['测试角色']={en:'Future Resonator',release_date:'2099-01-01'};
   next.variant_names['新变体']='New Variant';
@@ -54,16 +68,13 @@ try {
   added.variants[0].id='future-test';added.variants[0].variantName='新变体';added.variants[0].weights.Crit_Rate=42;
   next.presets.linear.presets.unshift(added);
   next.presets.linear.presets[1].variants[0].weights.Crit_Rate=22;
-  await publish(next);await update(page);
-  assert.match(await page.locator('#data-version').innerText(),/test-next/);
+  await publish(next);await reloadWeb(page);
+  assert.equal((await bootstrap()).data.version,'test-next');
   assert.equal(await page.locator('#preset').inputValue(),'');
   assert.deepEqual(await page.locator('[data-weight]').evaluateAll(inputs=>inputs.map(i=>i.value)),before);
   assert.equal(await page.locator('#target').inputValue(),target);
-  assert.equal(await page.locator('#result-status').innerText(),'计算完成');
-  assert.equal(await page.locator('#decision-content').innerText(),decision);
   assert.equal(solveRequests,requestsBefore);
   assert.equal((await (await fetch(`${url}/api/data-pack`)).json()).version,'test-next');
-  await page.locator('#data-close').click();
   await page.locator('[data-language=en]').click();
   assert.match(await page.locator('#preset optgroup').first().locator('option').first().innerText(),/Future Resonator/);
   await page.locator('#preset-search').fill('Future Resonator');
@@ -73,18 +84,16 @@ try {
   await page.locator('#preset').selectOption('builtin:linear:group:爱弥斯');
   assert.equal(await page.locator('#weight-0').inputValue(),'22');
   // Neither malformed JSON nor a future schema may displace the last good pack.
-  await page.locator('#data-open').click();
   for (const broken of ['{', {...next,schema_version:999}]) {
-    await publish(broken);await update(page);
-    assert.match(await page.locator('#data-warning').innerText(),/invalid or incompatible/);
-    assert.match(await page.locator('#data-version').innerText(),/test-next/);
+    await publish(broken);await reloadWeb(page);
+    assert.ok((await bootstrap()).data.status.warning);
+    assert.equal((await bootstrap()).data.version,'test-next');
     assert.equal((await (await fetch(`${url}/api/data-pack`)).json()).version,'test-next');
   }
-  await publish(original);await update(page);
-  assert.equal(await page.locator('#data-warning').innerText(),'');
+  await publish(original);await reloadWeb(page);
+  assert.equal((await bootstrap()).data.status.warning,null);
   assert.equal(await page.locator('#weight-0').inputValue(),'22');
   await page.screenshot({path:'/tmp/echo-data-update.png'});
-  await page.locator('#data-close').click();
   await page.setViewportSize({width:390,height:844});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual(errors,[]);
@@ -114,12 +123,16 @@ try {
   await update(desktop);assert.match(await desktop.locator('#data-message').innerText(),/数据下载失败/);
   await desktop.locator('#data-import').setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from('{}')});
   await desktop.waitForFunction(()=>document.getElementById('data-message').textContent.includes('数据包无效'));
+  const desktopWeights=await desktop.locator('[data-weight]').evaluateAll(inputs=>inputs.map(i=>i.value));
+  const desktopTarget=await desktop.locator('#target').inputValue();
   await desktop.locator('#data-import').setInputFiles({name:'echo-data.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(next))});
   await desktop.waitForFunction(()=>document.getElementById('data-version').textContent.includes('test-next'));
+  assert.deepEqual(await desktop.locator('[data-weight]').evaluateAll(inputs=>inputs.map(i=>i.value)),desktopWeights);
+  assert.equal(await desktop.locator('#target').inputValue(),desktopTarget);
   await desktop.reload();await desktop.locator('#solve:not([disabled])').waitFor();
   await desktop.locator('#data-open').click();assert.match(await desktop.locator('#data-version').innerText(),/test-next/);
   assert.ok(calls.includes('data_download')&&calls.includes('data_install'));
-  console.log('Data updates passed: running-server reload, new bilingual character/variant, preserved inputs, invalid-pack fallback, recovery, mobile layout, desktop import/download UI and cached bootstrap.');
+  console.log('Data updates passed: server-managed web catalog without data controls, page reload, new bilingual character/variant, preserved inputs, invalid-pack fallback, recovery, mobile layout, desktop import/download UI and cached bootstrap.');
 } finally {
   clearTimeout(startupTimer);
   await browser?.close();server.kill('SIGINT');await exited;await rm(dir,{recursive:true,force:true});
