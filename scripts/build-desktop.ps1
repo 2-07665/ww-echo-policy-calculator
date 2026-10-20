@@ -4,7 +4,7 @@ $repo = Split-Path $PSScriptRoot -Parent
 & (Join-Path $PSScriptRoot 'build-ocr.ps1')
 Push-Location $repo
 try {
-    cargo build --release -p echo_calculator_app
+    cargo build --release --locked -p echo_calculator_app
     if ($LASTEXITCODE -ne 0) { throw '桌面程序构建失败' }
     $destination = Join-Path $repo 'out\EchoStudio'
     New-Item -ItemType Directory -Force $destination | Out-Null

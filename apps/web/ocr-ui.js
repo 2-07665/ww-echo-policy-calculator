@@ -1,6 +1,7 @@
 import { t, errorText } from './i18n.js';
 
 let enabled = false, pending = false, status = 'off';
+let nativeSupported = false, nativeAvailable = false;
 const $ = id => document.getElementById(id);
 const labels = {
   off: 'OCR 未开启', ready: '等待鸣潮窗口', waiting_game: '等待鸣潮窗口', select_window: '发现多个鸣潮窗口，请停止后选择窗口',
@@ -15,15 +16,29 @@ export function renderOcr() {
   $('ocr-toggle').textContent = pending ? t('OCR 正在切换…') : enabled ? t('OCR 已开启 · 点击停止') : t('开启 OCR 自动填入');
   $('ocr-toggle').disabled = pending;
   for (const id of ['ocr-mode','ocr-window','ocr-refresh']) $(id).disabled = enabled || pending;
-  const native = $('ocr-mode').value === 'native';
+  const native = nativeAvailable && $('ocr-mode').value === 'native';
   $('ocr-window-row').hidden = !native;
-  $('ocr-status').textContent = t(labels[status] || '词条尚未确认，继续识别');
+  $('ocr-status').textContent = status === 'off' && nativeSupported && !nativeAvailable
+    ? t('内置 OCR 组件未安装，可使用外部 OCR 或安装含 OCR 的 Windows 版本。')
+    : t(labels[status] || '词条尚未确认，继续识别');
 }
-export function setupOcr({ desktop, receive, notice }) {
+export async function setupOcr({ desktop, receive, notice }) {
   if (!desktop) return;
-  $('ocr-controls').hidden = false;
   const invoke = (...args) => window.__TAURI__.core.invoke(...args);
+  try {
+    const capabilities = await invoke('ocr_capabilities');
+    nativeSupported = capabilities.native_supported === true;
+    nativeAvailable = nativeSupported && capabilities.native_available === true;
+  } catch (error) {
+    nativeSupported = nativeAvailable = false;
+    notice(() => errorText(error));
+  }
+  const nativeOption = $('ocr-mode').querySelector('option[value="native"]');
+  if (nativeOption) { nativeOption.hidden = !nativeSupported; nativeOption.disabled = !nativeAvailable; }
+  $('ocr-mode').value = nativeAvailable ? 'native' : 'external';
+  $('ocr-controls').hidden = false;
   const refresh = async () => {
+    if (!nativeAvailable || enabled || pending) return;
     const selected = $('ocr-window').value;
     try {
       const windows = await invoke('ocr_windows');
@@ -38,7 +53,8 @@ export function setupOcr({ desktop, receive, notice }) {
     if (pending) return;
     pending = true; renderOcr();
     try {
-      enabled = await invoke('toggle_ocr', { enabled: !enabled, mode: $('ocr-mode').value, windowId: $('ocr-window').value || null });
+      const mode = nativeAvailable && $('ocr-mode').value === 'native' ? 'native' : 'external';
+      enabled = await invoke('toggle_ocr', { enabled: !enabled, mode, windowId: mode === 'native' ? $('ocr-window').value || null : null });
       status = enabled ? ($('ocr-mode').value === 'native' ? 'waiting_game' : 'external') : 'off';
     } catch (error) { enabled = false; status = 'error'; notice(() => errorText(error)); }
     finally { pending = false; renderOcr(); }

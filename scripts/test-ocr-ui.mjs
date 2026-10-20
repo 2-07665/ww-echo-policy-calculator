@@ -4,7 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { messages, setLanguage } from '../apps/web/i18n.js';
 
 class Element {
-  constructor(value = '') { this.value = value; this.hidden = false; this.disabled = false; this.listeners = {}; this.options = []; }
+  constructor(value = '') { this.value = value; this.hidden = false; this.disabled = false; this.listeners = {}; this.options = []; this.nativeOption = {}; }
+  querySelector() { return this.nativeOption; }
   addEventListener(name, callback) { this.listeners[name] = callback; }
   replaceChildren(...options) { this.options = options; this.value = options[0]?.value || ''; }
   add(option) { this.options.push(option); }
@@ -17,15 +18,18 @@ globalThis.document = { getElementById: id => elements[id] };
 globalThis.Option = class { constructor(text, value) { this.text = text; this.value = value; } };
 const handlers = {}, calls = [], received = [], notices = [];
 let fail = false;
+let capabilities = { native_supported:true, native_available:true };
 globalThis.window = { __TAURI__: { core: { invoke: async (command, args) => {
   calls.push({ command, args });
   if (fail) throw new Error('test-startup-error');
+  if (command === 'ocr_capabilities') return capabilities;
   if (command === 'ocr_windows') return [{ id:'123', title:'鸣潮' }, { id:'456', title:'鸣潮' }];
   return args.enabled;
 }}, event: { listen: async (name, callback) => { handlers[name] = callback; } } } };
 const { setupOcr, renderOcr } = await import('../apps/web/ocr-ui.js');
 setLanguage('zh-CN');
-setupOcr({ desktop:true, receive:value => received.push(value), notice:value => notices.push(value) });
+const setupOptions = { desktop:true, receive:value => received.push(value), notice:value => notices.push(value) };
+await setupOcr(setupOptions);
 await elements['ocr-refresh'].trigger('click');
 assert.equal(elements['ocr-window'].options.length,3);
 elements['ocr-window'].value = '456';
@@ -43,19 +47,39 @@ assert.equal(elements['ocr-mode'].disabled,false);
 handlers['ocr-echo']({ payload:[[0,105]] });
 assert.equal(received.length,1,'Late result after process exit must be ignored');
 elements['ocr-mode'].value = 'external';
-elements['ocr-window'].value = '';
+assert.equal(elements['ocr-window'].value,'456','Keep the stale selection to reproduce the external-mode regression');
 await elements['ocr-mode'].trigger('change');
 assert.equal(elements['ocr-window-row'].hidden,true);
 await elements['ocr-toggle'].trigger('click');
 assert.equal(calls.at(-1).args.mode,'external');
+assert.equal(calls.at(-1).args.windowId,null,'External OCR must not validate a stale native window');
 await elements['ocr-toggle'].trigger('click');
 assert.equal(calls.at(-1).args.enabled,false);
 fail = true;
 await elements['ocr-toggle'].trigger('click');
 assert.equal(elements['ocr-mode'].disabled,false);
 assert.equal(notices.length,1);
+fail = false;
+capabilities = { native_supported:true, native_available:false };
+await setupOcr(setupOptions);
+assert.equal(elements['ocr-mode'].value,'external');
+assert.equal(elements['ocr-mode'].nativeOption.disabled,true);
+assert.equal(elements['ocr-mode'].nativeOption.hidden,false);
+const beforeRefresh = calls.length;
+await elements['ocr-refresh'].trigger('click');
+assert.equal(calls.length,beforeRefresh,'No sidecar lookup when the native component is absent');
+await elements['ocr-toggle'].trigger('click');
+assert.deepEqual(calls.at(-1).args,{enabled:true,mode:'external',windowId:null});
+await elements['ocr-toggle'].trigger('click');
+capabilities = { native_supported:false, native_available:false };
+await setupOcr(setupOptions);
+assert.equal(elements['ocr-mode'].value,'external');
+assert.equal(elements['ocr-mode'].nativeOption.hidden,true,'Unsupported platforms hide native OCR');
+await elements['ocr-toggle'].trigger('click');
+assert.equal(calls.at(-1).args.mode,'external');
+await elements['ocr-toggle'].trigger('click');
 const source = await readFile(new URL('../apps/web/ocr-ui.js', import.meta.url),'utf8');
 for (const [,key] of source.matchAll(/'([^'\n]*[\p{Script=Han}][^'\n]*)'/gu)) {
   assert.ok(Object.hasOwn(messages,key), `Untranslated OCR label: ${key}`);
 }
-console.log('OCR UI passed: modes, window selection, state changes, stale results, errors and localization.');
+console.log('OCR UI passed: stale native selection, external-only installs, platform capabilities, lifecycle and localization.');

@@ -123,6 +123,21 @@ pub struct OcrWindow {
     id: String,
     title: String,
 }
+#[derive(Serialize)]
+pub struct OcrCapabilities {
+    native_supported: bool,
+    native_available: bool,
+}
+fn native_supported() -> bool {
+    cfg!(all(target_os = "windows", target_arch = "x86_64"))
+}
+#[tauri::command]
+pub fn ocr_capabilities(app: tauri::AppHandle) -> OcrCapabilities {
+    OcrCapabilities {
+        native_supported: native_supported(),
+        native_available: native_supported() && sidecar(&app).is_ok(),
+    }
+}
 
 fn parse(bytes: &[u8]) -> Result<echo_app::Echo, String> {
     let packet: Packet = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
@@ -192,6 +207,9 @@ pub async fn ocr_windows(app: tauri::AppHandle) -> Result<Vec<OcrWindow>, String
         .map_err(|_| "OCR 窗口查询异常。".to_string())?
 }
 fn list_windows(app: &tauri::AppHandle) -> Result<Vec<OcrWindow>, String> {
+    if !native_supported() {
+        return Err("内置 OCR 仅支持 Windows x64。".into());
+    }
     let output = hidden_command(sidecar(&app)?)
         .arg("--windows")
         .stdin(Stdio::null())
@@ -238,12 +256,20 @@ fn toggle(
         return Ok(true);
     }
     *listener = None;
-    let native = match mode.as_deref().unwrap_or("native") {
+    // Calls made against the original UDP-only API must remain dependency-free.
+    let native = match mode.as_deref().unwrap_or("external") {
         "native" => true,
         "external" => false,
         _ => return Err("未知 OCR 模式。".into()),
     };
-    let id = window_id.filter(|s| !s.is_empty());
+    if native && !native_supported() {
+        return Err("内置 OCR 仅支持 Windows x64。".into());
+    }
+    let id = if native {
+        window_id.filter(|s| !s.is_empty())
+    } else {
+        None
+    };
     if let Some(id) = &id {
         if !list_windows(&app)?.iter().any(|w| &w.id == id) {
             return Err("选择的鸣潮窗口已失效，请刷新窗口列表。".into());

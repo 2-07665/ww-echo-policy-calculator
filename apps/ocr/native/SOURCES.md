@@ -6,7 +6,8 @@
 
 - 来源：<https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx>
 - 固定 revision：`b8f84f0b80c529de40b4fbb3544b84fa7233a513`
-- 本机复制来源：UmaOCR 的 `.models/ocr/v6_small/<revision>/recognition/`；只复制识别 ONNX、YAML 和由同一 YAML 导出的字典。
+- 准备脚本直接从该 revision 下载 `inference.onnx` 和 `inference.yml`，不依赖 UmaOCR 或其他本地项目。
+- 字典：`apps/ocr/assets/ppocrv6-small-dictionary.txt`，按此 revision 的 YAML `PostProcess.character_dict` 顺序导出，每个字符一行，UTF-8 无 BOM、LF 换行。Git 属性禁止换行转换，以保持固定摘要；更新模型时同步更新该字典，不能在旧模型上调整字符顺序。
 - ONNX SHA-256：`5435fd747c9e0efe15a96d0b378d5bd157e9492ed8fd80edf08f30d02fa24634`
 - YAML SHA-256：`ab078671bb49f06228eadccd34f1bb501e157f7a047095ffb943ba81512c77d1`
 - 字典 SHA-256：`b5f2bfe2bdd9448429e3e82b51c789775d9b42f2403d082b00662eb77e401c5d`

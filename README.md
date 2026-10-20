@@ -38,6 +38,8 @@ cargo tauri build
 
 默认配置保留 `bundle.active=false`；通用构建生成可执行文件。要生成其他平台安装包，在目标平台启用 bundle 并设置对应 targets。
 
+Windows x64 内置 OCR 是可选组件：在仓库根目录运行 `./scripts/prepare-ocr.ps1` 下载校验固定资源，再运行 `./scripts/build-desktop.ps1` 生成包含 OCR 的便携版。普通构建和其他平台保留外部 ok-ww OCR，不要求模型或原生运行库；包含 OCR 的 Windows 安装包使用单独配置，见 [本机 OCR 构建说明](docs/本机OCR.md)。
+
 ## VPS 部署
 
 仓库提供 Docker Compose 与不依赖 Docker 的单二进制部署。页面资源嵌入二进制，角色和权重可从外部数据包加载；运行时不需数据库或 Node。

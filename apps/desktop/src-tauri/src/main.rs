@@ -51,7 +51,8 @@ fn main() {
             preview,
             solve,
             ocr::toggle_ocr,
-            ocr::ocr_windows
+            ocr::ocr_windows,
+            ocr::ocr_capabilities
         ])
         .run(tauri::generate_context!())
         .expect("error while running Echo Studio");

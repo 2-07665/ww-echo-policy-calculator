@@ -1,0 +1,2 @@
+# Runtime SHA-256 and CTC order require the exact UTF-8 LF bytes on Windows too.
+/ppocrv6-small-dictionary.txt -text
