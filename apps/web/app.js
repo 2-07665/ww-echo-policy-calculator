@@ -1,6 +1,7 @@
 import { buildPresetList, importPresetList, upcoming, setCharacterData } from './preset-data.js';
 import { t, language, setLanguage, translatePage, statNames, characterNames, characterName, variantName, errorText, setDataTranslations } from './i18n.js';
 import { api, desktop, hasAccessKey, setAccessKey } from './api.js';
+import { setupOcr, renderOcr } from './ocr-ui.js';
 const $ = id => document.getElementById(id);
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const format = (value, digits = 2) => Number(value).toLocaleString(language, { maximumFractionDigits: digits, minimumFractionDigits: digits });
@@ -20,7 +21,7 @@ const scorerDefaults = {
 let confirmedPolicyConfig = null;
 let renderedRerollInput = null;
 let quietSolve = false, refreshTimer;
-let boot, config, echo = [], candidate = [], presets = [], custom = [], revision = 0, previewRevision = 0, timer, autoSolvePending = false, busy = false, solved = false, ocr = false, lastResult = null, lastPreview = null, selectedPreset = '', resultState = 'empty';
+let boot, config, echo = [], candidate = [], presets = [], custom = [], revision = 0, previewRevision = 0, timer, autoSolvePending = false, busy = false, solved = false, lastResult = null, lastPreview = null, selectedPreset = '', resultState = 'empty';
 function setText(element, value) {
   if (element.textContent === value) return;
   if (element.childNodes.length === 1 && element.firstChild.nodeType === Node.TEXT_NODE) element.firstChild.nodeValue = value;
@@ -443,7 +444,7 @@ function changeLanguage(value) {
   renderCandidateAction();
   renderRerollTransfer();
   renderComparison();
-  $('ocr-toggle').textContent = t(ocr ? 'OCR 已开启 · 点击停止' : '开启 OCR 自动填入 · UDP 9999');
+  renderOcr();
   setComputeHint(...currentHint);
   renderNotice();
 }
@@ -589,16 +590,7 @@ function setup() {
     } catch (error) { notice(() => t('导入失败：{error}', {error:errorText(error)})); }
     finally { e.target.value = ''; }
   });
-  if (desktop) {
-    $('ocr-toggle').hidden = false;
-    $('ocr-toggle').addEventListener('click', async () => {
-      try {
-        const state = await window.__TAURI__.core.invoke('toggle_ocr', { enabled: !ocr }); ocr = state;
-        $('ocr-toggle').textContent = ocr ? t('OCR 已开启 · 点击停止') : t('开启 OCR 自动填入 · UDP 9999');
-      } catch (e) { notice(() => errorText(e)); }
-    });
-    window.__TAURI__.event.listen('ocr-echo', ({ payload }) => { echo = payload; renderSlots('echo'); dirty('echo'); }).catch(e => notice(() => t('OCR 事件连接失败：{error}', {error:errorText(e)})));
-  }
+  setupOcr({ desktop, notice, receive: payload => { echo = payload; renderSlots('echo'); dirty('echo'); } });
 }
 function setupDataManagement() {
   // The web catalog is maintained by the server; only desktop manages local data.

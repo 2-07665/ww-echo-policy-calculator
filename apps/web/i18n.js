@@ -2,6 +2,15 @@
 export let language = 'zh-CN';
 try { language = localStorage.getItem('echo-studio-language') === 'en' ? 'en' : 'zh-CN'; } catch { /* Storage is optional. */ }
 export const messages = {
+  'OCR 来源':'OCR source', '内置识别':'Built-in OCR', '外部 ok-ww':'External ok-ww',
+  '鸣潮窗口':'Wuthering Waves window', '刷新窗口':'Refresh windows', '自动选择唯一鸣潮窗口':'Automatically select the only game window',
+  '开启 OCR 自动填入':'Enable OCR autofill', 'OCR 正在切换…':'Switching OCR…', 'OCR 未开启':'OCR is off',
+  '等待鸣潮窗口':'Waiting for Wuthering Waves', '发现多个鸣潮窗口，请停止后选择窗口':'Multiple game windows found. Stop OCR and select a window.',
+  '游戏窗口不可用或已最小化，识别暂停':'Game window unavailable or minimized; OCR paused', '副词条已识别':'Substats recognized',
+  '正在确认副词条':'Confirming Substats', '等待装备或强化页面':'Waiting for an Echo equipment or upgrade page',
+  '暂不支持此分辨率比例，请使用 16:9':'Unsupported aspect ratio. Use 16:9.', '窗口捕获失败，正在重试':'Capture failed; retrying',
+  'OCR 运行失败，请重新开启':'OCR failed. Start it again.', 'OCR 进程已退出，请重新开启':'OCR exited. Start it again.',
+  '等待外部 OCR 结果':'Waiting for external OCR results', '当前没有已解锁的副词条':'No unlocked Substats', '词条尚未确认，继续识别':'Substats not yet confirmed; scanning',
   "角色数据": "Character data",
   "数据版本：{version}": "Data version: {version}",
   "数据更新地址": "Data update URL",

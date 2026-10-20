@@ -1,9 +1,14 @@
 # OS
 .DS_Store
+Thumbs.db
+Desktop.ini
 
 # Editors
 .idea/
 .vscode/
+
+# Local codebase-memory index (regenerated from source)
+/.codebase-memory/
 
 # Env files
 .env
@@ -40,5 +45,14 @@ temp/
 
 # python
 __pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Local OCR models, SDK and deployable sidecar (prepared by scripts/prepare-ocr.ps1)
+/apps/ocr/runtime/
+/apps/ocr/.deps/
+
 # Tauri regenerates these platform schemas during builds
 /apps/desktop/src-tauri/gen/schemas/
