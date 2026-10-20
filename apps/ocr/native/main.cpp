@@ -104,7 +104,7 @@ int wmain(int argc,wchar_t** argv) {
         while (!stopping) {
             auto now=std::chrono::steady_clock::now();
             if (now<nextScan) { std::this_thread::sleep_for(std::chrono::milliseconds(50)); continue; }
-            nextScan=now+std::chrono::seconds(2);
+            nextScan=now+std::chrono::milliseconds(300);
             HWND hwnd=specified;
             if (!hwnd) {
                 auto windows=game_windows();
@@ -123,7 +123,9 @@ int wmain(int argc,wchar_t** argv) {
                 auto scan=recognizer.scan(image);
                 if (!scan.valid) { clear(); status(scan.reason.c_str()); continue; }
                 std::string packet=scan.packet();
-                std::string key=std::to_string(scan.scene)+":"+std::to_string(image.w)+":"+std::to_string(image.h)+":"+scan.identity+":"+packet;
+                // Confirm page, client geometry and substats; item-name OCR noise
+                // must not restart confirmation of otherwise identical substats.
+                std::string key=std::to_string(scan.scene)+":"+std::to_string(image.w)+":"+std::to_string(image.h)+":"+packet;
                 if (key==previous && key!=sent) {
                     if (sendto(sock,packet.data(),(int)packet.size(),0,(sockaddr*)&address,sizeof address)==SOCKET_ERROR)
                         throw std::runtime_error("UDP delivery failed");

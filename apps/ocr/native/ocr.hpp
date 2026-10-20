@@ -23,7 +23,7 @@ struct Entry { std::string name; int value; bool operator==(const Entry&) const 
 struct Scan {
     int scene = 0;
     bool valid = false;
-    std::string identity, reason;
+    std::string reason;
     std::vector<Entry> entries;
     std::vector<Text> raw;
     std::string packet() const;

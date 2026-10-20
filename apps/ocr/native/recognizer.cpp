@@ -164,8 +164,6 @@ Scan Recognizer::scan(const Image& image) {
             (label=="装配" || label=="卸下" || label=="替换") && button.confidence>=.85f) scan.scene=1;
     }
     if (!scan.scene) { scan.reason="not_echo_page"; return scan; }
-    auto title=text(scan.scene==1 ? Rect{1504,145,245,39} : Rect{204,143,300,43});
-    scan.identity=title.text;
     const int rightY[]{308,343,378,413,448};
     const int leftY[]{344,387,430,473,516};
     std::set<std::string> used;
