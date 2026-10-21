@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/echo_policy", "crates/echo_app", "apps/server", "apps/desktop/src-tauri"]
-default-members = ["crates/echo_policy", "crates/echo_app", "apps/server"]
+members = ["crates/echo_app", "apps/server", "apps/desktop/src-tauri"]
+default-members = ["crates/echo_app", "apps/server"]
 resolver = "2"
 

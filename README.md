@@ -157,16 +157,17 @@ XutheringWavesUID 权重已按指定仓库更新，包含 61 组、278 个变体
 - 联合模式的「保留概率」指按策略执行而不放弃当前声骸的概率，包含转入重抽后最终达标的情况。是否值得开始重抽由联合求解器判断，具体锁法与候选比较交由重抽模式。
 - 资源权重代表相对价值，不是库存上限。精确求解超限会报错，不隐式近似。应用额外限制最高五条内部评分合计 ≤ 20000，以约束强化 DP 的评分维度。
 
-数学模型、误差与全部 Rust API 见 [echo_policy 文档](crates/echo_policy/README.md)。
+数学模型、误差与全部 Rust API 见 [echo_policy 文档](https://github.com/2-07665/echo-policy#readme)。
 
 ## 架构与验证
+
+数学求解核心由独立的 [echo-policy](https://github.com/2-07665/echo-policy) 项目维护，通过 Git 依赖固定提交。本仓库负责 Web / 桌面界面、服务端和应用适配；三个 solver 统一接收内部整数目标分数，显示目标由核心评分接口转换。
 
 ```text
 apps/web/                  共享响应式界面（HTML / CSS / JS）
   api.js                   Tauri IPC / 同源 HTTP 传输选择
 data/                      独立发布包、角色译名和实装日期
 crates/echo_app/            DTO、数据包校验/缓存、评分转换、三求解器适配
-crates/echo_policy/         数学求解核心与固定资源成本表
 apps/server/               Axum HTTP 服务、嵌入静态页面、计算准入限制
 apps/desktop/src-tauri/     Tauri 桌面外壳、后台求解、OCR
 ```
@@ -174,7 +175,7 @@ apps/desktop/src-tauri/     Tauri 桌面外壳、后台求解、OCR
 API：`GET /api/health`、`GET /api/bootstrap`、`GET /api/data-pack`、`POST /api/preview`、`POST /api/solve`。请求结构见 `echo_app::SolveRequest`；每次传完整 `config`、`echo: [[类型索引, 原始数值], ...]`，重抽模式可附带 `candidate`。错误格式为 `{code, message}`。预设编辑、页面配置保存均在客户端完成。
 
 ```bash
-cargo test -p echo_app -p echo_server -p echo_policy
+cargo test -p echo_app -p echo_server
 cargo check -p echo_calculator_app
 cargo test -p echo_calculator_app
 bash scripts/check-ui-node.sh
