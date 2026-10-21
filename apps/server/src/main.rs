@@ -184,6 +184,15 @@ fn app_with_data(state: Arc<Scheduler>, data: Arc<echo_app::data::DataStore>) ->
             }),
         )
         .route(
+            "/ocr-ui.js",
+            get(|| async {
+                asset(
+                    "text/javascript; charset=utf-8",
+                    include_str!("../../web/ocr-ui.js"),
+                )
+            }),
+        )
+        .route(
             "/i18n.js",
             get(|| async {
                 asset(
@@ -230,6 +239,7 @@ fn asset(content_type: &'static str, body: &'static str) -> impl IntoResponse {
         access::digest(concat!(
             include_str!("../../web/index.html"),
             include_str!("../../web/app.js"),
+            include_str!("../../web/ocr-ui.js"),
             include_str!("../../web/api.js"),
             include_str!("../../web/i18n.js"),
             include_str!("../../web/preset-data.js"),
@@ -237,7 +247,14 @@ fn asset(content_type: &'static str, body: &'static str) -> impl IntoResponse {
         ))
     });
     let mut body = body.to_owned();
-    for name in ["app.js", "api.js", "i18n.js", "preset-data.js", "styles.css"] {
+    for name in [
+        "app.js",
+        "api.js",
+        "ocr-ui.js",
+        "i18n.js",
+        "preset-data.js",
+        "styles.css",
+    ] {
         body = body.replace(&format!("./{name}"), &format!("./{name}?v={revision}"));
     }
     (
@@ -301,6 +318,27 @@ mod tests {
         http::Request,
     };
     use tower::ServiceExt;
+    #[tokio::test]
+    async fn serves_ocr_module_and_versions_its_imports() {
+        let router = app(Scheduler::new(Settings::from_env(), Access::from_env()));
+        for (path, imported) in [
+            ("/app.js", "./ocr-ui.js?v="),
+            ("/ocr-ui.js", "./i18n.js?v="),
+        ] {
+            let response = router
+                .clone()
+                .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(
+                response.headers()[header::CONTENT_TYPE],
+                "text/javascript; charset=utf-8"
+            );
+            let body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+            assert!(std::str::from_utf8(&body).unwrap().contains(imported));
+        }
+    }
     #[tokio::test]
     async fn http_admission_auth_and_private_jobs() {
         let mut access = Access::from_env();
