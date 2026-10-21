@@ -795,7 +795,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
 name = "echo_app"
-version = "3.0.0"
+version = "3.1.0"
 dependencies = [
  "echo_policy",
  "serde",
@@ -805,7 +805,7 @@ dependencies = [
 
 [[package]]
 name = "echo_calculator_app"
-version = "3.0.0"
+version = "3.1.0"
 dependencies = [
  "echo_app",
  "reqwest",
@@ -823,7 +823,7 @@ source = "git+https://github.com/2-07665/echo-policy?rev=72ec29f7346640ba3d660eb
 
 [[package]]
 name = "echo_server"
-version = "3.0.0"
+version = "3.1.0"
 dependencies = [
  "axum",
  "echo_app",
