@@ -1,0 +1,210 @@
+name: Desktop release
+
+# 推送 v* tag：构建全部平台并发布 GitHub Release。
+# 其他 push、PR 和手动运行：只构建，产物保存为 workflow artifact。
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths-ignore: ["**.md", "docs/**", "deploy/**", "Dockerfile", "compose.yaml", "LICENSE"]
+  pull_request:
+    paths-ignore: ["**.md", "docs/**", "deploy/**", "Dockerfile", "compose.yaml", "LICENSE"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+env:
+  RUST_TOOLCHAIN: "1.96"
+  TAURI_CLI_VERSION: "^2.0.0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: version
+        name: Read app version
+        run: |
+          version=$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF" == refs/tags/v* && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::tag $GITHUB_REF_NAME 与 tauri.conf.json 中的版本 $version 不一致"
+            exit 1
+          fi
+
+  build:
+    needs: prepare
+    name: build (${{ matrix.label }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: windows-x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: nsis
+          - label: macos-arm64
+            os: macos-latest
+            target: aarch64-apple-darwin
+            bundles: app,dmg
+          - label: macos-x64
+            os: macos-latest
+            target: x86_64-apple-darwin
+            bundles: app,dmg
+          - label: linux-x64
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundles: deb,appimage
+    runs-on: ${{ matrix.os }}
+    env:
+      APP_DIR: apps/desktop/src-tauri
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+            librsvg2-dev libxdo-dev libssl-dev patchelf file
+
+      - name: Install Rust
+        shell: bash
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --target ${{ matrix.target }}
+          rustup default "$RUST_TOOLCHAIN"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install tauri-cli
+        shell: bash
+        run: cargo install tauri-cli --version "$TAURI_CLI_VERSION" --locked
+
+      # 只导出已配置的 secrets：变量存在但为空时，Tauri 会尝试导入空证书而失败。
+      - name: Configure macOS signing
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY \
+                      APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            value="${!name}"
+            if [[ -n "$value" ]]; then
+              delimiter="EOF_$(openssl rand -hex 8)"
+              printf '%s<<%s\n%s\n%s\n' "$name" "$delimiter" "$value" "$delimiter" >> "$GITHUB_ENV"
+            fi
+          done
+          if [[ -z "$APPLE_CERTIFICATE" ]]; then
+            echo "未配置 Apple 证书，使用 ad-hoc 签名"
+            echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
+          fi
+
+      - name: Configure Windows signing
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          if (-not $env:WINDOWS_CERTIFICATE) {
+            Write-Output "未配置 Windows 证书，跳过签名"
+            exit 0
+          }
+          $pfx = Join-Path $env:RUNNER_TEMP "certificate.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+          $password = ConvertTo-SecureString $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
+          $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password
+          Remove-Item $pfx
+          $config = Join-Path $env:RUNNER_TEMP "tauri.signing.conf.json"
+          @{ bundle = @{ windows = @{
+            certificateThumbprint = $cert.Thumbprint
+            digestAlgorithm = "sha256"
+            timestampUrl = "http://timestamp.digicert.com"
+          } } } | ConvertTo-Json -Depth 5 | Set-Content -Path $config
+          "SIGNING_CONFIG=$config" >> $env:GITHUB_ENV
+
+      - name: Build
+        shell: bash
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          args=(--target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config tauri.release.conf.json)
+          if [[ -n "${SIGNING_CONFIG:-}" ]]; then
+            args+=(--config "$SIGNING_CONFIG")
+          fi
+          cargo tauri build "${args[@]}"
+
+      - name: Collect artifacts
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          release=target/${{ matrix.target }}/release
+          bundle=$release/bundle
+          name="EchoStudio_${VERSION}_${{ matrix.label }}"
+          mkdir dist
+          case "$RUNNER_OS" in
+            Windows)
+              cp "$bundle"/nsis/*-setup.exe "dist/$name-setup.exe"
+              cp "$release/echo_calculator_app.exe" "dist/$name-portable.exe"
+              ;;
+            macOS)
+              cp "$bundle"/dmg/*.dmg "dist/$name.dmg"
+              ;;
+            Linux)
+              cp "$bundle"/deb/*.deb "dist/$name.deb"
+              cp "$bundle"/appimage/*.AppImage "dist/$name.AppImage"
+              ;;
+          esac
+          ls -l dist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: desktop-${{ matrix.label }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cd dist
+          sha256sum -- * > SHA256SUMS.txt
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" ./* --clobber
+          else
+            flags=()
+            [[ "$TAG" == *-* ]] && flags+=(--prerelease)
+            gh release create "$TAG" ./* --title "Echo Studio $TAG" --generate-notes "${flags[@]}"
+          fi

@@ -92,10 +92,62 @@ cd apps/desktop/src-tauri
 cargo tauri build
 ```
 
-默认配置下 `bundle.active = false`，只生成可执行文件。在 macOS 上生成 `.app`：
+默认配置下 `bundle.active = false`，只生成可执行文件。macOS 例外：Tauri 会自动合并 `tauri.macos.conf.json`，直接生成 `.app`。不要新增 `tauri.windows.conf.json` 或 `tauri.linux.conf.json`，它们同样会被自动合并，改变本地构建结果。
+
+需要安装包时，叠加 CI 使用的 [tauri.release.conf.json](../apps/desktop/src-tauri/tauri.release.conf.json)（只开启 bundle），再用 `--bundles` 选择格式：
 
 ```bash
-cargo tauri build --config tauri.macos.conf.json
+cargo tauri build --config tauri.release.conf.json --bundles app,dmg   # macOS
+cargo tauri build --config tauri.release.conf.json --bundles nsis      # Windows
+cargo tauri build --config tauri.release.conf.json --bundles deb,appimage  # Linux
 ```
 
-其他平台的安装包需要在对应平台上启用 bundle，并设置相应的 targets。
+产物在仓库根目录的 `target/release/bundle/` 下；指定 `--target` 时在 `target/<目标三元组>/release/bundle/` 下。
+
+## CI 与发布
+
+[desktop-release.yml](../.github/workflows/desktop-release.yml) 在以下平台用 release 模式构建桌面版：
+
+| 平台 | 产物 |
+|---|---|
+| Windows x64 | NSIS 安装程序、免安装的 `.exe` |
+| macOS Apple Silicon | `.dmg` |
+| macOS Intel | `.dmg`（在 Apple Silicon runner 上交叉编译） |
+| Linux x64 | `.deb`、`.AppImage`（在 Ubuntu 22.04 上构建，兼容较旧的发行版） |
+
+- **PR 和推送到 `main`**：只构建，产物保存在该次运行的 Artifacts 中，保留 14 天。只改文档或部署文件时不触发。也可以在 Actions 页面手动运行。
+- **推送 `v*` tag**：构建全部平台，创建同名 GitHub Release，上传安装包和 `SHA256SUMS.txt`。tag 必须与 `tauri.conf.json` 中的版本一致，否则直接失败；带 `-` 的 tag（如 `v3.1.0-beta.1`）发布为预发布版本。
+
+发布新版本：
+
+1. 同步修改 `apps/desktop/src-tauri/tauri.conf.json` 和 `apps/desktop/src-tauri/Cargo.toml` 中的版本号，提交并推送。
+2. 打 tag 并推送：
+
+   ```bash
+   git tag v3.0.1
+   git push origin v3.0.1
+   ```
+
+3. 等待工作流完成，在 Releases 页面检查产物，按需编辑说明。
+
+工作流直接调用 `cargo tauri build`，与本地打包命令一致，不需要 Node；发布用 runner 自带的 `gh` 完成。没有使用 `tauri-apps/tauri-action`，因为它主要面向 Node 前端项目，并按自己的规则命名和上传产物；直接调用命令更容易在本地复现。
+
+### 签名与公证
+
+默认不签名：macOS 版使用 ad-hoc 签名，Windows 版没有签名。用户首次打开时会看到系统警告：
+
+- **macOS**：提示“已损坏”或“无法验证开发者”时，把应用拖进“应用程序”后运行 `xattr -cr "/Applications/Echo Studio.app"`，或在“系统设置 → 隐私与安全性”中选择“仍要打开”。
+- **Windows**：SmartScreen 提示时，点击“更多信息 → 仍要运行”。
+
+有证书后，在仓库的 Settings → Secrets and variables → Actions 中添加以下 secrets，工作流会自动使用；未配置的 secrets 会被跳过。
+
+| Secret | 说明 |
+|---|---|
+| `APPLE_CERTIFICATE` | Developer ID Application 证书导出的 `.p12`，Base64 编码 |
+| `APPLE_CERTIFICATE_PASSWORD` | 导出 `.p12` 时设置的密码 |
+| `APPLE_SIGNING_IDENTITY` | 签名身份，如 `Developer ID Application: Name (TEAMID)` |
+| `APPLE_ID`、`APPLE_PASSWORD`、`APPLE_TEAM_ID` | 公证用的 Apple ID、App 专用密码和团队 ID；三项都配置时才会公证 |
+| `WINDOWS_CERTIFICATE` | Windows 代码签名证书 `.pfx`，Base64 编码 |
+| `WINDOWS_CERTIFICATE_PASSWORD` | `.pfx` 的密码 |
+
+Base64 编码可以用 `base64 -i certificate.p12 | pbcopy`（macOS）或 `[Convert]::ToBase64String([IO.File]::ReadAllBytes("certificate.pfx"))`（PowerShell）。Windows 签名使用 DigiCert 的时间戳服务；EV 证书或云端签名服务无法导出 `.pfx`，需要另行修改工作流。
