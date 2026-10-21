@@ -8,9 +8,12 @@ $installation = & $vswhere -latest -products '*' -requires Microsoft.VisualStudi
 $redistRoot = Join-Path $installation 'VC\Redist\MSVC'
 $redist = Get-ChildItem -LiteralPath $redistRoot -Force | Where-Object { $_.Name -match '^\d+\.' } | Sort-Object Name -Descending | Select-Object -First 1
 if (!$redist) { throw '找不到可分发的 Visual C++ 运行库' }
-$crt = Join-Path $redist.FullName 'x64\Microsoft.VC143.CRT'
+$crt = Get-ChildItem -LiteralPath (Join-Path $redist.FullName 'x64') -Directory -Filter 'Microsoft.VC*.CRT' |
+    Sort-Object { [int]($_.Name -replace '^Microsoft\.VC(\d+)\.CRT$', '$1') } -Descending |
+    Select-Object -First 1
+if (!$crt) { throw '找不到 x64 Visual C++ CRT 目录' }
 foreach ($dll in @('msvcp140.dll','msvcp140_1.dll','vcruntime140.dll','vcruntime140_1.dll')) {
-    Copy-Item -LiteralPath (Join-Path $crt $dll) -Destination $runtime
+    Copy-Item -LiteralPath (Join-Path $crt.FullName $dll) -Destination $runtime
 }
 $bytes = (Get-ChildItem -LiteralPath $runtime -File | Measure-Object Length -Sum).Sum
 Write-Host ('OCR 独立运行目录：{0:N2} MiB ({1})' -f ($bytes / 1MB), $runtime)
