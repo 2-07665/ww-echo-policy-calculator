@@ -38,6 +38,17 @@ assert.deepEqual(calls.at(-1), { command:'toggle_ocr', args:{ enabled:true, mode
 assert.equal(elements['ocr-mode'].disabled,true);
 handlers['ocr-echo']({ payload:[[0,63]] });
 assert.deepEqual(received,[[[0,63]]]);
+for (const group of [
+  [[4,86],[0,63],[9,86],[11,101],[5,40]],
+  [[10,79],[5,40],[11,86],[3,100],[9,94]],
+]) {
+  for (let count=1;count<=5;count++) {
+    const payload=group.slice(0,count);
+    handlers['ocr-echo']({payload});
+    assert.deepEqual(received.at(-1),payload,'Each confirmed upgrade replaces the complete slot list');
+  }
+}
+const receivedBeforeExit=received.length;
 handlers['ocr-status']({ payload:{status:'paused',enabled:true} });
 assert.match(elements['ocr-status'].textContent,/最小化/);
 setLanguage('en'); renderOcr();
@@ -45,7 +56,7 @@ assert.match(elements['ocr-status'].textContent,/minimized/);
 handlers['ocr-status']({ payload:{status:'exited',enabled:false} });
 assert.equal(elements['ocr-mode'].disabled,false);
 handlers['ocr-echo']({ payload:[[0,105]] });
-assert.equal(received.length,1,'Late result after process exit must be ignored');
+assert.equal(received.length,receivedBeforeExit,'Late result after process exit must be ignored');
 elements['ocr-mode'].value = 'external';
 assert.equal(elements['ocr-window'].value,'456','Keep the stale selection to reproduce the external-mode regression');
 await elements['ocr-mode'].trigger('change');

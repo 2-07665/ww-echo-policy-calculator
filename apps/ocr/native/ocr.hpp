@@ -29,6 +29,21 @@ struct Scan {
     std::string packet() const;
 };
 bool parse_entry(std::string name, std::string value, Entry& entry);
+bool resolve_entry(const std::vector<Text>& names, const std::vector<Text>& values, Entry& entry);
+// One changed frame cannot replace the last confirmed result. Invalid capture
+// resets both confirmation and deduplication so recovery can refill the UI.
+class Confirmation {
+    std::string previous, sent;
+public:
+    void clear() { previous.clear(); sent.clear(); }
+    bool observe(const std::string& key) {
+        bool deliver=key==previous && key!=sent;
+        if (deliver) sent=key;
+        previous=key;
+        return deliver;
+    }
+    bool confirmed(const std::string& key) const { return key==sent; }
+};
 class Recognizer {
     struct Impl;
     std::unique_ptr<Impl> impl;

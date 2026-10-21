@@ -4,6 +4,7 @@ The fixture window stays at the bottom of the desktop without taking focus.
 Requires development-only Pillow and tkinter, not part of the OCR distribution.
 """
 import ctypes
+import argparse
 from ctypes import wintypes
 import json
 from pathlib import Path
@@ -22,6 +23,11 @@ EXE, EXPECTED, ROOT = (fixture[key] for key in ("EXE", "EXPECTED", "ROOT"))
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--upgrade-captures", type=Path)
+    parser.add_argument("--max-update-ms", type=float, default=1000)
+    args = parser.parse_args()
+    delays = []
     user32 = ctypes.WinDLL("user32", use_last_error=True)
     user32.SetProcessDpiAwarenessContext.argtypes = [wintypes.HANDLE]
     user32.SetProcessDpiAwarenessContext(wintypes.HANDLE(-4))
@@ -41,7 +47,10 @@ def main():
 
     def display(name):
         nonlocal photo
-        source = Image.open(ROOT / "captures/ocr" / f"{name}.png").convert("RGB").crop((2, 45, 1922, 1125))
+        if name in fixture["UPGRADE_EXPECTED"]:
+            source = fixture["upgrade_client"](args.upgrade_captures, name)
+        else:
+            source = Image.open(ROOT / "captures/ocr" / f"{name}.png").convert("RGB").crop((2, 45, 1922, 1125))
         photo = ImageTk.PhotoImage(source.resize((960, 540), Image.Resampling.LANCZOS))
         label.configure(image=photo)
         root.update()
@@ -66,6 +75,7 @@ def main():
         time.sleep(0.02)
 
     def packet(expected, timeout=10):
+        started = time.monotonic()
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             pump()
@@ -73,7 +83,7 @@ def main():
                 result = json.loads(udp.recv(16384))
                 actual = [(e["buffName"], e["buffValue"]) for e in result["buffEntries"]]
                 assert actual == expected, (actual, expected)
-                return
+                return (time.monotonic() - started) * 1000
             except BlockingIOError:
                 pass
         raise AssertionError(("UDP timeout", expected, seen))
@@ -96,6 +106,15 @@ def main():
         display("2-3")
         background()
         packet(EXPECTED["2-3"])
+        if args.upgrade_captures:
+            for name, expected in fixture["UPGRADE_EXPECTED"].items():
+                started = time.monotonic()
+                display(name)
+                background()
+                packet(expected, timeout=args.max_update_ms / 1000)
+                elapsed = (time.monotonic() - started) * 1000
+                assert elapsed <= args.max_update_ms, (name, elapsed)
+                delays.append({"image": name, "update_ms": round(elapsed, 1)})
         root.iconify()
         deadline = time.monotonic() + 3
         while time.monotonic() < deadline:
@@ -108,12 +127,12 @@ def main():
             pass
         root.deiconify()
         background()
-        packet(EXPECTED["2-3"])
+        packet(fixture["UPGRADE_EXPECTED"]["10"] if args.upgrade_captures else EXPECTED["2-3"])
         proc.stdin.write("q\n")
         proc.stdin.flush()
         proc.wait(timeout=5)
         assert proc.returncode == 0, proc.stderr.read()
-        print(json.dumps({"controlled_wgc": "passed", "checks": ["background client crop", "stable UDP result", "scene change", "minimize pause", "restore rescan", "graceful exit"], "events": seen}, ensure_ascii=False, indent=2))
+        print(json.dumps({"controlled_wgc": "passed", "upgrade_updates": delays, "checks": ["background client crop", "stable UDP result", "scene change", "minimize pause", "restore rescan", "graceful exit"], "events": seen}, ensure_ascii=False, indent=2))
     finally:
         if proc and proc.poll() is None:
             proc.kill()

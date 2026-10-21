@@ -140,6 +140,17 @@ bool parse_entry(std::string name, std::string value, Entry& entry) {
     else if (entry.name=="ER") options=&er;
     return std::find(options->begin(),options->end(),number)!=options->end();
 }
+bool resolve_entry(const std::vector<Text>& names, const std::vector<Text>& values, Entry& entry) {
+    bool valid=false;
+    for (const auto& name : names) for (const auto& value : values) {
+        Entry candidate;
+        if (name.confidence<.85f || value.confidence<.85f || !parse_entry(name.text,value.text,candidate)) continue;
+        if (valid && !(entry==candidate)) return false;
+        entry=candidate;
+        valid=true;
+    }
+    return valid;
+}
 std::string Scan::packet() const {
     std::string result="{\"buffEntries\":[";
     for (size_t i=0;i<entries.size();++i) {
@@ -175,7 +186,17 @@ Scan Recognizer::scan(const Image& image) {
         if (scan.scene==2 && name.confidence>=.85f && normalized.find("强化至+")==0) break;
         auto value=text(scan.scene==1 ? Rect{1752,rightY[i],105,31} : Rect{560,leftY[i],103,33});
         Entry entry;
-        if (name.confidence<.85f || value.confidence<.85f || !parse_entry(name.text,value.text,entry) || !used.insert(entry.name).second) {
+        bool valid=resolve_entry({name},{value},entry);
+        if (!valid && scan.scene==2) {
+            // Upgrade rows have animated particles in the unused space after a
+            // short label and before a right-aligned number. Retry only this row,
+            // with bounded crops; never repair digits or lower the threshold.
+            std::vector<Text> names{name}, values{value};
+            for (int width : {50,94,182}) names.push_back(text({252,leftY[i],width,33}));
+            for (int width : {80,64,44}) values.push_back(text({654-width,leftY[i],width,33}));
+            valid=resolve_entry(names,values,entry);
+        }
+        if (!valid || !used.insert(entry.name).second) {
             if (scan.scene==1) {
                 auto section=text({1503,rightY[i]+5,210,33});
                 if (section.confidence>=.85f && label(section.text)=="声骸技能") break;

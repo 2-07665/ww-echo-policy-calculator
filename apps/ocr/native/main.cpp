@@ -39,6 +39,24 @@ static void self_test() {
     for (auto value : {"6.4%","63","6.3","6.3.0%","-6.3%","6.30%","6O%","999999999%"}) require(!parse_entry("暴击",value,entry));
     require(!parse_entry("攻击","150",entry)); // main stat cannot pass
     require(!parse_entry("声骸技能","6.4%",entry));
+    require(resolve_entry({{"生命·",.79f},{"生命",.99f}},{{"8.6%",.99f}},entry) && entry==Entry{"HP",86});
+    require(!resolve_entry({{"生命",.84f}},{{"8.6%",.99f}},entry));
+    require(!resolve_entry({{"生命",.99f}},{{"8.6%",.84f}},entry));
+    require(!resolve_entry({{"生命",.99f}},{{"8.7%",.99f}},entry));
+    require(!resolve_entry({{"暴击",.99f}},{{"6.3%",.99f},{"6.9%",.99f}},entry));
+    require(!resolve_entry({{"生命",.99f},{"攻击",.99f}},{{"8.6%",.99f}},entry));
+    Confirmation confirmation;
+    require(!confirmation.observe("scene2:1920:1080:two"));
+    require(confirmation.observe("scene2:1920:1080:two"));
+    require(!confirmation.observe("scene2:1920:1080:three"));
+    require(!confirmation.observe("scene2:1920:1080:two")); // transient extra row
+    require(!confirmation.observe("scene2:1920:1080:three"));
+    require(confirmation.observe("scene2:1920:1080:three"));
+    require(!confirmation.observe("scene2:1920:1080:three")); // no duplicate
+    require(!confirmation.observe("scene2:1280:720:three")); // resize resets agreement
+    confirmation.clear(); // rejected frame / minimize / page change
+    require(!confirmation.observe("scene2:1280:720:three"));
+    require(confirmation.observe("scene2:1280:720:three"));
     status("self_test_passed");
 }
 int wmain(int argc,wchar_t** argv) {
@@ -98,8 +116,8 @@ int wmain(int argc,wchar_t** argv) {
         status("ready");
         std::unique_ptr<Capture> capture;
         HWND target=nullptr;
-        std::string previous, sent;
-        auto clear=[&] { previous.clear(); sent.clear(); };
+        Confirmation confirmation;
+        auto clear=[&] { confirmation.clear(); };
         auto nextScan=std::chrono::steady_clock::now();
         while (!stopping) {
             auto now=std::chrono::steady_clock::now();
@@ -126,13 +144,11 @@ int wmain(int argc,wchar_t** argv) {
                 // Confirm page, client geometry and substats; item-name OCR noise
                 // must not restart confirmation of otherwise identical substats.
                 std::string key=std::to_string(scan.scene)+":"+std::to_string(image.w)+":"+std::to_string(image.h)+":"+packet;
-                if (key==previous && key!=sent) {
+                if (confirmation.observe(key)) {
                     if (sendto(sock,packet.data(),(int)packet.size(),0,(sockaddr*)&address,sizeof address)==SOCKET_ERROR)
                         throw std::runtime_error("UDP delivery failed");
-                    sent=key;
                 }
-                previous=key;
-                status(key==sent ? "recognized":"confirming");
+                status(confirmation.confirmed(key) ? "recognized":"confirming");
             } catch (const winrt::hresult_error& e) { clear(); capture.reset(); status("capture_error",winrt::to_string(e.message())); }
               catch (const std::exception& e) { clear(); capture.reset(); status("capture_error",e.what()); }
         }

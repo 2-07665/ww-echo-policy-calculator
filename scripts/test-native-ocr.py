@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import subprocess
 import tempfile
+import time
 
 from PIL import Image, ImageDraw
 
@@ -21,17 +22,34 @@ EXPECTED = {
     "2-2": [("Ult_Damage", 86), ("Defence_Flat", 60)],
     "2-3": [("Crit_Damage", 150), ("HP_Flat", 430), ("Skill_Damage", 116)],
 }
+UPGRADE_GROUPS = [
+    [("HP", 86), ("Crit_Rate", 63), ("Basic_Attack_Damage", 86), ("Skill_Damage", 101), ("Attack_Flat", 40)],
+    [("Heavy_Attack_Damage", 79), ("Attack_Flat", 40), ("Skill_Damage", 86), ("Defence", 100), ("Basic_Attack_Damage", 94)],
+]
+UPGRADE_EXPECTED = {str(group * 5 + count): entries[:count]
+                    for group, entries in enumerate(UPGRADE_GROUPS) for count in range(1, 6)}
+
+
+def upgrade_client(directory, name):
+    source = Image.open(directory / f"{name}.png").convert("RGB")
+    assert source.size == (2563, 1486), (name, source.size)
+    # These ten supplied window screenshots have a 2560x1440 client at (2,45).
+    # This fixture geometry is not used by live capture, which queries the HWND.
+    return source.crop((2, 45, 2562, 1485))
 
 
 def recognize(path):
     result = subprocess.run([str(EXE), "--image", str(path)], capture_output=True, text=True, encoding="utf-8", timeout=15)
     assert result.returncode in (0, 2), (result.stdout, result.stderr)
-    return json.loads(result.stdout)
+    scan = json.loads(result.stdout)
+    scan["scan_ms"] = int(next(line.split("=", 1)[1] for line in result.stderr.splitlines() if line.startswith("scan_ms=")))
+    return scan
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--captures", type=Path, default=ROOT / "captures/ocr")
+    parser.add_argument("--upgrade-captures", type=Path, help="Directory containing the private 1.png–10.png upgrade sequence")
     args = parser.parse_args()
     checks = 0
     report = []
@@ -63,6 +81,31 @@ def main():
             Image.new("RGB", size).save(path)
             assert not recognize(path)["valid"]
             checks += 1
+        if args.upgrade_captures:
+            for name, expected in UPGRADE_EXPECTED.items():
+                client = upgrade_client(args.upgrade_captures, name)
+                for size in [(2560, 1440), (1920, 1080), (1600, 900), (1280, 720), (960, 540)]:
+                    client.resize(size, Image.Resampling.LANCZOS).save(path)
+                    started = time.perf_counter()
+                    result = recognize(path)
+                    elapsed = (time.perf_counter() - started) * 1000
+                    actual = [(e["buffName"], e["buffValue"]) for e in result["packet"]["buffEntries"]]
+                    assert result["valid"] and result["scene"] == 2 and actual == expected, (name, size, result)
+                    checks += 1
+                    report.append({"upgrade_image": name, "size": size, "substats": actual,
+                                   "scan_ms": result["scan_ms"], "process_ms": round(elapsed, 1)})
+            # A damaged third row must reject the whole frame, not deliver the
+            # old two-row prefix. Duplicate rows must also remain invalid.
+            client = upgrade_client(args.upgrade_captures, "3").resize((1920, 1080), Image.Resampling.LANCZOS)
+            missing = client.copy()
+            ImageDraw.Draw(missing).rectangle((252, 430, 663, 462), fill="black")
+            missing.save(path)
+            assert not recognize(path)["valid"], "Missing third row emitted a partial list"
+            duplicate = client.copy()
+            duplicate.paste(client.crop((252, 344, 663, 377)), (252, 387))
+            duplicate.save(path)
+            assert not recognize(path)["valid"], "Duplicate stat passed fallback recognition"
+            checks += 2
     print(json.dumps({"passed": checks, "cases": report}, ensure_ascii=False, indent=2))
 
 
