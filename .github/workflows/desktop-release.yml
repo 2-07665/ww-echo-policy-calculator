@@ -1,7 +1,8 @@
-name: Desktop release
+name: Desktop
 
+# push 和 PR：在三个平台上 cargo check 桌面端，不打包。
 # 推送 v* tag：构建全部平台并发布 GitHub Release。
-# 其他 push、PR 和手动运行：只构建，产物保存为 workflow artifact。
+# 手动运行：额外构建全部平台，产物保存为 workflow artifact，不发布。
 on:
   push:
     branches: [main]
@@ -20,11 +21,42 @@ permissions:
 
 env:
   RUST_TOOLCHAIN: "1.96"
-  TAURI_CLI_VERSION: "^2.0.0"
   CARGO_TERM_COLOR: always
 
 jobs:
+  check:
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    name: check (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+            librsvg2-dev libxdo-dev libssl-dev
+
+      - name: Install Rust
+        shell: bash
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
+          rustup default "$RUST_TOOLCHAIN"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.os }}
+
+      - name: Check
+        run: cargo check -p echo_calculator_app --all-targets --locked
+
   prepare:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -86,9 +118,10 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
-      - name: Install tauri-cli
-        shell: bash
-        run: cargo install tauri-cli --version "$TAURI_CLI_VERSION" --locked
+      # 优先下载预编译的 tauri-cli；没有对应平台的预编译版本时（如 Apple Silicon）从源码安装。
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: tauri-cli
 
       # 只导出已配置的 secrets：变量存在但为空时，Tauri 会尝试导入空证书而失败。
       - name: Configure macOS signing

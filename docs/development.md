@@ -106,7 +106,7 @@ cargo tauri build --config tauri.release.conf.json --bundles deb,appimage  # Lin
 
 ## CI 与发布
 
-[desktop-release.yml](../.github/workflows/desktop-release.yml) 在以下平台用 release 模式构建桌面版：
+[desktop-release.yml](../.github/workflows/desktop-release.yml) 负责桌面版的检查和发布。发布时在以下平台用 release 模式打包：
 
 | 平台 | 产物 |
 |---|---|
@@ -115,7 +115,8 @@ cargo tauri build --config tauri.release.conf.json --bundles deb,appimage  # Lin
 | macOS Intel | `.dmg`（在 Apple Silicon runner 上交叉编译） |
 | Linux x64 | `.deb`、`.AppImage`（在 Ubuntu 22.04 上构建，兼容较旧的发行版） |
 
-- **PR 和推送到 `main`**：只构建，产物保存在该次运行的 Artifacts 中，保留 14 天。只改文档或部署文件时不触发。也可以在 Actions 页面手动运行。
+- **PR 和推送到 `main`**：在 Windows、macOS、Linux 上运行 `cargo check -p echo_calculator_app --all-targets`，不打包。只改文档或部署文件时不触发。
+- **在 Actions 页面手动运行**：除检查外，还会打包全部平台，产物保存在该次运行的 Artifacts 中，保留 14 天，不发布 Release。适合在打 tag 前确认打包正常。
 - **推送 `v*` tag**：构建全部平台，创建同名 GitHub Release，上传安装包和 `SHA256SUMS.txt`。tag 必须与 `tauri.conf.json` 中的版本一致，否则直接失败；带 `-` 的 tag（如 `v3.1.0-beta.1`）发布为预发布版本。
 
 发布新版本：
@@ -130,7 +131,7 @@ cargo tauri build --config tauri.release.conf.json --bundles deb,appimage  # Lin
 
 3. 等待工作流完成，在 Releases 页面检查产物，按需编辑说明。
 
-工作流直接调用 `cargo tauri build`，与本地打包命令一致，不需要 Node；发布用 runner 自带的 `gh` 完成。没有使用 `tauri-apps/tauri-action`，因为它主要面向 Node 前端项目，并按自己的规则命名和上传产物；直接调用命令更容易在本地复现。
+打包直接调用 `cargo tauri build`，与本地打包命令一致，不需要 Node；tauri-cli 优先下载预编译版本，Apple Silicon 上没有预编译版本，会从源码安装。发布用 runner 自带的 `gh` 完成。没有使用 `tauri-apps/tauri-action`，因为它主要面向 Node 前端项目，并按自己的规则命名和上传产物；直接调用命令更容易在本地复现。
 
 ### 签名与公证
 
