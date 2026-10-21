@@ -50,20 +50,33 @@ export async function setupOcr({ desktop, receive, notice }) {
   };
   $('ocr-refresh').addEventListener('click', refresh);
   $('ocr-mode').addEventListener('change', () => { status = 'off'; renderOcr(); });
+  let starting = false, startupTerminal = null;
   $('ocr-toggle').addEventListener('click', async () => {
     if (pending) return;
+    starting = !enabled;
+    startupTerminal = null;
     pending = true; renderOcr();
     try {
       const mode = nativeAvailable && $('ocr-mode').value === 'native' ? 'native' : 'external';
       enabled = await invoke('toggle_ocr', { enabled: !enabled, mode, windowId: mode === 'native' ? $('ocr-window').value || null : null });
       status = enabled ? ($('ocr-mode').value === 'native' ? 'waiting_game' : 'external') : 'off';
+      if (starting && startupTerminal) {
+        enabled = false;
+        status = startupTerminal.status;
+      }
     } catch (error) { enabled = false; status = 'error'; notice(() => errorText(error)); }
     finally { pending = false; renderOcr(); }
   });
   window.__TAURI__.event.listen('ocr-echo', ({ payload }) => { if (enabled && !pending) receive(payload); })
     .catch(error => notice(() => errorText(error)));
   window.__TAURI__.event.listen('ocr-status', ({ payload }) => {
-    if (!enabled || pending) return;
+    // ready and EOF can both arrive before the toggle IPC response. Preserve
+    // terminal events so a late success response cannot revive a dead session.
+    if (pending) {
+      if (starting && payload.enabled === false) startupTerminal = payload;
+      return;
+    }
+    if (!enabled) return;
     status = payload.status;
     if (payload.enabled === false) enabled = false;
     renderOcr();

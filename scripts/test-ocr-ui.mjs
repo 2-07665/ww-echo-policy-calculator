@@ -19,12 +19,14 @@ globalThis.document = { getElementById: id => elements[id] };
 globalThis.Option = class { constructor(text, value) { this.text = text; this.value = value; } };
 const handlers = {}, calls = [], received = [], notices = [];
 let fail = false;
+let duringToggle = null;
 let capabilities = { native_supported:true, native_available:true };
 globalThis.window = { __TAURI__: { core: { invoke: async (command, args) => {
   calls.push({ command, args });
   if (fail) throw new Error('test-startup-error');
   if (command === 'ocr_capabilities') return capabilities;
   if (command === 'ocr_windows') return [{ id:'123', title:'鸣潮' }, { id:'456', title:'鸣潮' }];
+  if (duringToggle) duringToggle();
   return args.enabled;
 }}, event: { listen: async (name, callback) => { handlers[name] = callback; } } } };
 const { setupOcr, renderOcr } = await import('../apps/web/ocr-ui.js');
@@ -94,6 +96,24 @@ await elements['ocr-toggle'].trigger('click');
 assert.equal(calls.at(-1).args.mode,'external');
 await elements['ocr-toggle'].trigger('click');
 const source = await readFile(new URL('../apps/web/ocr-ui.js', import.meta.url),'utf8');
+capabilities = { native_supported:true, native_available:true };
+await setupOcr(setupOptions);
+setLanguage('zh-CN');
+for (const terminal of ['exited', 'error']) {
+  duringToggle = () => {
+    handlers['ocr-status']({ payload:{status:'ready',enabled:true} });
+    handlers['ocr-status']({ payload:{status:terminal,enabled:false} });
+  };
+  await elements['ocr-toggle'].trigger('click');
+  assert.equal(calls.at(-1).args.enabled,true,'Retry must start a new session');
+  assert.equal(elements['ocr-mode'].disabled,false,'Startup failure must unlock controls');
+  assert.match(elements['ocr-status'].textContent,/重新开启/);
+  assert.equal(elements['ocr-toggle'].textContent,'开启 OCR 自动填入');
+}
+duringToggle = null;
+await elements['ocr-toggle'].trigger('click');
+assert.equal(elements['ocr-mode'].disabled,true,'Can restart after a startup exit');
+await elements['ocr-toggle'].trigger('click');
 for (const [,key] of source.matchAll(/'([^'\n]*[\p{Script=Han}][^'\n]*)'/gu)) {
   assert.ok(Object.hasOwn(messages,key), `Untranslated OCR label: ${key}`);
 }
