@@ -92,6 +92,7 @@ await setupOcr(setupOptions);
 assert.equal(elements['ocr-mode'].value,'external');
 assert.equal(elements['ocr-mode'].nativeOption.hidden,true,'Unsupported platforms hide native OCR');
 assert.equal(elements['ocr-mode'].parentElement.hidden,true,'External-only platforms hide the source selector');
+assert.match(elements['ocr-status'].textContent,/UDP · 127\.0\.0\.1:9999/,'Hidden selector must still expose the external UDP address');
 await elements['ocr-toggle'].trigger('click');
 assert.equal(calls.at(-1).args.mode,'external');
 await elements['ocr-toggle'].trigger('click');

@@ -62,7 +62,7 @@
 
 Windows x64 桌面版安装可选内置组件后，可选择「内置识别」，点击「开启 OCR 自动填入」，自动识别简体中文、16:9 游戏客户区中装备页右侧或强化页左侧的副词条。多个游戏窗口时，先停止识别并选择目标。识别范围、组件准备与构建见[本机 OCR](本机OCR.md)。
 
-其他平台或未安装组件时默认使用「外部 ok-ww」模式，在本机 UDP 9999 端口接收 [ok-ww](https://github.com/ok-oldking/ok-wuthering-waves) 识别出的词条并自动填入。需要先把 `apps/ocr/` 中的任务加入 ok-ww，消息格式见 [apps/ocr/message.md](../apps/ocr/message.md)。内置与外部识别二选一，网页版不支持 OCR。
+其他平台或未安装组件时默认使用「外部 UDP · 127.0.0.1:9999」模式，在本机 UDP 9999 端口接收 [ok-ww](https://github.com/ok-oldking/ok-wuthering-waves) 识别出的词条并自动填入。需要先把 `apps/ocr/` 中的任务加入 ok-ww，消息格式见 [apps/ocr/message.md](../apps/ocr/message.md)。内置与外部识别二选一，网页版不支持 OCR。
 
 ## 网页版的排队与配额
 

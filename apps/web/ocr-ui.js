@@ -22,6 +22,7 @@ export function renderOcr() {
   $('ocr-status').textContent = status === 'off' && nativeSupported && !nativeAvailable
     ? t('内置 OCR 组件未安装，可使用外部 OCR 或安装含 OCR 的 Windows 版本。')
     : t(labels[status] || '词条尚未确认，继续识别');
+  if (!native) $('ocr-status').textContent += ` · ${t('外部 UDP · 127.0.0.1:9999')}`;
 }
 export async function setupOcr({ desktop, receive, notice }) {
   if (!desktop) return;

@@ -3,7 +3,7 @@ export let language = 'zh-CN';
 try { language = localStorage.getItem('echo-studio-language') === 'en' ? 'en' : 'zh-CN'; } catch { /* Storage is optional. */ }
 export const messages = {
   '内置 OCR 组件未安装，可使用外部 OCR 或安装含 OCR 的 Windows 版本。':'Built-in OCR is not installed. Use external OCR or install the Windows build with OCR.',
-  'OCR 来源':'OCR source', '内置识别':'Built-in OCR', '外部 ok-ww':'External ok-ww',
+  'OCR 来源':'OCR source', '内置识别':'Built-in OCR', '外部 UDP · 127.0.0.1:9999':'External UDP · 127.0.0.1:9999',
   '鸣潮窗口':'Wuthering Waves window', '刷新窗口':'Refresh windows', '自动选择唯一鸣潮窗口':'Automatically select the only game window',
   '开启 OCR 自动填入':'Enable OCR autofill', 'OCR 正在切换…':'Switching OCR…', 'OCR 未开启':'OCR is off',
   '等待鸣潮窗口':'Waiting for Wuthering Waves', '发现多个鸣潮窗口，请停止后选择窗口':'Multiple game windows found. Stop OCR and select a window.',
