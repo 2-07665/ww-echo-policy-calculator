@@ -1,6 +1,7 @@
 # Character order
 
-Checked on 2026-10-19. `preset-data.js` records **first playable availability**, not
+Checked on 2026-10-19. `release_date` in [data/catalog.json](../../data/catalog.json)
+records **first playable availability**, not
 rerun dates, resource IDs or the order in a downloaded template file. Every scoring
 system and global search use this same descending date order. Same-day characters
 retain their original relative order; variants retain their source order within a

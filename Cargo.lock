@@ -819,6 +819,7 @@ dependencies = [
 [[package]]
 name = "echo_policy"
 version = "0.1.0"
+source = "git+https://github.com/2-07665/echo-policy?rev=72ec29f7346640ba3d660eb9fb48dc82bfa0d9b9#72ec29f7346640ba3d660eb9fb48dc82bfa0d9b9"
 
 [[package]]
 name = "echo_server"

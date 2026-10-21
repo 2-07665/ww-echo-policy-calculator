@@ -160,10 +160,10 @@ impl InternalScorer for Scorer {
     }
 }
 impl Scorer {
-    fn scale(&self) -> f64 {
+    fn buff_score_display(&self, index: usize, value: u16) -> Result<f64, ScorerError> {
         match self {
-            Self::Fixed(_) => 1.,
-            _ => SCORE_MULTIPLIER,
+            Self::Linear(s) => s.buff_score_display(index, value),
+            Self::Fixed(s) => s.buff_score_display(index, value).map(f64::from),
         }
     }
     fn main(&self) -> f64 {
@@ -172,35 +172,47 @@ impl Scorer {
             _ => 0.,
         }
     }
-    fn maximum(&self) -> f64 {
+    fn maximum_internal(&self) -> u32 {
         let mut scores: Vec<_> = metadata::BUFF_TYPE_MAX_VALUES
             .iter()
             .enumerate()
             .map(|(i, v)| self.buff_score_internal(i, *v as u16).unwrap() as u32)
             .collect();
         scores.sort_unstable_by(|a, b| b.cmp(a));
-        scores[..5].iter().sum::<u32>() as f64 / self.scale() + self.main()
+        scores[..5].iter().sum()
+    }
+    fn maximum(&self) -> f64 {
+        let mut scores: Vec<_> = metadata::BUFF_TYPE_MAX_VALUES
+            .iter()
+            .enumerate()
+            .map(|(i, v)| self.buff_score_display(i, *v as u16).unwrap())
+            .collect();
+        scores.sort_unstable_by(|a, b| b.total_cmp(a));
+        scores[..5].iter().sum::<f64>() + self.main()
     }
     fn target(&self, target: f64) -> AppResult<u16> {
-        let score = ((target - self.main()).max(0.) * self.scale()).round();
-        if !target.is_finite() || target < 0. || score > u16::MAX as f64 {
-            return Err(AppError::input(
-                "目标分数必须非负，且内部副词条目标不能超过 65535。",
-            ));
+        match self {
+            Self::Linear(s) => s
+                .target_from_display(target)
+                .map_err(|_| AppError::input("目标分数必须非负，且内部副词条目标不能超过 65535。")),
+            Self::Fixed(_) => {
+                if !target.is_finite() || target < 0. || target > u16::MAX as f64 {
+                    return Err(AppError::input(
+                        "目标分数必须非负，且内部副词条目标不能超过 65535。",
+                    ));
+                }
+                if target.fract() != 0. {
+                    return Err(AppError::input("固定评分的目标必须为整数。"));
+                }
+                Ok(target as u16)
+            }
         }
-        if matches!(self, Self::Fixed(_)) && target.fract() != 0. {
-            return Err(AppError::input("固定评分的目标必须为整数。"));
-        }
-        Ok(score as u16)
     }
     fn preview(&self, echo: &Echo, target: f64) -> AppResult<Preview> {
         validate_echo(echo, false)?;
         let contributions: Vec<_> = echo
             .iter()
-            .map(|&(i, v)| {
-                self.buff_score_internal(i, v)
-                    .map(|s| s as f64 / self.scale())
-            })
+            .map(|&(i, v)| self.buff_score_display(i, v))
             .collect::<Result<_, _>>()
             .map_err(solver_error)?;
         Ok(Preview {
@@ -240,7 +252,7 @@ fn build_scorer(c: &Config) -> AppResult<Scorer> {
         ),
     };
     // Bound the score axis used by the upgrade DP as well as the value-state limits.
-    if (scorer.maximum() - scorer.main()) * scorer.scale() > 20_000. {
+    if scorer.maximum_internal() > 20_000 {
         return Err(AppError::input(
             "应用支持最多 20000 内部副词条分数，请降低归一化满分或固定权重。",
         ));
@@ -294,7 +306,7 @@ fn prepare(request: &SolveRequest) -> AppResult<(Scorer, Preview, CostModel)> {
     } else {
         CostModel::new(c.costs[0], c.costs[1], c.costs[2]).map_err(solver_error)?
     };
-    if preview.target_internal as f64 > (scorer.maximum() - scorer.main()) * scorer.scale() + 0.5 {
+    if u32::from(preview.target_internal) > scorer.maximum_internal() {
         return Err(AppError {
             code: "impossible_target",
             message: "当前评分规则无法达到这个目标，请降低目标分数。".into(),
@@ -349,12 +361,8 @@ impl Service {
             self.cache = None;
             let policy = match c.mode {
                 Mode::Upgrade => {
-                    let mut s = UpgradePolicySolver::new(
-                        &scorer,
-                        preview.target_internal as f64 / SCORE_MULTIPLIER,
-                        cost,
-                    )
-                    .map_err(solver_error)?;
+                    let mut s = UpgradePolicySolver::new(&scorer, preview.target_internal, cost)
+                        .map_err(solver_error)?;
                     s.lambda_search(1e-9, 100).map_err(solver_error)?;
                     Policy::Upgrade(s)
                 }
