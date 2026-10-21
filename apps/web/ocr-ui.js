@@ -17,6 +17,7 @@ export function renderOcr() {
   $('ocr-toggle').disabled = pending;
   for (const id of ['ocr-mode','ocr-window','ocr-refresh']) $(id).disabled = enabled || pending;
   const native = nativeAvailable && $('ocr-mode').value === 'native';
+  $('ocr-mode').parentElement.hidden = !nativeAvailable;
   $('ocr-window-row').hidden = !native;
   $('ocr-status').textContent = status === 'off' && nativeSupported && !nativeAvailable
     ? t('内置 OCR 组件未安装，可使用外部 OCR 或安装含 OCR 的 Windows 版本。')

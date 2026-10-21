@@ -5,6 +5,7 @@ import { messages, setLanguage } from '../apps/web/i18n.js';
 
 class Element {
   constructor(value = '') { this.value = value; this.hidden = false; this.disabled = false; this.listeners = {}; this.options = []; this.nativeOption = {}; }
+  parentElement = { hidden: false };
   querySelector() { return this.nativeOption; }
   addEventListener(name, callback) { this.listeners[name] = callback; }
   replaceChildren(...options) { this.options = options; this.value = options[0]?.value || ''; }
@@ -30,6 +31,7 @@ const { setupOcr, renderOcr } = await import('../apps/web/ocr-ui.js');
 setLanguage('zh-CN');
 const setupOptions = { desktop:true, receive:value => received.push(value), notice:value => notices.push(value) };
 await setupOcr(setupOptions);
+assert.equal(elements['ocr-mode'].parentElement.hidden,false);
 await elements['ocr-refresh'].trigger('click');
 assert.equal(elements['ocr-window'].options.length,3);
 elements['ocr-window'].value = '456';
@@ -76,6 +78,7 @@ await setupOcr(setupOptions);
 assert.equal(elements['ocr-mode'].value,'external');
 assert.equal(elements['ocr-mode'].nativeOption.disabled,true);
 assert.equal(elements['ocr-mode'].nativeOption.hidden,false);
+assert.equal(elements['ocr-mode'].parentElement.hidden,true);
 const beforeRefresh = calls.length;
 await elements['ocr-refresh'].trigger('click');
 assert.equal(calls.length,beforeRefresh,'No sidecar lookup when the native component is absent');
@@ -86,6 +89,7 @@ capabilities = { native_supported:false, native_available:false };
 await setupOcr(setupOptions);
 assert.equal(elements['ocr-mode'].value,'external');
 assert.equal(elements['ocr-mode'].nativeOption.hidden,true,'Unsupported platforms hide native OCR');
+assert.equal(elements['ocr-mode'].parentElement.hidden,true,'External-only platforms hide the source selector');
 await elements['ocr-toggle'].trigger('click');
 assert.equal(calls.at(-1).args.mode,'external');
 await elements['ocr-toggle'].trigger('click');
