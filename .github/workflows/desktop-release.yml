@@ -1,6 +1,6 @@
 name: Desktop
 
-# push 和 PR：在三个平台上 cargo check 桌面端，不打包。
+# push 和 PR：检查桌面端，并在 Windows 构建和自检内置 OCR，不打包。
 # 推送 v* tag：构建全部平台并发布 GitHub Release。
 # 手动运行：额外构建全部平台，产物保存为 workflow artifact，不发布。
 on:
@@ -54,6 +54,27 @@ jobs:
 
       - name: Check
         run: cargo check -p echo_calculator_app --all-targets --locked
+
+      - name: Test shared UI and server assets
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          node scripts/test-ocr-ui.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'OCR UI tests failed' }
+          cargo test --locked -p echo_server serves_ocr_module_and_versions_its_imports
+          if ($LASTEXITCODE -ne 0) { throw 'Server asset tests failed' }
+          cargo test --locked -p echo_calculator_app ocr::tests
+          if ($LASTEXITCODE -ne 0) { throw 'OCR adapter tests failed' }
+
+      - name: Build and test Windows OCR
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./scripts/test-ocr-assets.ps1
+          ./scripts/prepare-ocr.ps1
+          ./scripts/build-ocr.ps1
+          ./apps/ocr/runtime/echo-ocr.exe --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'OCR self-test failed' }
 
   prepare:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
@@ -172,11 +193,24 @@ jobs:
           } } } | ConvertTo-Json -Depth 5 | Set-Content -Path $config
           "SIGNING_CONFIG=$config" >> $env:GITHUB_ENV
 
+      - name: Prepare Windows OCR resources
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./scripts/test-ocr-assets.ps1
+          ./scripts/prepare-ocr.ps1
+          ./scripts/build-ocr.ps1
+          ./apps/ocr/runtime/echo-ocr.exe --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'OCR self-test failed' }
+
       - name: Build
         shell: bash
         working-directory: ${{ env.APP_DIR }}
         run: |
           args=(--target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config tauri.release.conf.json)
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            args+=(--config tauri.ocr.conf.json)
+          fi
           if [[ -n "${SIGNING_CONFIG:-}" ]]; then
             args+=(--config "$SIGNING_CONFIG")
           fi
@@ -194,7 +228,10 @@ jobs:
           case "$RUNNER_OS" in
             Windows)
               cp "$bundle"/nsis/*-setup.exe "dist/$name-setup.exe"
-              cp "$release/echo_calculator_app.exe" "dist/$name-portable.exe"
+              mkdir -p out/portable/ocr
+              cp "$release/echo_calculator_app.exe" "out/portable/Echo Studio.exe"
+              cp apps/ocr/runtime/* out/portable/ocr/
+              pwsh -NoProfile -Command "Compress-Archive -Path 'out/portable/*' -DestinationPath 'dist/$name-portable.zip'"
               ;;
             macOS)
               cp "$bundle"/dmg/*.dmg "dist/$name.dmg"

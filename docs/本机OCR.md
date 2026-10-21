@@ -30,7 +30,7 @@ Push-Location apps/desktop/src-tauri
 try { cargo tauri build --config tauri.ocr.conf.json } finally { Pop-Location }
 ```
 
-可选配置 `tauri.ocr.conf.json` 将完整运行目录映射为安装后的 `ocr/` 资源目录；Rust 通过应用资源路径定位它。只在 Windows x64 使用此配置，普通桌面构建不启用它。
+可选配置 `tauri.ocr.conf.json` 将完整运行目录映射为安装后的 `ocr/` 资源目录；Rust 通过应用资源路径定位它。只在 Windows x64 使用此配置，普通桌面构建不启用它。CI 的 Windows 发布构建会自动准备组件并启用此配置，发布含 OCR 的 NSIS 安装包及便携 ZIP；便携版需完整解压后运行。
 
 本次 v6 small 识别模型为约 20.2 MiB，CPU DLL 为约 16.5 MiB；加上字典、配置、子进程、Visual C++ DLL 和许可证后，独立 OCR 目录约 **38.3 MiB**。构建脚本会打印实际体积；SDK 压缩包、开发头文件和编译中间文件不属于发布体积。
 
