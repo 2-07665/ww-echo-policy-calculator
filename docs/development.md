@@ -10,7 +10,7 @@ crates/echo_app/          共享应用层：请求/响应结构、配置校验�
 apps/server/              网页版服务端（Axum），内嵌静态页面，负责排队与配额
 apps/desktop/src-tauri/   桌面版外壳（Tauri），本地求解、数据更新、OCR
 apps/web/                 网页版和桌面版共用的界面（原生 HTML / CSS / JS）
-apps/ocr/                 ok-ww 的 OCR 集成任务
+apps/ocr/                 Windows 可选原生 CPU OCR 与 ok-ww 集成任务
 data/                     角色数据包及其源目录
 scripts/                  数据生成、权重转换和测试脚本
 ```
@@ -23,7 +23,8 @@ scripts/                  数据生成、权重转换和测试脚本
 
 - [main.rs](../apps/desktop/src-tauri/src/main.rs) 提供 `bootstrap`、`preview`、`solve` 三个命令，均直接转交给 `echo_app`。
 - 求解在后台线程中进行，不会阻塞界面。求解器只能同时处理一个请求，此时再有调用会直接报错，而不是排队等待。
-- [ocr.rs](../apps/desktop/src-tauri/src/ocr.rs) 在本机 UDP 9999 端口接收 OCR 消息。
+- [ocr.rs](../apps/desktop/src-tauri/src/ocr.rs) 管理可选的原生 OCR 子进程，并在本机 UDP 9999 端口接收 OCR 消息。
+- `ocr_capabilities` 报告 Windows x64 内置识别支持与组件可用性；其他平台或组件缺失时默认使用外部 OCR。外部模式不依赖原生组件，也不查询或校验游戏窗口。
 - 产品标识符沿用旧版，因此 webview 的本地存储（自定义预设等）可以保留下来。
 - `gen/schemas/` 由 Tauri 构建时自动生成，不纳入版本控制；需要维护的权限配置是 `capabilities/default.json`。
 
@@ -104,18 +105,29 @@ cargo tauri build --config tauri.release.conf.json --bundles deb,appimage  # Lin
 
 产物在仓库根目录的 `target/release/bundle/` 下；指定 `--target` 时在 `target/<目标三元组>/release/bundle/` 下。
 
+### Windows 可选内置 OCR
+
+基础 Tauri 配置不引用可选 OCR 资源，普通构建和其他平台无需准备模型或原生运行库。Windows x64 在仓库根目录运行以下命令，下载并校验固定版本资源，再构建包含 OCR 的便携版：
+
+```powershell
+.\scripts\prepare-ocr.ps1
+.\scripts\build-desktop.ps1
+```
+
+便携版输出到 `out/EchoStudio/`，分发时保留 EXE 相邻的完整 `ocr/` 文件夹。Windows 安装包通过显式叠加 `tauri.ocr.conf.json` 将运行组件打包到应用资源目录；完整命令和验证边界见[本机 OCR](本机OCR.md)。
+
 ## CI 与发布
 
 [desktop-release.yml](../.github/workflows/desktop-release.yml) 负责桌面版的检查和发布。发布时在以下平台用 release 模式打包：
 
 | 平台 | 产物 |
 |---|---|
-| Windows x64 | NSIS 安装程序、免安装的 `.exe` |
+| Windows x64 | 含内置 OCR 的 NSIS 安装程序、便携 `.zip`（EXE 与 `ocr/`） |
 | macOS Apple Silicon | `.dmg` |
 | macOS Intel | `.dmg`（在 Apple Silicon runner 上交叉编译） |
 | Linux x64 | `.deb`、`.AppImage`（在 Ubuntu 22.04 上构建，兼容较旧的发行版） |
 
-- **PR 和推送到 `main`**：在 Windows、macOS、Linux 上运行 `cargo check -p echo_calculator_app --all-targets`，不打包。只改文档或部署文件时不触发。
+- **PR 和推送到 `main`**：在 Windows、macOS、Linux 上运行 `cargo check -p echo_calculator_app --all-targets`；Windows 另行构建并自检原生 OCR，执行 OCR 前端、Rust 适配层、服务端模块路由及资源校验测试，不生成安装包。只改文档或部署文件时不触发。
 - **在 Actions 页面手动运行**：除检查外，还会打包全部平台，产物保存在该次运行的 Artifacts 中，保留 14 天，不发布 Release。适合在打 tag 前确认打包正常。
 - **推送 `v*` tag**：构建全部平台，创建同名 GitHub Release，上传安装包和 `SHA256SUMS.txt`。tag 必须与 `tauri.conf.json` 中的版本一致，否则直接失败；带 `-` 的 tag（如 `v3.1.0-beta.1`）发布为预发布版本。
 
@@ -132,6 +144,8 @@ cargo tauri build --config tauri.release.conf.json --bundles deb,appimage  # Lin
 3. 等待工作流完成，在 Releases 页面检查产物，按需编辑说明。
 
 打包直接调用 `cargo tauri build`，与本地打包命令一致，不需要 Node；tauri-cli 优先下载预编译版本，Apple Silicon 上没有预编译版本，会从源码安装。发布用 runner 自带的 `gh` 完成。没有使用 `tauri-apps/tauri-action`，因为它主要面向 Node 前端项目，并按自己的规则命名和上传产物；直接调用命令更容易在本地复现。
+
+Windows 发布构建执行 `prepare-ocr.ps1`、`build-ocr.ps1`，并叠加 `tauri.ocr.conf.json`，让 NSIS 安装包包含内置 OCR。便携版以 ZIP 分发，解压后保留 EXE 相邻的完整 `ocr/` 文件夹。macOS/Linux 沿用原有打包流程，不下载或打包 OCR 组件。CI 不执行需要私有截图或真实游戏窗口的准确性验收。
 
 ### 签名与公证
 

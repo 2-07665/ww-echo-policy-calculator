@@ -16,7 +16,7 @@
 
 - 内置五套评分体系的数百个角色预设，支持中英文角色名搜索，也可以自己调整权重、保存自定义预设。
 - 中文 / English 界面。
-- 桌面版可离线使用，并支持通过 ok-ww OCR 自动填入词条。
+- 桌面版可离线使用，Windows x64 可选内置 CPU OCR，也支持通过 ok-ww OCR 自动填入词条。
 
 ## 快速开始
 
@@ -46,6 +46,7 @@ cargo run --release -p echo_calculator_app
 | [部署指南](docs/deployment.md) | 在 VPS 上运行网页版：Docker / systemd、HTTPS、配额与访问密钥 |
 | [角色数据包](data/README.md) | 不重新编译就更新角色和权重数据 |
 | [开发说明](docs/development.md) | 项目结构、HTTP 接口、测试与桌面打包 |
+| [本机 OCR](docs/本机OCR.md) | Windows 内置识别范围、组件准备与打包 |
 | [服务器性能测量](docs/server-performance.md) | 默认容量参数的依据 |
 
 求解算法和数学模型见 [echo_policy 文档](https://github.com/2-07665/echo-policy#readme)。

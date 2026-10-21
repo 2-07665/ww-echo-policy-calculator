@@ -191,3 +191,13 @@ dialog li { margin: 18px 0; }
 .data-import-label { margin-top: 16px; }
 #data-warning { color: var(--danger, #b3261e); }
 #data-url { width: 100%; }
+.ocr-controls { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 16px; }
+.ocr-controls > label { display: grid; gap: 6px; margin-bottom: 12px; }
+.ocr-controls select { width: 100%; min-height: 44px; font-size: 15px; }
+.ocr-controls select:disabled { color: #62656d; -webkit-text-fill-color: #62656d; opacity: 1; background-color: #f7f8fa; border-color: var(--line); background-image: none; }
+#ocr-window-row { display: grid; gap: 6px; margin-bottom: 12px; }
+.ocr-window-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 28px; }
+.ocr-window-heading label { margin: 0; }
+#ocr-refresh { padding: 3px 0; white-space: nowrap; }
+#ocr-refresh:disabled { color: #858993; background: transparent; text-decoration: none; }
+#ocr-status { margin: 6px 0 0; font-size: 12px; color: var(--muted); }

@@ -33,7 +33,12 @@ async fn solve(
 fn main() {
     tauri::Builder::default()
         .manage(Arc::new(Mutex::new(Service::default())))
-        .manage(ocr::Listener::default())
+        .manage(Arc::new(ocr::Listener::default()))
+        .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::Destroyed) {
+                window.state::<Arc<ocr::Listener>>().shutdown();
+            }
+        })
         .setup(|app| {
             let path = app.path().app_data_dir()?.join("echo-data.json");
             app.manage(Arc::new(echo_app::data::DataStore::cached(path)));
@@ -45,7 +50,9 @@ fn main() {
             data::data_install,
             preview,
             solve,
-            ocr::toggle_ocr
+            ocr::toggle_ocr,
+            ocr::ocr_windows,
+            ocr::ocr_capabilities
         ])
         .run(tauri::generate_context!())
         .expect("error while running Echo Studio");
